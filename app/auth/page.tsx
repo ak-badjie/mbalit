@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -77,7 +77,23 @@ const GoogleIcon = () => (
     </svg>
 );
 
-export default function AuthPage() {
+// Wrapper with Suspense for useSearchParams
+export default function AuthPageWrapper() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+                <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-500">Loading...</p>
+                </div>
+            </div>
+        }>
+            <AuthPage />
+        </Suspense>
+    );
+}
+
+function AuthPage() {
     const searchParams = useSearchParams();
     const isSignupMode = searchParams.get('signup') === 'true';
     const continueOnboarding = searchParams.get('continue') === 'onboarding';
