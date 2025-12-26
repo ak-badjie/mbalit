@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ref, update } from 'firebase/database';
 import { realtimeDb } from '@/lib/firebase';
 
 // This page is opened in a POPUP window after payment completes
 // It updates the job status and signals the parent window to close
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
     const searchParams = useSearchParams();
     const transactionId = searchParams.get('transaction_id');
     const status = searchParams.get('status');
@@ -77,5 +77,20 @@ export default function PaymentSuccessPage() {
                 <p className="text-white/80">Closing this window...</p>
             </div>
         </div>
+    );
+}
+
+export default function PaymentSuccessPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-400 to-teal-500">
+                <div className="text-center text-white">
+                    <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p>Processing payment...</p>
+                </div>
+            </div>
+        }>
+            <PaymentSuccessContent />
+        </Suspense>
     );
 }
