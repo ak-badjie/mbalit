@@ -1,5 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { ref, update, get } from 'firebase/database';
+import { initializeApp, getApps } from 'firebase/app';
+import { getDatabase } from 'firebase/database';
+
+// Firebase config for server-side
+const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+// Initialize Firebase if not already initialized
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const db = getDatabase(app);
 
 // Webhook secret for verifying Modem Pay signatures
 const MODEM_PAY_WEBHOOK_SECRET = process.env.MODEM_PAY_WEBHOOK_SECRET || '';
@@ -11,15 +29,19 @@ function verifyWebhookSignature(payload: string, signature: string): boolean {
         return true; // Skip verification in development
     }
 
-    const expectedSignature = crypto
-        .createHmac('sha256', MODEM_PAY_WEBHOOK_SECRET)
-        .update(payload)
-        .digest('hex');
+    try {
+        const expectedSignature = crypto
+            .createHmac('sha256', MODEM_PAY_WEBHOOK_SECRET)
+            .update(payload)
+            .digest('hex');
 
-    return crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSignature)
-    );
+        return crypto.timingSafeEqual(
+            Buffer.from(signature),
+            Buffer.from(expectedSignature)
+        );
+    } catch {
+        return false;
+    }
 }
 
 export async function POST(request: NextRequest) {
@@ -45,6 +67,7 @@ export async function POST(request: NextRequest) {
         // Handle different event types
         switch (event.event) {
             case 'payment.success':
+            case 'payment.completed':
                 await handlePaymentSuccess(event.data);
                 break;
 
@@ -57,12 +80,12 @@ export async function POST(request: NextRequest) {
                 break;
 
             default:
-                console.log('Unhandled event type:', event.event);
+                console.log('Unhandled webhook event:', event.event);
         }
 
         return NextResponse.json({ success: true, received: true });
     } catch (error) {
-        console.error('Webhook processing error:', error);
+        console.error('Webhook error:', error);
         return NextResponse.json(
             { success: false, error: 'Webhook processing failed' },
             { status: 500 }
@@ -72,86 +95,49 @@ export async function POST(request: NextRequest) {
 
 // Handle successful payment
 async function handlePaymentSuccess(data: {
-    reference: string;
-    amount: number;
-    transaction_id: string;
+    reference?: string;
+    id?: string;
+    transaction_id?: string;
+    amount?: number;
     metadata?: Record<string, unknown>;
 }) {
     console.log('Payment successful:', data);
 
-    const { reference, amount, transaction_id, metadata } = data;
-
-    // Import Firebase Admin SDK functions dynamically
-    const { initializeApp, cert, getApps } = await import('firebase-admin/app');
-    const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
-
-    // Initialize Firebase Admin if not already initialized
-    if (getApps().length === 0) {
-        initializeApp({
-            credential: cert({
-                projectId: process.env.FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-            }),
-        });
+    const paymentId = data.reference || data.id || data.transaction_id;
+    if (!paymentId) {
+        console.error('No payment ID in webhook data');
+        return;
     }
 
-    const adminDb = getFirestore();
-
     try {
-        // 1. Update payment status in Firestore
-        await adminDb.collection('payments').doc(reference).update({
-            status: 'completed',
-            transactionId: transaction_id,
-            completedAt: FieldValue.serverTimestamp(),
-        });
+        // Find and update the job with this payment ID
+        const jobsRef = ref(db, 'jobs');
+        const snapshot = await get(jobsRef);
 
-        // 2. Get payment details to find collector
-        const paymentDoc = await adminDb.collection('payments').doc(reference).get();
-        const paymentData = paymentDoc.data();
+        if (snapshot.exists()) {
+            const jobs = snapshot.val();
 
-        if (paymentData?.collectorId) {
-            // 3. Credit collector's wallet (after platform fee)
-            const platformFee = amount * 0.10; // 10% platform fee
-            const collectorAmount = amount - platformFee;
+            // Find the job with matching paymentIntentId
+            for (const [jobId, job] of Object.entries(jobs)) {
+                const jobData = job as { paymentIntentId?: string; paymentStatus?: string };
+                if (jobData.paymentIntentId === paymentId ||
+                    jobData.paymentIntentId?.includes(paymentId)) {
 
-            const walletRef = adminDb.collection('wallets').doc(paymentData.collectorId);
-            const walletDoc = await walletRef.get();
+                    // Update job status
+                    const jobRef = ref(db, `jobs/${jobId}`);
+                    await update(jobRef, {
+                        paymentStatus: 'paid',
+                        transactionId: data.transaction_id || paymentId,
+                        paidAt: new Date().toISOString(),
+                    });
 
-            if (walletDoc.exists) {
-                await walletRef.update({
-                    balance: FieldValue.increment(collectorAmount),
-                    updatedAt: FieldValue.serverTimestamp(),
-                });
-            } else {
-                await walletRef.set({
-                    balance: collectorAmount,
-                    currency: 'GMD',
-                    createdAt: FieldValue.serverTimestamp(),
-                    updatedAt: FieldValue.serverTimestamp(),
-                });
-            }
-
-            // 4. Record wallet transaction
-            await adminDb.collection('walletTransactions').add({
-                walletId: paymentData.collectorId,
-                type: 'credit',
-                amount: collectorAmount,
-                description: `Payment for pickup #${paymentData.pickupRequestId || reference}`,
-                transactionId: transaction_id,
-                createdAt: FieldValue.serverTimestamp(),
-            });
-
-            // 5. Update pickup request status
-            if (paymentData.pickupRequestId) {
-                await adminDb.collection('pickupRequests').doc(paymentData.pickupRequestId).update({
-                    status: 'paid',
-                    paidAt: FieldValue.serverTimestamp(),
-                });
+                    console.log('Job updated to paid:', jobId);
+                    return;
+                }
             }
         }
 
-        console.log('Payment processed successfully:', reference);
+        console.log('No matching job found for payment:', paymentId);
     } catch (error) {
         console.error('Error processing payment success:', error);
         throw error;
@@ -160,29 +146,51 @@ async function handlePaymentSuccess(data: {
 
 // Handle failed payment
 async function handlePaymentFailed(data: {
-    reference: string;
-    reason: string;
+    reference?: string;
+    id?: string;
+    reason?: string;
 }) {
     console.log('Payment failed:', data);
 
-    // TODO: Implement actual logic
-    // 1. Update payment status in database
-    // 2. Notify customer of failed payment
-    // 3. Allow retry
+    const paymentId = data.reference || data.id;
+    if (!paymentId) return;
+
+    try {
+        // Find and update the job
+        const jobsRef = ref(db, 'jobs');
+        const snapshot = await get(jobsRef);
+
+        if (snapshot.exists()) {
+            const jobs = snapshot.val();
+
+            for (const [jobId, job] of Object.entries(jobs)) {
+                const jobData = job as { paymentIntentId?: string };
+                if (jobData.paymentIntentId === paymentId) {
+                    const jobRef = ref(db, `jobs/${jobId}`);
+                    await update(jobRef, {
+                        paymentStatus: 'failed',
+                        failureReason: data.reason || 'Payment failed',
+                    });
+                    console.log('Job marked as payment failed:', jobId);
+                    return;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error processing payment failure:', error);
+    }
 }
 
 // Handle pending payment
 async function handlePaymentPending(data: {
-    reference: string;
+    reference?: string;
+    id?: string;
 }) {
     console.log('Payment pending:', data);
-
-    // TODO: Implement actual logic
-    // 1. Update payment status
-    // 2. Set timeout for expiration
+    // Payment is still pending, no action needed
 }
 
-// Also handle GET for webhook test/verification
+// GET endpoint for webhook verification
 export async function GET() {
     return NextResponse.json({
         success: true,
