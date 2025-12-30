@@ -60,6 +60,7 @@ import {
     DynamicDescription,
     useDynamicIslandSize,
 } from '@/components/ui/dynamic-island';
+import { FullScreenNavigation } from '@/components/ui/full-screen-navigation';
 
 // Credit Card Pattern SVG
 const CardPattern = () => (
@@ -99,6 +100,7 @@ function DashboardContent() {
     const [withdrawAmount, setWithdrawAmount] = useState('');
     const [withdrawPhone, setWithdrawPhone] = useState('');
     const [isWithdrawing, setIsWithdrawing] = useState(false);
+    const [showFullScreenNav, setShowFullScreenNav] = useState(false);
 
     // PROTECT DASHBOARD: Redirect if onboarding not complete
     useEffect(() => {
@@ -275,6 +277,11 @@ function DashboardContent() {
                 setActiveJob({ ...incomingJob, collectorId, status: 'accepted' });
                 setIncomingJob(null);
                 setTimeout(() => setSize('long'), 0);
+
+                // Show full-screen navigation on mobile
+                if (window.innerWidth < 768) {
+                    setShowFullScreenNav(true);
+                }
             } catch (err) {
                 console.error('Failed to accept job:', err);
             }
@@ -935,6 +942,33 @@ function DashboardContent() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Full Screen Navigation for Mobile */}
+            {activeJob && (
+                <FullScreenNavigation
+                    isOpen={showFullScreenNav}
+                    onClose={() => setShowFullScreenNav(false)}
+                    pickup={{
+                        id: activeJob.id,
+                        customerName: (activeJob as any).customerName || 'Customer',
+                        customerPhone: (activeJob as any).customerPhone || '',
+                        pickupLocation: activeJob.pickupLocation,
+                        wasteType: getWasteTypeInfo(activeJob.wasteType).name,
+                        wasteSize: activeJob.wasteSize,
+                        amount: activeJob.amount,
+                        estimatedDistance: '1.2 km',
+                        estimatedTime: '5 min',
+                        notes: (activeJob as any).notes,
+                    }}
+                    collectorLocation={currentLocation || undefined}
+                    onComplete={() => {
+                        handleCompleteJob();
+                        setShowFullScreenNav(false);
+                    }}
+                    onCall={() => window.open(`tel:${(activeJob as any).customerPhone}`, '_self')}
+                    onMessage={() => window.open(`sms:${(activeJob as any).customerPhone}`, '_self')}
+                />
+            )}
         </div>
     );
 }
