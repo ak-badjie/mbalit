@@ -318,59 +318,6 @@ function DashboardContent() {
 
     return (
         <div className="min-h-screen">
-            {/* Mobile Top Bar - Hidden on Desktop */}
-            <header className="md:hidden fixed top-0 left-0 right-0 z-40">
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-400" />
-                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50">
-                    <div className="px-4 py-3">
-                        <div className="flex items-center justify-between">
-                            {/* Profile Info */}
-                            <Link href="/collector/profile" className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold shadow-lg overflow-hidden ring-2 ring-white dark:ring-gray-800">
-                                    {user?.profileImage ? (
-                                        <img src={user.profileImage} alt={user.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                        user?.name?.charAt(0).toUpperCase() || 'C'
-                                    )}
-                                </div>
-                                <div>
-                                    <h1 className="font-semibold text-gray-900 dark:text-white text-sm">
-                                        {user?.name || 'Collector'}
-                                    </h1>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        {user?.email}
-                                    </p>
-                                </div>
-                            </Link>
-
-                            {/* Actions */}
-                            <div className="flex items-center gap-2">
-                                <NotificationDropdown
-                                    notifications={notifications}
-                                    onMarkAsRead={handleMarkNotificationRead}
-                                    onMarkAllAsRead={handleMarkAllRead}
-                                />
-                                <Link href="/collector/settings">
-                                    <motion.button
-                                        className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                                    </motion.button>
-                                </Link>
-                                <motion.button
-                                    onClick={handleLogout}
-                                    className="p-2 rounded-xl text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                    whileTap={{ scale: 0.9 }}
-                                >
-                                    <LogOut className="w-5 h-5" />
-                                </motion.button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
             {/* Desktop Header - Hidden on Mobile */}
             <header className="hidden md:block fixed top-0 left-0 right-0 z-40">
                 {/* Gradient accent line */}
@@ -531,7 +478,7 @@ function DashboardContent() {
                 )}
             </AnimatePresence>
 
-            <main className="pt-4 md:pt-20 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            <main className="pt-6 md:pt-20 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
                 {/* Credit Card Style Wallet */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -823,15 +770,16 @@ function DashboardContent() {
                         </div>
 
                         {/* Secondary Stats Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">n                            <Card variant="default" padding="sm" className="p-3">
-                            <div className="flex flex-col items-center text-center">
-                                <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 mb-2">
-                                    <TrendingUp className="w-5 h-5 text-indigo-600" />
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <Card variant="default" padding="sm" className="p-3">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 mb-2">
+                                        <TrendingUp className="w-5 h-5 text-indigo-600" />
+                                    </div>
+                                    <p className="text-xs text-gray-500">This Month</p>
+                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{formatPrice(stats?.monthlyEarnings || 0)}</p>
                                 </div>
-                                <p className="text-xs text-gray-500">This Month</p>
-                                <p className="text-xl font-bold text-gray-900 dark:text-white">{formatPrice(stats?.monthlyEarnings || 0)}</p>
-                            </div>
-                        </Card>
+                            </Card>
 
                             <Card variant="default" padding="sm" className="p-3">
                                 <div className="flex flex-col items-center text-center">

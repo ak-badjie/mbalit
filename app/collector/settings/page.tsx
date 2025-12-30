@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth-context';
+import { useTheme } from '@/lib/theme-context';
 import { getCollectorSettings, updateCollectorSettings } from '@/lib/firestore';
 import { CollectorSettings, WasteType } from '@/types';
 import { WASTE_TYPES } from '@/lib/waste-config';
@@ -29,7 +30,9 @@ import { WASTE_TYPES } from '@/lib/waste-config';
 export default function SettingsPage() {
     const router = useRouter();
     const { user, logout } = useAuth();
+    const { resolvedTheme, toggleTheme } = useTheme();
     const collectorId = user?.id || 'demo-collector';
+    const isDarkMode = resolvedTheme === 'dark';
 
     const [settings, setSettings] = useState<CollectorSettings>({
         notificationsEnabled: true,
@@ -268,13 +271,13 @@ export default function SettingsPage() {
                     </div>
                     <div className="px-4">
                         <SettingRow
-                            icon={settings.darkMode ? Moon : Sun}
+                            icon={isDarkMode ? Moon : Sun}
                             title="Dark Mode"
                             description="Switch between light and dark theme"
                         >
                             <ToggleSwitch
-                                enabled={settings.darkMode}
-                                onChange={(v) => handleUpdateSetting('darkMode', v)}
+                                enabled={isDarkMode}
+                                onChange={() => toggleTheme()}
                             />
                         </SettingRow>
                         <SettingRow

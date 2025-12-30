@@ -164,9 +164,9 @@ function AuthPage() {
 
         try {
             await login(email, password);
-            // Redirect based on user role (will be determined after login)
-            // For now, we check if user exists and redirect accordingly
-            window.location.href = '/';
+            // The auth context will redirect based on role
+            // Users go to /dashboard, collectors go to /collector/dashboard
+            window.location.href = '/dashboard';
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Login failed';
             if (msg.includes('user-not-found') || msg.includes('wrong-password')) {

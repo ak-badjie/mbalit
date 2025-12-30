@@ -93,6 +93,24 @@
   }
 }
 
+/* Dark mode via class toggle (overrides system preference) */
+.dark {
+  --background: #030712;
+  --background-secondary: #111827;
+  --foreground: #f9fafb;
+  --foreground-muted: #9ca3af;
+  --border: #374151;
+  --card-bg: rgba(17, 24, 39, 0.8);
+  --card-border: rgba(55, 65, 81, 0.8);
+  
+  --glass-bg: rgba(17, 24, 39, 0.7);
+  --glass-border: rgba(55, 65, 81, 0.5);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  
+  --gradient-hero: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #0f766e 100%);
+  --gradient-card: linear-gradient(145deg, rgba(17,24,39,0.9) 0%, rgba(31,41,55,0.9) 100%);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
