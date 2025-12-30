@@ -1,7 +1,10 @@
 // TypeScript type definitions for Mbalit
 
 // User Types
-export type UserRole = 'customer' | 'collector';
+export type UserRole = 'user' | 'collector';
+
+// Account types for users (not collectors)
+export type AccountType = 'individual' | 'business' | 'corporate';
 
 export interface User {
   id: string;
@@ -16,8 +19,18 @@ export interface User {
   onboardingComplete?: boolean; // Whether user has finished full onboarding
 }
 
+// User profile (individual, business, or corporate account)
+export interface UserProfile extends User {
+  role: 'user';
+  accountType: AccountType;
+  organizationName?: string;  // For business/corporate
+  contactPerson?: string;     // For business/corporate (same as name for individual)
+  activeOrders: string[];     // Order IDs
+  completedOrders: number;
+}
+
 export interface Customer extends User {
-  role: 'customer';
+  role: 'user';
   activeRequests: string[]; // Request IDs
   completedRequests: number;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Mail,
@@ -18,6 +18,10 @@ import {
     Package,
     Car,
     Scale,
+    Building2,
+    Users,
+    Briefcase,
+    Truck,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -27,7 +31,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TruckLogo } from '@/components/ui/truck-logo';
 import { WASTE_TYPES } from '@/lib/waste-config';
-import { WasteType } from '@/types';
+import { WasteType, AccountType } from '@/types';
 
 // Step indicator for onboarding
 const OnboardingSteps: React.FC<{ currentStep: number; totalSteps: number }> = ({
@@ -59,12 +63,19 @@ const OnboardingSteps: React.FC<{ currentStep: number; totalSteps: number }> = (
     </div>
 );
 
-// Car size options
+// Car size options for collectors
 const CAR_SIZES = [
     { id: 'motorcycle', name: 'Motorcycle', capacity: '50 kg', icon: '🏍️' },
     { id: 'small', name: 'Small Car', capacity: '200 kg', icon: '🚗' },
     { id: 'pickup', name: 'Pickup Truck', capacity: '500 kg', icon: '🛻' },
     { id: 'truck', name: 'Large Truck', capacity: '2000 kg', icon: '🚚' },
+];
+
+// Account type options for users
+const ACCOUNT_TYPES: { id: AccountType; name: string; description: string; icon: React.ReactNode }[] = [
+    { id: 'individual', name: 'Individual', description: 'Personal account for home waste collection', icon: <User className="w-6 h-6" /> },
+    { id: 'business', name: 'Business', description: 'For small to medium businesses', icon: <Briefcase className="w-6 h-6" /> },
+    { id: 'corporate', name: 'Corporate', description: 'For large organizations & UN agencies', icon: <Building2 className="w-6 h-6" /> },
 ];
 
 // Google icon SVG
@@ -94,10 +105,15 @@ export default function AuthPageWrapper() {
 }
 
 function AuthPage() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const isSignupMode = searchParams.get('signup') === 'true';
+    const isCollectorMode = searchParams.get('role') === 'collector';
     const continueOnboarding = searchParams.get('continue') === 'onboarding';
-    const { login, signUp, signInWithGoogle, isLoading, user, firebaseUser } = useAuth();
+    const { login, signUp, signUpUser, signInWithGoogle, isLoading, user, firebaseUser } = useAuth();
+
+    // Role selection state
+    const [selectedRole, setSelectedRole] = useState<'user' | 'collector' | null>(isCollectorMode ? 'collector' : null);
 
     // Auth state
     const [mode, setMode] = useState<'login' | 'signup'>(isSignupMode ? 'signup' : 'login');
@@ -106,7 +122,12 @@ function AuthPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Onboarding state (multi-step)
+    // User signup state
+    const [selectedAccountType, setSelectedAccountType] = useState<AccountType | null>(null);
+    const [organizationName, setOrganizationName] = useState('');
+    const [userOnboardingStep, setUserOnboardingStep] = useState(0);
+
+    // Collector onboarding state (multi-step)
     const [onboardingStep, setOnboardingStep] = useState(0);
     const [isGoogleUser, setIsGoogleUser] = useState(false);
     const [fullName, setFullName] = useState('');
@@ -123,6 +144,9 @@ function AuthPage() {
         if (isSignupMode) {
             setMode('signup');
         }
+        if (isCollectorMode) {
+            setSelectedRole('collector');
+        }
 
         // If user is logged in but needs to complete onboarding
         if (continueOnboarding && user && user.onboardingComplete === false) {
@@ -132,7 +156,7 @@ function AuthPage() {
             if (user.name) setFullName(user.name);
             if (user.profileImage) setProfileImage(user.profileImage);
         }
-    }, [isSignupMode, continueOnboarding, user]);
+    }, [isSignupMode, isCollectorMode, continueOnboarding, user]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -140,7 +164,9 @@ function AuthPage() {
 
         try {
             await login(email, password);
-            window.location.href = '/collector/dashboard';
+            // Redirect based on user role (will be determined after login)
+            // For now, we check if user exists and redirect accordingly
+            window.location.href = '/';
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Login failed';
             if (msg.includes('user-not-found') || msg.includes('wrong-password')) {
@@ -148,6 +174,46 @@ function AuthPage() {
             } else {
                 setError(msg);
             }
+        }
+    };
+
+    // Handle user signup start (email/password entry for users)
+    const handleUserSignupStart = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        if (!email || !password) {
+            setError('Please fill in all fields');
+            return;
+        }
+        if (password.length < 6) {
+            setError('Password must be at least 6 characters');
+            return;
+        }
+
+        // Move to user onboarding step 1 (name & phone)
+        setUserOnboardingStep(1);
+    };
+
+    // Handle user onboarding completion
+    const handleUserOnboardingComplete = async () => {
+        setError(null);
+
+        try {
+            await signUpUser(
+                email,
+                password,
+                fullName,
+                phoneNumber,
+                selectedAccountType!,
+                selectedAccountType !== 'individual' ? organizationName : undefined
+            );
+
+            // Redirect to dashboard
+            window.location.href = '/dashboard';
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Signup failed';
+            setError(msg);
         }
     };
 
@@ -285,7 +351,448 @@ function AuthPage() {
         }
     };
 
-    // Auth form (login or initial signup)
+    const canProceedUserOnboarding = () => {
+        switch (userOnboardingStep) {
+            case 1: return fullName.trim().length > 0 && phoneNumber.trim().length > 0;
+            default: return false;
+        }
+    };
+
+    // Role Selection Screen
+    if (!selectedRole && mode === 'signup') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full max-w-lg"
+                >
+                    {/* Logo */}
+                    <div className="text-center mb-8">
+                        <motion.div
+                            initial={{ scale: 0.5 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 200 }}
+                            className="inline-flex justify-center mb-4"
+                        >
+                            <TruckLogo size="lg" showText={true} />
+                        </motion.div>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                            Join Mbalit
+                        </h1>
+                        <p className="text-gray-500 dark:text-gray-400">
+                            How would you like to use Mbalit?
+                        </p>
+                    </div>
+
+                    <div className="space-y-4">
+                        {/* User Option */}
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => setSelectedRole('user')}
+                            className="w-full p-6 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-500 hover:shadow-lg transition-all text-left group"
+                        >
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                                    <Users className="w-8 h-8" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                                        I need waste collected
+                                    </h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        For individuals, businesses, and corporate organizations looking for waste collection services
+                                    </p>
+                                </div>
+                                <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-500 transition-colors" />
+                            </div>
+                        </motion.button>
+
+                        {/* Collector Option */}
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => setSelectedRole('collector')}
+                            className="w-full p-6 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-500 hover:shadow-lg transition-all text-left group"
+                        >
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                                    <Truck className="w-8 h-8" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                                        I want to collect waste
+                                    </h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        Become a collector and earn money by picking up waste in your area
+                                    </p>
+                                </div>
+                                <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                            </div>
+                        </motion.button>
+                    </div>
+
+                    {/* Back to login */}
+                    <div className="mt-6 text-center">
+                        <button
+                            onClick={() => setMode('login')}
+                            className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                        >
+                            Already have an account? <span className="font-medium">Login</span>
+                        </button>
+                    </div>
+
+                    {/* Back to home link */}
+                    <div className="mt-4 text-center">
+                        <a
+                            href="/"
+                            className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                        >
+                            ← Back to home
+                        </a>
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
+
+    // Account Type Selection for Users
+    if (selectedRole === 'user' && mode === 'signup' && !selectedAccountType) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full max-w-lg"
+                >
+                    {/* Logo */}
+                    <div className="text-center mb-8">
+                        <motion.div
+                            initial={{ scale: 0.5 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 200 }}
+                            className="inline-flex justify-center mb-4"
+                        >
+                            <TruckLogo size="lg" showText={true} />
+                        </motion.div>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                            Select Account Type
+                        </h1>
+                        <p className="text-gray-500 dark:text-gray-400">
+                            Choose the type of account that best fits your needs
+                        </p>
+                    </div>
+
+                    <div className="space-y-4">
+                        {ACCOUNT_TYPES.map((type) => (
+                            <motion.button
+                                key={type.id}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setSelectedAccountType(type.id)}
+                                className="w-full p-5 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-500 hover:shadow-lg transition-all text-left group"
+                            >
+                                <div className="flex items-start gap-4">
+                                    <div className="p-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                                        {type.icon}
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                                            {type.name}
+                                        </h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            {type.description}
+                                        </p>
+                                    </div>
+                                    <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-500 transition-colors" />
+                                </div>
+                            </motion.button>
+                        ))}
+                    </div>
+
+                    {/* Back button */}
+                    <div className="mt-6 text-center">
+                        <button
+                            onClick={() => setSelectedRole(null)}
+                            className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                        >
+                            ← Back to role selection
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
+
+    // User signup form and onboarding
+    if (selectedRole === 'user' && mode === 'signup' && selectedAccountType) {
+        // User onboarding step 1: Name, Phone, Organization (if applicable)
+        if (userOnboardingStep === 1) {
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="w-full max-w-md"
+                    >
+                        <Card variant="elevated" padding="lg">
+                            <div className="text-center mb-6">
+                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                    Complete Your Profile
+                                </h1>
+                                <p className="text-gray-500 dark:text-gray-400 mt-1">
+                                    {selectedAccountType === 'individual' ? 'Tell us about yourself' : 'Tell us about your organization'}
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                {/* Full Name / Contact Person */}
+                                <div className="space-y-1">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        {selectedAccountType === 'individual' ? 'Full Name' : 'Contact Person'} *
+                                    </label>
+                                    <div className="relative">
+                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={fullName}
+                                            onChange={(e) => setFullName(e.target.value)}
+                                            placeholder="Enter your name"
+                                            required
+                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Organization Name (for business/corporate) */}
+                                {selectedAccountType !== 'individual' && (
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            {selectedAccountType === 'business' ? 'Business Name' : 'Organization Name'} *
+                                        </label>
+                                        <div className="relative">
+                                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                value={organizationName}
+                                                onChange={(e) => setOrganizationName(e.target.value)}
+                                                placeholder={selectedAccountType === 'business' ? 'Enter business name' : 'Enter organization name'}
+                                                required
+                                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Phone Number */}
+                                <div className="space-y-1">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Phone Number *
+                                    </label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                        <input
+                                            type="tel"
+                                            value={phoneNumber}
+                                            onChange={(e) => setPhoneNumber(e.target.value)}
+                                            placeholder="+220 123 4567"
+                                            required
+                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Error Message */}
+                                {error && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm"
+                                    >
+                                        {error}
+                                    </motion.div>
+                                )}
+                            </div>
+
+                            {/* Navigation Buttons */}
+                            <div className="mt-8 flex justify-between gap-4">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setUserOnboardingStep(0)}
+                                    leftIcon={<ArrowLeft size={18} />}
+                                >
+                                    Back
+                                </Button>
+
+                                <Button
+                                    variant="primary"
+                                    disabled={!canProceedUserOnboarding() || isLoading || (selectedAccountType !== 'individual' && !organizationName.trim())}
+                                    isLoading={isLoading}
+                                    onClick={handleUserOnboardingComplete}
+                                    rightIcon={<Check size={18} />}
+                                >
+                                    Complete Setup
+                                </Button>
+                            </div>
+                        </Card>
+                    </motion.div>
+                </div>
+            );
+        }
+
+        // User email/password form
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full max-w-md"
+                >
+                    {/* Logo */}
+                    <div className="text-center mb-8">
+                        <motion.div
+                            initial={{ scale: 0.5 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 200 }}
+                            className="inline-flex justify-center mb-4"
+                        >
+                            <TruckLogo size="lg" showText={true} />
+                        </motion.div>
+                        <Badge variant="secondary" className="mb-2">
+                            {ACCOUNT_TYPES.find(t => t.id === selectedAccountType)?.name} Account
+                        </Badge>
+                        <p className="text-gray-500 dark:text-gray-400">
+                            Create your account to get started
+                        </p>
+                    </div>
+
+                    <Card variant="elevated" padding="lg">
+                        <form onSubmit={handleUserSignupStart} className="space-y-4">
+                            {/* Email */}
+                            <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Email
+                                </label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="you@example.com"
+                                        required
+                                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Password */}
+                            <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Password
+                                </label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="••••••••"
+                                        required
+                                        minLength={6}
+                                        className="w-full pl-10 pr-12 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Error Message */}
+                            {error && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm"
+                                >
+                                    {error}
+                                </motion.div>
+                            )}
+
+                            {/* Submit Button */}
+                            <Button
+                                type="submit"
+                                variant="primary"
+                                size="lg"
+                                fullWidth
+                                disabled={isLoading}
+                                isLoading={isLoading}
+                                rightIcon={!isLoading ? <ArrowRight size={18} /> : undefined}
+                            >
+                                Continue
+                            </Button>
+                        </form>
+
+                        {/* Divider */}
+                        <div className="relative my-6">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+                            </div>
+                            <div className="relative flex justify-center text-sm">
+                                <span className="px-3 bg-white dark:bg-gray-800 text-gray-500">
+                                    or continue with
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Google Sign In */}
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="lg"
+                            fullWidth
+                            disabled={isLoading}
+                            onClick={async () => {
+                                try {
+                                    const { isNewUser } = await signInWithGoogle('user', selectedAccountType!);
+                                    if (isNewUser) {
+                                        // Need to complete onboarding
+                                        setUserOnboardingStep(1);
+                                    } else {
+                                        // Existing user - redirect to dashboard
+                                        window.location.href = '/dashboard';
+                                    }
+                                } catch (err: unknown) {
+                                    const msg = err instanceof Error ? err.message : 'Google sign in failed';
+                                    setError(msg);
+                                }
+                            }}
+                            leftIcon={<GoogleIcon />}
+                        >
+                            Continue with Google
+                        </Button>
+
+                        {/* Back button */}
+                        <div className="mt-6 text-center">
+                            <button
+                                onClick={() => setSelectedAccountType(null)}
+                                className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                            >
+                                ← Change account type
+                            </button>
+                        </div>
+                    </Card>
+                </motion.div>
+            </div>
+        );
+    }
+
+    // Auth form (login or collector signup initial step)
     if (onboardingStep === 0) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
@@ -305,7 +812,7 @@ function AuthPage() {
                             <TruckLogo size="lg" showText={true} />
                         </motion.div>
                         <p className="text-gray-500 dark:text-gray-400">
-                            {mode === 'login' ? 'Welcome back, Collector!' : 'Become a Waste Collector'}
+                            {mode === 'login' ? 'Welcome back!' : selectedRole === 'collector' ? 'Become a Waste Collector' : 'Create your account'}
                         </p>
                     </div>
 
@@ -315,7 +822,12 @@ function AuthPage() {
                             {(['login', 'signup'] as const).map((m) => (
                                 <button
                                     key={m}
-                                    onClick={() => setMode(m)}
+                                    onClick={() => {
+                                        setMode(m);
+                                        if (m === 'signup' && !selectedRole) {
+                                            setSelectedRole(null); // Show role selection
+                                        }
+                                    }}
                                     className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${mode === m
                                         ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
@@ -444,12 +956,21 @@ function AuthPage() {
 
                         {/* Back to home link */}
                         <div className="mt-6 text-center">
-                            <a
-                                href="/"
-                                className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
-                            >
-                                ← Back to home
-                            </a>
+                            {selectedRole === 'collector' && mode === 'signup' ? (
+                                <button
+                                    onClick={() => setSelectedRole(null)}
+                                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                                >
+                                    ← Back to role selection
+                                </button>
+                            ) : (
+                                <a
+                                    href="/"
+                                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                                >
+                                    ← Back to home
+                                </a>
+                            )}
                         </div>
                     </Card>
                 </motion.div >
@@ -457,7 +978,7 @@ function AuthPage() {
         );
     }
 
-    // Onboarding steps
+    // Collector onboarding steps
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
             <motion.div

@@ -61,6 +61,25 @@ import {
     useDynamicIslandSize,
 } from '@/components/ui/dynamic-island';
 
+// Credit Card Pattern SVG
+const CardPattern = () => (
+    <svg className="absolute inset-0 w-full h-full opacity-20 text-white" viewBox="0 0 400 200">
+        <defs>
+            <pattern id="walletPattern" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+                <circle cx="15" cy="15" r="1" fill="currentColor" />
+            </pattern>
+            <linearGradient id="walletFade" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="white" stopOpacity="0.4" />
+                <stop offset="50%" stopColor="white" stopOpacity="0.1" />
+                <stop offset="100%" stopColor="white" stopOpacity="0.3" />
+            </linearGradient>
+        </defs>
+        <rect width="400" height="200" fill="url(#walletPattern)" />
+        <ellipse cx="320" cy="20" rx="100" ry="100" fill="url(#walletFade)" />
+        <ellipse cx="80" cy="180" rx="80" ry="80" fill="url(#walletFade)" />
+    </svg>
+);
+
 function DashboardContent() {
     const router = useRouter();
     const { setSize } = useDynamicIslandSize();
@@ -298,9 +317,62 @@ function DashboardContent() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
-            {/* Header with Navigation - Frosted Glass */}
-            <header className="fixed top-0 left-0 right-0 z-40">
+        <div className="min-h-screen">
+            {/* Mobile Top Bar - Hidden on Desktop */}
+            <header className="md:hidden fixed top-0 left-0 right-0 z-40">
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-400" />
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50">
+                    <div className="px-4 py-3">
+                        <div className="flex items-center justify-between">
+                            {/* Profile Info */}
+                            <Link href="/collector/profile" className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold shadow-lg overflow-hidden ring-2 ring-white dark:ring-gray-800">
+                                    {user?.profileImage ? (
+                                        <img src={user.profileImage} alt={user.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        user?.name?.charAt(0).toUpperCase() || 'C'
+                                    )}
+                                </div>
+                                <div>
+                                    <h1 className="font-semibold text-gray-900 dark:text-white text-sm">
+                                        {user?.name || 'Collector'}
+                                    </h1>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {user?.email}
+                                    </p>
+                                </div>
+                            </Link>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-2">
+                                <NotificationDropdown
+                                    notifications={notifications}
+                                    onMarkAsRead={handleMarkNotificationRead}
+                                    onMarkAllAsRead={handleMarkAllRead}
+                                />
+                                <Link href="/collector/settings">
+                                    <motion.button
+                                        className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                        whileTap={{ scale: 0.95 }}
+                                    >
+                                        <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                                    </motion.button>
+                                </Link>
+                                <motion.button
+                                    onClick={handleLogout}
+                                    className="p-2 rounded-xl text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                    whileTap={{ scale: 0.9 }}
+                                >
+                                    <LogOut className="w-5 h-5" />
+                                </motion.button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            {/* Desktop Header - Hidden on Mobile */}
+            <header className="hidden md:block fixed top-0 left-0 right-0 z-40">
                 {/* Gradient accent line */}
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-400" />
                 <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl backdrop-saturate-200 border-b border-white/30 dark:border-gray-700/30 shadow-xl shadow-black/5">
@@ -459,57 +531,56 @@ function DashboardContent() {
                 )}
             </AnimatePresence>
 
-            <main className="pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-                {/* Online Toggle & Wallet Row */}
-                <div className="grid md:grid-cols-2 gap-4 mb-6">
-                    {/* Online Toggle */}
-                    <Card variant="elevated" padding="md">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <Power className={`w-6 h-6 ${isOnline ? 'text-emerald-500' : 'text-gray-400'}`} />
-                                <div>
-                                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                                        {isOnline ? 'You are Online' : 'You are Offline'}
-                                    </h3>
-                                    <p className="text-sm text-gray-500">
-                                        {isOnline ? 'Ready to receive jobs' : 'Go online to start earning'}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={handleToggleOnline}
-                                className={`relative w-14 h-8 rounded-full transition-colors ${isOnline ? 'bg-emerald-500' : 'bg-gray-300'
-                                    }`}
-                            >
-                                <motion.div
-                                    animate={{ x: isOnline ? 24 : 4 }}
-                                    className="absolute top-1 w-6 h-6 rounded-full bg-white shadow-md"
-                                />
-                            </button>
-                        </div>
-                    </Card>
+            <main className="pt-4 md:pt-20 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+                {/* Credit Card Style Wallet */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 p-5 mb-4 shadow-xl shadow-emerald-500/20"
+                >
+                    <CardPattern />
 
-                    {/* Wallet */}
-                    <Card variant="elevated" padding="md" className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Wallet className="w-5 h-5" />
-                                    <span className="text-sm opacity-90">Mbalit Wallet</span>
-                                </div>
-                                <p className="text-3xl font-bold">{formatPrice(walletBalance)}</p>
+                    <div className="relative z-10">
+                        {/* Card Header */}
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-2">
+                                <Wallet className="w-5 h-5 text-white" />
+                                <span className="text-emerald-100 text-sm font-medium">Mbalit Wallet</span>
                             </div>
                             <Button
                                 variant="secondary"
+                                size="sm"
                                 onClick={() => setShowWithdrawModal(true)}
-                                leftIcon={<ArrowDownToLine size={18} />}
-                                className="bg-white/20 hover:bg-white/30 border-0 text-white"
+                                leftIcon={<ArrowDownToLine size={16} />}
+                                className="bg-white/20 hover:bg-white/30 border-0 text-white text-xs"
                             >
                                 Withdraw
                             </Button>
                         </div>
-                    </Card>
-                </div>
+
+                        {/* Balance */}
+                        <p className="text-4xl font-bold text-white mb-4">{formatPrice(walletBalance)}</p>
+
+                        {/* Online Toggle in Card */}
+                        <div className="flex items-center justify-between pt-4 border-t border-white/20">
+                            <div className="flex items-center gap-2">
+                                <Power className={`w-5 h-5 ${isOnline ? 'text-white' : 'text-white/60'}`} />
+                                <span className="text-white/90 text-sm">
+                                    {isOnline ? 'Online - Receiving Jobs' : 'Go online to start earning'}
+                                </span>
+                            </div>
+                            <button
+                                onClick={handleToggleOnline}
+                                className={`relative w-12 h-6 rounded-full transition-colors ${isOnline ? 'bg-white/30' : 'bg-white/10'}`}
+                            >
+                                <motion.div
+                                    animate={{ x: isOnline ? 22 : 2 }}
+                                    className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-md"
+                                />
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
 
                 {/* Capacity Indicator */}
                 <Card variant="default" padding="md" className="mb-6">
@@ -703,97 +774,92 @@ function DashboardContent() {
                     </motion.div>
                 )}
 
-                {/* Stats when no active job */}
+                {/* Stats when no active job - 2 Column Grid for Mobile */}
                 {!incomingJob && !activeJob && (
                     <>
-                        {/* Primary Stats Row */}
-                        <div className="grid md:grid-cols-3 gap-4">
-                            <Card variant="default" padding="md">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
-                                        <Package className="w-6 h-6 text-emerald-600" />
+                        {/* Stats Grid - 2 columns on mobile, 3-4 on desktop */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <Card variant="default" padding="sm" className="p-3">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 mb-2">
+                                        <Package className="w-5 h-5 text-emerald-600" />
                                     </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">Today's Pickups</p>
-                                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.todayPickups || 0}</p>
-                                    </div>
+                                    <p className="text-xs text-gray-500">Today's Pickups</p>
+                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{stats?.todayPickups || 0}</p>
                                 </div>
                             </Card>
 
-                            <Card variant="default" padding="md">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                                        <DollarSign className="w-6 h-6 text-blue-600" />
+                            <Card variant="default" padding="sm" className="p-3">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30 mb-2">
+                                        <DollarSign className="w-5 h-5 text-blue-600" />
                                     </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">Today's Earnings</p>
-                                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                                            {formatPrice(stats?.todayEarnings || 0)}
-                                        </p>
-                                    </div>
+                                    <p className="text-xs text-gray-500">Today's Earnings</p>
+                                    <p className="text-xl font-bold text-gray-900 dark:text-white">
+                                        {formatPrice(stats?.todayEarnings || 0)}
+                                    </p>
                                 </div>
                             </Card>
 
-                            <Card variant="default" padding="md">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 rounded-xl bg-amber-100 dark:bg-amber-900/30">
-                                        <Clock className="w-6 h-6 text-amber-600" />
+                            <Card variant="default" padding="sm" className="p-3">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/30 mb-2">
+                                        <Clock className="w-5 h-5 text-amber-600" />
                                     </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">Hours Online</p>
-                                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.hoursOnlineToday?.toFixed(1) || '0'}h</p>
+                                    <p className="text-xs text-gray-500">Hours Online</p>
+                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{stats?.hoursOnlineToday?.toFixed(1) || '0'}h</p>
+                                </div>
+                            </Card>
+
+                            <Card variant="default" padding="sm" className="p-3">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/30 mb-2">
+                                        <Calendar className="w-5 h-5 text-purple-600" />
                                     </div>
+                                    <p className="text-xs text-gray-500">This Week</p>
+                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{formatPrice(stats?.weeklyEarnings || 0)}</p>
                                 </div>
                             </Card>
                         </div>
 
-                        {/* Secondary Stats Row */}
-                        <div className="grid md:grid-cols-4 gap-4 mt-4">
-                            <Card variant="default" padding="md">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                                        <Calendar className="w-6 h-6 text-purple-600" />
+                        {/* Secondary Stats Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">n                            <Card variant="default" padding="sm" className="p-3">
+                            <div className="flex flex-col items-center text-center">
+                                <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 mb-2">
+                                    <TrendingUp className="w-5 h-5 text-indigo-600" />
+                                </div>
+                                <p className="text-xs text-gray-500">This Month</p>
+                                <p className="text-xl font-bold text-gray-900 dark:text-white">{formatPrice(stats?.monthlyEarnings || 0)}</p>
+                            </div>
+                        </Card>
+
+                            <Card variant="default" padding="sm" className="p-3">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="p-2 rounded-xl bg-teal-100 dark:bg-teal-900/30 mb-2">
+                                        <Percent className="w-5 h-5 text-teal-600" />
                                     </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">This Week</p>
-                                        <p className="text-xl font-bold text-gray-900 dark:text-white">{formatPrice(stats?.weeklyEarnings || 0)}</p>
-                                    </div>
+                                    <p className="text-xs text-gray-500">Acceptance</p>
+                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{stats?.acceptanceRate || 0}%</p>
                                 </div>
                             </Card>
 
-                            <Card variant="default" padding="md">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900/30">
-                                        <TrendingUp className="w-6 h-6 text-indigo-600" />
+                            <Card variant="default" padding="sm" className="p-3">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/30 mb-2">
+                                        <Star className="w-5 h-5 text-rose-600" />
                                     </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">This Month</p>
-                                        <p className="text-xl font-bold text-gray-900 dark:text-white">{formatPrice(stats?.monthlyEarnings || 0)}</p>
-                                    </div>
+                                    <p className="text-xs text-gray-500">Rating</p>
+                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{stats?.averageRating?.toFixed(1) || '0.0'} ⭐</p>
                                 </div>
                             </Card>
 
-                            <Card variant="default" padding="md">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 rounded-xl bg-teal-100 dark:bg-teal-900/30">
-                                        <Percent className="w-6 h-6 text-teal-600" />
+                            <Card variant="default" padding="sm" className="p-3">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 mb-2">
+                                        <Navigation className="w-5 h-5 text-gray-600" />
                                     </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">Acceptance</p>
-                                        <p className="text-xl font-bold text-gray-900 dark:text-white">{stats?.acceptanceRate || 0}%</p>
-                                    </div>
-                                </div>
-                            </Card>
-
-                            <Card variant="default" padding="md">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-900/30">
-                                        <Star className="w-6 h-6 text-rose-600" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">Rating</p>
-                                        <p className="text-xl font-bold text-gray-900 dark:text-white">{stats?.averageRating?.toFixed(1) || '0.0'} ⭐</p>
-                                    </div>
+                                    <p className="text-xs text-gray-500">Total KM</p>
+                                    <p className="text-xl font-bold text-gray-900 dark:text-white">0</p>
                                 </div>
                             </Card>
                         </div>

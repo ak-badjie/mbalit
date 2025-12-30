@@ -13,7 +13,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import { User, UserRole, WasteType, Collector, Customer } from '@/types';
+import { User, UserRole, WasteType, Collector, Customer, AccountType, UserProfile } from '@/types';
 
 // Auth context types
 interface AuthContextType {
@@ -22,7 +22,8 @@ interface AuthContextType {
     isLoading: boolean;
     isAuthenticated: boolean;
     signUp: (email: string, password: string, name: string, phone: string, role: UserRole) => Promise<void>;
-    signInWithGoogle: (role?: UserRole) => Promise<{ isNewUser: boolean; displayName: string | null; photoURL: string | null }>;
+    signUpUser: (email: string, password: string, name: string, phone: string, accountType: AccountType, organizationName?: string) => Promise<void>;
+    signInWithGoogle: (role?: UserRole, accountType?: AccountType) => Promise<{ isNewUser: boolean; displayName: string | null; photoURL: string | null }>;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     updateCollectorWasteTypes: (wasteTypes: WasteType[]) => Promise<void>;
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => unsubscribe();
     }, [fetchUserProfile]);
 
-    // Sign up function
+    // Sign up function for collectors
     const signUp = async (
         email: string,
         password: string,
@@ -136,6 +137,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    // Sign up function for users (individual, business, corporate)
+    const signUpUser = async (
+        email: string,
+        password: string,
+        name: string,
+        phone: string,
+        accountType: AccountType,
+        organizationName?: string
+    ) => {
+        setIsLoading(true);
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const firebaseUser = userCredential.user;
+
+            // Update display name
+            await updateProfile(firebaseUser, { displayName: name });
+
+            // Create user profile in Firestore
+            const userData: Partial<UserProfile> = {
+                email,
+                name,
+                phone,
+                role: 'user',
+                accountType,
+                organizationName: accountType !== 'individual' ? organizationName : undefined,
+                contactPerson: name,
+                activeOrders: [],
+                completedOrders: 0,
+                onboardingComplete: true,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            await setDoc(doc(db, 'users', firebaseUser.uid), {
+                ...userData,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+
+            // Fetch and set user profile
+            const profile = await fetchUserProfile(firebaseUser);
+            setUser(profile);
+        } catch (error) {
+            console.error('Sign up error:', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     // Login function
     const login = async (email: string, password: string) => {
         setIsLoading(true);
@@ -150,7 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Google Sign In function
-    const signInWithGoogle = async (role: UserRole = 'collector'): Promise<{ isNewUser: boolean; displayName: string | null; photoURL: string | null }> => {
+    const signInWithGoogle = async (role: UserRole = 'collector', accountType?: AccountType): Promise<{ isNewUser: boolean; displayName: string | null; photoURL: string | null }> => {
         setIsLoading(true);
         try {
             const provider = new GoogleAuthProvider();
@@ -163,17 +214,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (isNewUser) {
                 // Create MINIMAL user profile - onboarding will fill in the rest
-                // Don't set collector-specific values (rating, totalPickups, etc.) until onboarding completes
-                const userData = {
-                    email: firebaseUser.email,
-                    name: firebaseUser.displayName || '',
-                    phone: '',
-                    role,
-                    profileImage: firebaseUser.photoURL || '',
-                    onboardingComplete: false, // MUST complete onboarding before accessing dashboard
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                };
+                const userData = role === 'collector'
+                    ? {
+                        email: firebaseUser.email,
+                        name: firebaseUser.displayName || '',
+                        phone: '',
+                        role,
+                        profileImage: firebaseUser.photoURL || '',
+                        onboardingComplete: false, // MUST complete onboarding before accessing dashboard
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp(),
+                    }
+                    : {
+                        email: firebaseUser.email,
+                        name: firebaseUser.displayName || '',
+                        phone: '',
+                        role: 'user',
+                        accountType: accountType || 'individual',
+                        profileImage: firebaseUser.photoURL || '',
+                        contactPerson: firebaseUser.displayName || '',
+                        activeOrders: [],
+                        completedOrders: 0,
+                        onboardingComplete: false, // Will complete after phone number entry
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp(),
+                    };
 
                 await setDoc(doc(db, 'users', firebaseUser.uid), userData);
             }
@@ -255,6 +320,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         signUp,
+        signUpUser,
         signInWithGoogle,
         login,
         logout,

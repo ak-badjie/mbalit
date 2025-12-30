@@ -74,7 +74,7 @@ export const HamburgerMenuOverlay: React.FC<HamburgerMenuOverlayProps> = ({
     fontWeight = "bold",
     animationDuration = 0.8,
     staggerDelay = 0.08,
-    menuAlignment = "center",
+    menuAlignment = "left",
     className,
     buttonClassName,
     menuItemClassName,
@@ -243,7 +243,7 @@ export const HamburgerMenuOverlay: React.FC<HamburgerMenuOverlayProps> = ({
           .menu-item-${zIndex} span {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 0.75rem;
             opacity: 0.9;
             transition: opacity 0.25s ease, transform 0.25s ease;

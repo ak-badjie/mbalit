@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, User, LogIn, LogOut, Home, HelpCircle, Truck, Sparkles } from 'lucide-react';
+import { Menu, X, User, LogIn, LogOut, Home, HelpCircle, UserPlus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TruckLogo } from '@/components/ui/truck-logo';
 import { HamburgerMenuOverlay } from '@/components/ui/hamburger-menu';
@@ -153,8 +153,8 @@ export const Header: React.FC<HeaderProps> = ({
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
-                                                <Button variant="primary" leftIcon={<Truck size={18} />}>
-                                                    Become a Collector
+                                                <Button variant="primary" leftIcon={<UserPlus size={18} />}>
+                                                    Sign Up
                                                 </Button>
                                             </motion.div>
                                         </Link>
@@ -172,18 +172,18 @@ export const Header: React.FC<HeaderProps> = ({
             <HamburgerMenuOverlay
                 items={[
                     { label: 'Home', href: '/', icon: <Home className="w-5 h-5" /> },
-                    { label: 'How It Works', href: '/how-it-works', icon: <HelpCircle className="w-5 h-5" /> },
                     ...(isAuthenticated
                         ? [
-                            { label: userName || 'Dashboard', href: '/collector/dashboard', icon: <User className="w-5 h-5" /> },
+                            { label: userName || 'Dashboard', href: user?.role === 'collector' ? '/collector/dashboard' : '/dashboard', icon: <User className="w-5 h-5" /> },
                             { label: 'Logout', onClick: handleLogout, icon: <LogOut className="w-5 h-5" /> },
                         ]
                         : [
                             { label: 'Login', href: '/auth', icon: <LogIn className="w-5 h-5" /> },
-                            { label: 'Become a Collector', href: '/auth?signup=true', icon: <Truck className="w-5 h-5" /> },
+                            { label: 'Sign Up', href: '/auth?signup=true', icon: <UserPlus className="w-5 h-5" /> },
                         ]
                     ),
                 ]}
+                menuItemClassName="text-left"
             />
         </motion.header>
     );
