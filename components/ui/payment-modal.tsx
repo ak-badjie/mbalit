@@ -235,13 +235,62 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Wave Logo */}
-                                <div className="flex items-center justify-center mb-4">
-                                    <img
-                                        src="/wave.png"
-                                        alt="Pay with Wave"
-                                        className="h-12 object-contain"
-                                    />
+                                {/* Payment Methods Grid */}
+                                <div className="mb-6">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                        Supported Payment Methods
+                                    </p>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {/* Wave */}
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center">
+                                            <img
+                                                src="/wave.png"
+                                                alt="Wave"
+                                                className="h-8 w-auto object-contain mb-1"
+                                            />
+                                            <span className="text-[10px] text-gray-500">Wave</span>
+                                        </div>
+
+                                        {/* AfriMoney */}
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center">
+                                            <img
+                                                src="/afrimoneylogo.png"
+                                                alt="AfriMoney"
+                                                className="h-8 w-auto object-contain mb-1"
+                                            />
+                                            <span className="text-[10px] text-gray-500">AfriMoney</span>
+                                        </div>
+
+                                        {/* QMoney */}
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center">
+                                            <img
+                                                src="/qmoneylogo.png"
+                                                alt="QMoney"
+                                                className="h-8 w-auto object-contain mb-1"
+                                            />
+                                            <span className="text-[10px] text-gray-500">QMoney</span>
+                                        </div>
+
+                                        {/* Yonna Wallet */}
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center">
+                                            <img
+                                                src="/yonnawalletlogo.png"
+                                                alt="Yonna Wallet"
+                                                className="h-8 w-auto object-contain mb-1"
+                                            />
+                                            <span className="text-[10px] text-gray-500">Yonna</span>
+                                        </div>
+
+                                        {/* ASP */}
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center">
+                                            <img
+                                                src="/asplogo.svg"
+                                                alt="ASP"
+                                                className="h-8 w-auto object-contain mb-1"
+                                            />
+                                            <span className="text-[10px] text-gray-500">ASP</span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <Button
@@ -249,13 +298,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                     size="lg"
                                     onClick={openPaymentPopup}
                                     rightIcon={<ExternalLink className="w-5 h-5" />}
-                                    className="w-full bg-[#1DC8EE] hover:bg-[#1ab8db]"
+                                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
                                 >
-                                    Pay with Wave
+                                    Proceed to Pay
                                 </Button>
 
                                 <p className="text-xs text-gray-400 mt-4">
-                                    A new window will open for secure payment via Wave
+                                    A new window will open for secure payment
                                 </p>
                             </div>
                         )}

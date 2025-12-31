@@ -23,6 +23,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     signUp: (email: string, password: string, name: string, phone: string, role: UserRole) => Promise<void>;
     signUpUser: (email: string, password: string, name: string, phone: string, accountType: AccountType, organizationName?: string) => Promise<void>;
+    createUserAccountOnly: (email: string, password: string, accountType: AccountType) => Promise<FirebaseUser>;
     signInWithGoogle: (role?: UserRole, accountType?: AccountType) => Promise<{ isNewUser: boolean; displayName: string | null; photoURL: string | null }>;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
@@ -131,6 +132,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(profile);
         } catch (error) {
             console.error('Sign up error:', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Create user account only (for users who will complete onboarding separately)
+    // This creates the Firebase auth account with onboardingComplete: false
+    const createUserAccountOnly = async (
+        email: string,
+        password: string,
+        accountType: AccountType
+    ) => {
+        setIsLoading(true);
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const firebaseUser = userCredential.user;
+
+            // Create minimal user profile in Firestore with onboardingComplete: false
+            const userData = {
+                email,
+                role: 'user' as UserRole,
+                accountType,
+                onboardingComplete: false, // User must complete onboarding
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            };
+
+            await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+
+            // Fetch and set user profile
+            const profile = await fetchUserProfile(firebaseUser);
+            setUser(profile);
+
+            return firebaseUser;
+        } catch (error) {
+            console.error('Create user account error:', error);
             throw error;
         } finally {
             setIsLoading(false);
@@ -321,6 +359,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         signUp,
         signUpUser,
+        createUserAccountOnly,
         signInWithGoogle,
         login,
         logout,

@@ -31,6 +31,14 @@ export default function DashboardLayout({
         return null;
     }
 
+    // GATE-KEEPING: Redirect users who haven't completed onboarding
+    if (user?.onboardingComplete === false) {
+        if (typeof window !== 'undefined') {
+            window.location.href = '/auth?continue=onboarding';
+        }
+        return null;
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
             {/* Desktop Header - hidden on mobile */}
@@ -48,3 +56,5 @@ export default function DashboardLayout({
         </div>
     );
 }
+
+

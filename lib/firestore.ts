@@ -913,3 +913,10 @@ async function updateUserRating(userId: string): Promise<void> {
     }
 }
 
+// =====================================
+// USER NOTIFICATIONS (alias for collectors)
+// =====================================
+
+export async function getNotifications(userId: string): Promise<AppNotification[]> {
+    return getCollectorNotifications(userId);
+}

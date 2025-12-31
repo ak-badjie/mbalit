@@ -110,7 +110,7 @@ function AuthPage() {
     const isSignupMode = searchParams.get('signup') === 'true';
     const isCollectorMode = searchParams.get('role') === 'collector';
     const continueOnboarding = searchParams.get('continue') === 'onboarding';
-    const { login, signUp, signUpUser, signInWithGoogle, isLoading, user, firebaseUser } = useAuth();
+    const { login, signUp, signUpUser, createUserAccountOnly, signInWithGoogle, isLoading, user, firebaseUser } = useAuth();
 
     // Role selection state
     const [selectedRole, setSelectedRole] = useState<'user' | 'collector' | null>(isCollectorMode ? 'collector' : null);
@@ -148,13 +148,33 @@ function AuthPage() {
             setSelectedRole('collector');
         }
 
-        // If user is logged in but needs to complete onboarding
-        if (continueOnboarding && user && user.onboardingComplete === false) {
+        // If user is logged in but needs to complete onboarding (for COLLECTORS)
+        if (continueOnboarding && user && user.onboardingComplete === false && user.role === 'collector') {
+            setSelectedRole('collector');
             setIsGoogleUser(true);
             setOnboardingStep(1);
             // Pre-fill with user's Google data
             if (user.name) setFullName(user.name);
             if (user.profileImage) setProfileImage(user.profileImage);
+        }
+
+        // If user is logged in but needs to complete onboarding (for USERS - Individual/Business/Corporate)
+        if (continueOnboarding && user && user.onboardingComplete === false && user.role === 'user') {
+            setSelectedRole('user');
+            setIsGoogleUser(true);
+            setUserOnboardingStep(1);
+            // Pre-fill with user's Google data
+            if (user.name) setFullName(user.name);
+            if (user.profileImage) setProfileImage(user.profileImage);
+            if ((user as any).accountType) setSelectedAccountType((user as any).accountType);
+        }
+
+        // Pre-fill from Google when user just signed in with Google (new user flow)
+        if (user && !fullName && user.name) {
+            setFullName(user.name);
+        }
+        if (user && !profileImage && user.profileImage) {
+            setProfileImage(user.profileImage);
         }
     }, [isSignupMode, isCollectorMode, continueOnboarding, user]);
 
@@ -178,6 +198,7 @@ function AuthPage() {
     };
 
     // Handle user signup start (email/password entry for users)
+    // Creates the Firebase account FIRST, then moves to onboarding
     const handleUserSignupStart = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -191,28 +212,53 @@ function AuthPage() {
             return;
         }
 
-        // Move to user onboarding step 1 (name & phone)
-        setUserOnboardingStep(1);
+        try {
+            // Create the Firebase account NOW (with onboardingComplete: false)
+            await createUserAccountOnly(email, password, selectedAccountType!);
+
+            // Account created successfully - now move to onboarding step 1 (name & phone)
+            setUserOnboardingStep(1);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Failed to create account';
+            if (msg.includes('email-already-in-use')) {
+                setError('This email is already registered. Please login instead.');
+            } else {
+                setError(msg);
+            }
+        }
     };
 
     // Handle user onboarding completion
+    // Account is ALREADY created (either via email/password or Google)
+    // This just updates the user profile with onboarding data
     const handleUserOnboardingComplete = async () => {
         setError(null);
 
+        if (!firebaseUser) {
+            setError('No authenticated user found. Please try again.');
+            return;
+        }
+
         try {
-            await signUpUser(
-                email,
-                password,
-                fullName,
-                phoneNumber,
-                selectedAccountType!,
-                selectedAccountType !== 'individual' ? organizationName : undefined
-            );
+            // Update the existing user profile with onboarding data
+            const userData = {
+                name: fullName,
+                phone: phoneNumber,
+                profileImage: profileImage || user?.profileImage || '',
+                accountType: selectedAccountType,
+                organizationName: selectedAccountType !== 'individual' ? organizationName : null,
+                role: 'user',
+                onboardingComplete: true, // Mark onboarding as complete
+                updatedAt: serverTimestamp(),
+            };
+
+            // Update users collection
+            await updateDoc(doc(db, 'users', firebaseUser.uid), userData);
 
             // Redirect to dashboard
             window.location.href = '/dashboard';
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Signup failed';
+            const msg = err instanceof Error ? err.message : 'Failed to complete setup';
             setError(msg);
         }
     };
@@ -547,6 +593,38 @@ function AuthPage() {
                             </div>
 
                             <div className="space-y-4">
+                                {/* Profile Picture Upload */}
+                                <div className="flex flex-col items-center mb-6">
+                                    <div className="relative">
+                                        <div
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity overflow-hidden"
+                                        >
+                                            {profileImage ? (
+                                                <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <Camera className="w-8 h-8 text-white" />
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                        >
+                                            <Camera className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                                        </button>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleImageUpload}
+                                        />
+                                    </div>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                        {profileImage ? 'Tap to change photo' : 'Add a profile photo'}
+                                    </p>
+                                </div>
                                 {/* Full Name / Contact Person */}
                                 <div className="space-y-1">
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
