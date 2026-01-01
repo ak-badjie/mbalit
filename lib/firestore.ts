@@ -28,12 +28,13 @@ import {
     PaymentStatus
 } from '@/types';
 import { calculateDistance } from './maps';
+import { calculatePrice } from './waste-config';
 
 // =====================================
 // PICKUP REQUESTS
 // =====================================
 
-// Create a new pickup request
+// Legacy: Create a new pickup request (backwards compatible)
 export async function createPickupRequest(
     customerId: string,
     wasteType: WasteType,
@@ -47,15 +48,50 @@ export async function createPickupRequest(
         customerId,
         wasteType,
         wasteSize,
+        bucketCount: 0,
+        largeBinCount: 0,
         pickupLocation: new GeoPoint(pickupLocation.lat, pickupLocation.lng),
         pickupAddress: pickupLocation.formattedAddress || '',
         estimatedPrice,
+        tipAmount: 0,
         status: 'pending' as RequestStatus,
         createdAt: serverTimestamp(),
     };
 
     await setDoc(requestRef, requestData);
     return requestRef.id;
+}
+
+// NEW: Create pickup request with bucket/bin quantities
+export async function createBucketPickupRequest(
+    customerId: string,
+    wasteType: WasteType,
+    bucketCount: number,
+    largeBinCount: number,
+    pickupLocation: GeoLocation,
+    description?: string
+): Promise<{ requestId: string; estimatedPrice: number }> {
+    const requestRef = doc(collection(db, 'requests'));
+
+    // Calculate price from container quantities
+    const priceEstimate = calculatePrice(bucketCount, largeBinCount);
+
+    const requestData = {
+        customerId,
+        wasteType,
+        bucketCount,
+        largeBinCount,
+        pickupLocation: new GeoPoint(pickupLocation.lat, pickupLocation.lng),
+        pickupAddress: pickupLocation.formattedAddress || '',
+        description: description || '',
+        estimatedPrice: priceEstimate.totalPrice,
+        tipAmount: 0,
+        status: 'pending' as RequestStatus,
+        createdAt: serverTimestamp(),
+    };
+
+    await setDoc(requestRef, requestData);
+    return { requestId: requestRef.id, estimatedPrice: priceEstimate.totalPrice };
 }
 
 // Get a pickup request by ID
@@ -69,19 +105,27 @@ export async function getPickupRequest(requestId: string): Promise<PickupRequest
         id: requestDoc.id,
         customerId: data.customerId,
         collectorId: data.collectorId,
+        agencyId: data.agencyId,
         wasteType: data.wasteType,
         wasteSize: data.wasteSize,
+        bucketCount: data.bucketCount || 0,
+        largeBinCount: data.largeBinCount || 0,
+        description: data.description,
         pickupLocation: {
             lat: data.pickupLocation.latitude,
             lng: data.pickupLocation.longitude,
             formattedAddress: data.pickupAddress,
         },
         estimatedPrice: data.estimatedPrice,
+        tipAmount: data.tipAmount || 0,
+        adjustedPrice: data.adjustedPrice,
         finalPrice: data.finalPrice,
-        distance: data.distance,
+        platformFee: data.platformFee,
+        collectorEarnings: data.collectorEarnings,
         status: data.status,
         createdAt: data.createdAt?.toDate() || new Date(),
         assignedAt: data.assignedAt?.toDate(),
+        arrivedAt: data.arrivedAt?.toDate(),
         completedAt: data.completedAt?.toDate(),
     } as PickupRequest;
 }
@@ -125,19 +169,27 @@ export function subscribeToRequest(
                 id: snapshot.id,
                 customerId: data.customerId,
                 collectorId: data.collectorId,
+                agencyId: data.agencyId,
                 wasteType: data.wasteType,
                 wasteSize: data.wasteSize,
+                bucketCount: data.bucketCount || 0,
+                largeBinCount: data.largeBinCount || 0,
+                description: data.description,
                 pickupLocation: {
                     lat: data.pickupLocation.latitude,
                     lng: data.pickupLocation.longitude,
                     formattedAddress: data.pickupAddress,
                 },
                 estimatedPrice: data.estimatedPrice,
+                tipAmount: data.tipAmount || 0,
+                adjustedPrice: data.adjustedPrice,
                 finalPrice: data.finalPrice,
-                distance: data.distance,
+                platformFee: data.platformFee,
+                collectorEarnings: data.collectorEarnings,
                 status: data.status,
                 createdAt: data.createdAt?.toDate() || new Date(),
                 assignedAt: data.assignedAt?.toDate(),
+                arrivedAt: data.arrivedAt?.toDate(),
                 completedAt: data.completedAt?.toDate(),
             } as PickupRequest);
         }
@@ -756,6 +808,9 @@ export async function getCollectorProfile(collectorId: string): Promise<Collecto
         isVerified: data.isVerified || false,
         documentsSubmitted: data.documentsSubmitted || false,
         joinedAt: data.joinedAt?.toDate() || new Date(),
+        collectorType: data.collectorType || 'individual',
+        agencyId: data.agencyId,
+        agencyName: data.agencyName,
     };
 }
 

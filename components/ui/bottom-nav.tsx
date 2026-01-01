@@ -28,7 +28,7 @@ export const BottomNav: React.FC = () => {
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
             {/* Frosted glass background */}
-            <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-700/50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+            <div className="bg-white/90 backdrop-blur-xl border-t border-gray-200/50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
                 <div className="flex items-center justify-around py-2 px-2 safe-area-pb">
                     {NAV_ITEMS.map((item) => {
                         const isActive = pathname === item.href ||
@@ -45,8 +45,7 @@ export const BottomNav: React.FC = () => {
                             >
                                 <motion.div
                                     whileTap={{ scale: 0.9 }}
-                                    className={`flex flex-col items-center gap-0.5 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400'
-                                        }`}
+                                    className={`flex flex-col items-center gap-0.5 ${isActive ? 'text-emerald-600' : 'text-gray-500'}`}
                                 >
                                     {/* Active indicator */}
                                     {isActive && (
@@ -61,7 +60,7 @@ export const BottomNav: React.FC = () => {
                                     {isProfile ? (
                                         // Profile picture or initials
                                         <div className={`w-8 h-8 rounded-full overflow-hidden transition-all ${isActive
-                                            ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
+                                            ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-white'
                                             : ''
                                             }`}>
                                             {user?.profileImage ? (
@@ -78,14 +77,13 @@ export const BottomNav: React.FC = () => {
                                         </div>
                                     ) : (
                                         <div className={`p-1.5 rounded-xl transition-all ${isActive
-                                            ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                                            ? 'bg-emerald-100'
                                             : ''
                                             }`}>
                                             {Icon && <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />}
                                         </div>
                                     )}
-                                    <span className={`text-[10px] font-medium ${isActive ? 'text-emerald-600 dark:text-emerald-400' : ''
-                                        }`}>
+                                    <span className={`text-[10px] font-medium ${isActive ? 'text-emerald-600' : ''}`}>
                                         {item.label}
                                     </span>
                                 </motion.div>
@@ -99,4 +97,3 @@ export const BottomNav: React.FC = () => {
 };
 
 export default BottomNav;
-

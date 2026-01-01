@@ -40,7 +40,7 @@ export default function DashboardLayout({
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        <div className="min-h-screen bg-gray-50">
             {/* Desktop Header - hidden on mobile */}
             <div className="hidden md:block">
                 <Header />

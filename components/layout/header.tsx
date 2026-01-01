@@ -84,15 +84,19 @@ export const Header: React.FC<HeaderProps> = ({
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex items-center justify-between h-16">
                             {/* Logo with hover animation */}
-                            <Link href="/" className="flex items-center gap-2 group">
+                            <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
                                 <motion.div
                                     whileHover={{ scale: 1.05, rotate: -2 }}
                                     whileTap={{ scale: 0.95 }}
                                     transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                                    className="flex items-center"
                                 >
                                     <TruckLogo size="sm" showText={true} />
                                 </motion.div>
                             </Link>
+
+                            {/* Spacer for mobile to prevent overlap with hamburger */}
+                            <div className="md:hidden w-14" />
 
                             {/* Desktop Navigation - Beautified */}
                             <nav className="hidden md:flex items-center gap-2">

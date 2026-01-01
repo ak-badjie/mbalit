@@ -27,6 +27,8 @@ const iconMap = {
     success: CheckCheck,
     warning: AlertCircle,
     error: X,
+    payment_offer: DollarSign,
+    pickup_reminder: Package,
 };
 
 const colorMap = {
@@ -34,6 +36,8 @@ const colorMap = {
     success: 'bg-emerald-500',
     warning: 'bg-amber-500',
     error: 'bg-red-500',
+    payment_offer: 'bg-purple-500',
+    pickup_reminder: 'bg-indigo-500',
 };
 
 export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({

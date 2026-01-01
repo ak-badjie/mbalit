@@ -13,6 +13,8 @@ import {
     Info,
     Check,
     Trash2,
+    DollarSign,
+    Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,12 +22,13 @@ import { useAuth } from '@/lib/auth-context';
 import { Notification } from '@/types';
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/lib/firestore';
 
-// Icon mapping
 const iconMap = {
     info: Info,
     success: CheckCircle,
     warning: AlertCircle,
     error: XCircle,
+    payment_offer: DollarSign,
+    pickup_reminder: Package,
 };
 
 const colorMap = {
@@ -33,6 +36,8 @@ const colorMap = {
     success: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
     warning: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
     error: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
+    payment_offer: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
+    pickup_reminder: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
 };
 
 // Notification Item

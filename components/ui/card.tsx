@@ -10,9 +10,9 @@ interface CardProps extends HTMLMotionProps<'div'> {
 }
 
 const variantStyles = {
-    default: 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800',
-    glass: 'bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-white/30 dark:border-gray-700/50',
-    elevated: 'bg-white dark:bg-gray-900 shadow-xl border border-gray-100 dark:border-gray-800',
+    default: 'bg-white border border-gray-200',
+    glass: 'bg-white/70 backdrop-blur-xl border border-white/30',
+    elevated: 'bg-white shadow-xl border border-gray-100',
 };
 
 const paddingStyles = {
@@ -63,7 +63,7 @@ export const CardTitle: React.FC<{ children: React.ReactNode; className?: string
     children,
     className = '',
 }) => (
-    <h3 className={`text-xl font-bold text-gray-900 dark:text-white ${className}`}>
+    <h3 className={`text-xl font-bold text-gray-900 ${className}`}>
         {children}
     </h3>
 );
@@ -72,7 +72,7 @@ export const CardDescription: React.FC<{ children: React.ReactNode; className?: 
     children,
     className = '',
 }) => (
-    <p className={`text-sm text-gray-500 dark:text-gray-400 mt-1 ${className}`}>
+    <p className={`text-sm text-gray-500 mt-1 ${className}`}>
         {children}
     </p>
 );

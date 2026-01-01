@@ -18,8 +18,8 @@ interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'ref'> {
 
 const variantStyles: Record<ButtonVariant, string> = {
     primary: 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-md hover:shadow-lg hover:shadow-emerald-500/30',
-    secondary: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700',
-    ghost: 'bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
+    secondary: 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50',
+    ghost: 'bg-transparent text-gray-700 hover:bg-gray-100',
     danger: 'bg-red-500 text-white hover:bg-red-600 shadow-md hover:shadow-lg hover:shadow-red-500/30',
 };
 

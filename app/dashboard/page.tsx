@@ -34,8 +34,8 @@ import { geocodePlusCode } from '@/lib/maps';
 import { initializePayment, PaymentIntentResult } from '@/lib/payment';
 import { createJob } from '@/lib/realtime';
 import { PaymentModal } from '@/components/ui/payment-modal';
-import { WASTE_TYPES, WASTE_SIZES, calculatePrice, formatPrice } from '@/lib/waste-config';
-import { WasteType, WasteSize, GeoLocation, AccountType } from '@/types';
+import { WASTE_TYPES, CONTAINER_TYPES, calculatePrice, formatPrice } from '@/lib/waste-config';
+import { WasteType, GeoLocation, AccountType } from '@/types';
 
 // Credit Card Pattern SVG
 const CardPattern = () => (
@@ -166,7 +166,8 @@ function DashboardContent() {
     // Booking flow state
     const [step, setStep] = useState(shouldStartBooking ? 1 : 0);
     const [selectedWasteType, setSelectedWasteType] = useState<WasteType | null>(null);
-    const [selectedSize, setSelectedSize] = useState<WasteSize | null>(null);
+    const [bucketCount, setBucketCount] = useState(0);
+    const [largeBinCount, setLargeBinCount] = useState(0);
     const [location, setLocation] = useState<GeoLocation | null>(null);
     const [plusCode, setPlusCode] = useState('');
     const [isGeocodingPlusCode, setIsGeocodingPlusCode] = useState(false);
@@ -190,14 +191,15 @@ function DashboardContent() {
         }
     }, [shouldStartBooking, step]);
 
-    // Recalculate price when selections change
+    // Recalculate price when bucket/bin counts change
     useEffect(() => {
-        if (selectedWasteType && selectedSize) {
-            const estimatedDistance = 3 + Math.random() * 7;
-            const price = calculatePrice(selectedWasteType, selectedSize, estimatedDistance);
-            setEstimatedPrice(price);
+        if (bucketCount > 0 || largeBinCount > 0) {
+            const priceEstimate = calculatePrice(bucketCount, largeBinCount);
+            setEstimatedPrice(priceEstimate.totalPrice);
+        } else {
+            setEstimatedPrice(null);
         }
-    }, [selectedWasteType, selectedSize]);
+    }, [bucketCount, largeBinCount]);
 
     // Geocode Plus Code when entered
     const handlePlusCodeBlur = useCallback(async () => {
@@ -220,7 +222,7 @@ function DashboardContent() {
 
     const handleNextStep = () => {
         if (step === 1 && selectedWasteType) setStep(2);
-        else if (step === 2 && selectedSize) setStep(3);
+        else if (step === 2 && (bucketCount > 0 || largeBinCount > 0)) setStep(3);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -239,7 +241,7 @@ function DashboardContent() {
     };
 
     const handleSubmitRequest = async () => {
-        if (!selectedWasteType || !selectedSize || !user) return;
+        if (!selectedWasteType || (bucketCount === 0 && largeBinCount === 0) || !user) return;
         if (!estimatedPrice || !location) return;
 
         setIsSubmitting(true);
@@ -250,7 +252,8 @@ function DashboardContent() {
                 email: user.email,
                 phone: user.phone,
                 wasteType: selectedWasteType,
-                wasteSize: selectedSize,
+                bucketCount,
+                largeBinCount,
             });
 
             const paymentIntentId = paymentResult.id || `mbalit_${Date.now()}`;
@@ -259,7 +262,8 @@ function DashboardContent() {
                 customerEmail: user.email,
                 customerPhone: user.phone,
                 wasteType: selectedWasteType,
-                wasteSize: selectedSize,
+                bucketCount,
+                largeBinCount,
                 pickupLocation: location,
                 plusCode: plusCode || '',
                 manualAddress: manualAddress || '',
@@ -286,9 +290,6 @@ function DashboardContent() {
 
     const selectedWasteInfo = selectedWasteType
         ? WASTE_TYPES.find((t) => t.id === selectedWasteType)
-        : null;
-    const selectedSizeInfo = selectedSize
-        ? WASTE_SIZES.find((s) => s.id === selectedSize)
         : null;
 
     // Dashboard View (step 0)
@@ -530,7 +531,7 @@ function DashboardContent() {
                 </motion.div>
             )}
 
-            {/* Step 2: Size Selection */}
+            {/* Step 2: Container Quantity Selection */}
             {step === 2 && (
                 <motion.div
                     initial={{ opacity: 0, x: 20 }}
@@ -540,43 +541,128 @@ function DashboardContent() {
                         <div className="flex items-center gap-2 mb-2">
                             <span className="text-2xl">{selectedWasteInfo?.icon}</span>
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                How much?
+                                How much waste?
                             </h1>
                         </div>
                         <p className="text-gray-500 dark:text-gray-400">
-                            Select the approximate size
+                            Select the number of containers
                         </p>
                     </div>
 
                     <StepIndicator currentStep={2} totalSteps={3} />
 
-                    <div className="space-y-3">
-                        {WASTE_SIZES.map((size, index) => (
-                            <motion.button
-                                key={size.id}
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => setSelectedSize(size.id)}
-                                className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${selectedSize === size.id
-                                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                                    : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800'
-                                    }`}
+                    <div className="space-y-4">
+                        {/* Small Bucket Selector */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border-2 border-gray-100 dark:border-gray-700">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-3xl">🪣</span>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 dark:text-white">
+                                            Small Bucket
+                                        </h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            ~10 liters capacity
+                                        </p>
+                                    </div>
+                                </div>
+                                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                                    D25 each
+                                </Badge>
+                            </div>
+                            <div className="flex items-center justify-center gap-4">
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => setBucketCount(Math.max(0, bucketCount - 1))}
+                                    disabled={bucketCount === 0}
+                                    className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xl font-bold text-gray-600 dark:text-gray-300 disabled:opacity-40"
+                                >
+                                    −
+                                </motion.button>
+                                <span className="text-3xl font-bold text-gray-900 dark:text-white w-16 text-center">
+                                    {bucketCount}
+                                </span>
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => setBucketCount(Math.min(50, bucketCount + 1))}
+                                    className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-xl font-bold text-white"
+                                >
+                                    +
+                                </motion.button>
+                            </div>
+                            {bucketCount > 0 && (
+                                <p className="text-center text-sm text-gray-500 mt-2">
+                                    = {formatPrice(bucketCount * 25)}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Large Trash Bin Selector */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border-2 border-gray-100 dark:border-gray-700">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-3xl">🗑️</span>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 dark:text-white">
+                                            Large Trash Bin
+                                        </h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            ~200 liters capacity
+                                        </p>
+                                    </div>
+                                </div>
+                                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                                    D500 each
+                                </Badge>
+                            </div>
+                            <div className="flex items-center justify-center gap-4">
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => setLargeBinCount(Math.max(0, largeBinCount - 1))}
+                                    disabled={largeBinCount === 0}
+                                    className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xl font-bold text-gray-600 dark:text-gray-300 disabled:opacity-40"
+                                >
+                                    −
+                                </motion.button>
+                                <span className="text-3xl font-bold text-gray-900 dark:text-white w-16 text-center">
+                                    {largeBinCount}
+                                </span>
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => setLargeBinCount(Math.min(20, largeBinCount + 1))}
+                                    className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-xl font-bold text-white"
+                                >
+                                    +
+                                </motion.button>
+                            </div>
+                            {largeBinCount > 0 && (
+                                <p className="text-center text-sm text-gray-500 mt-2">
+                                    = {formatPrice(largeBinCount * 500)}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Live Price Total */}
+                        {(bucketCount > 0 || largeBinCount > 0) && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white"
                             >
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white">
-                                            {size.name}
-                                        </h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                            {size.description}
+                                        <p className="text-emerald-100 text-sm">Estimated Total</p>
+                                        <p className="text-3xl font-bold">
+                                            {estimatedPrice ? formatPrice(estimatedPrice) : 'D0'}
                                         </p>
                                     </div>
-                                    <Badge variant="secondary">{size.estimatedWeight}</Badge>
+                                    <div className="text-right text-sm text-emerald-100">
+                                        {bucketCount > 0 && <p>{bucketCount} bucket{bucketCount > 1 ? 's' : ''}</p>}
+                                        {largeBinCount > 0 && <p>{largeBinCount} large bin{largeBinCount > 1 ? 's' : ''}</p>}
+                                    </div>
                                 </div>
-                            </motion.button>
-                        ))}
+                            </motion.div>
+                        )}
                     </div>
 
                     <div className="mt-6 flex gap-3">
@@ -592,7 +678,7 @@ function DashboardContent() {
                         <Button
                             variant="primary"
                             size="lg"
-                            disabled={!selectedSize}
+                            disabled={bucketCount === 0 && largeBinCount === 0}
                             onClick={handleNextStep}
                             rightIcon={<ArrowRight size={18} />}
                             className="flex-1"
@@ -734,12 +820,22 @@ function DashboardContent() {
                                         {selectedWasteInfo?.icon} {selectedWasteInfo?.name}
                                     </span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Size</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">
-                                        {selectedSizeInfo?.name}
-                                    </span>
-                                </div>
+                                {bucketCount > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Buckets</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">
+                                            {bucketCount} × D25 = {formatPrice(bucketCount * 25)}
+                                        </span>
+                                    </div>
+                                )}
+                                {largeBinCount > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Large Bins</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">
+                                            {largeBinCount} × D500 = {formatPrice(largeBinCount * 500)}
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                                     <div className="flex justify-between items-center">
                                         <span className="font-bold text-gray-900 dark:text-white">Total</span>

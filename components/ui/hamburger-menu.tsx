@@ -179,8 +179,8 @@ export const HamburgerMenuOverlay: React.FC<HamburgerMenuOverlayProps> = ({
           .hamburger-button-${zIndex} {
             position: fixed;
             right: 16px;
-            top: 16px;
-            border-radius: 16px;
+            top: 14px;
+            border-radius: 14px;
             z-index: ${zIndex + 1};
             background: ${buttonColor};
             border: none;

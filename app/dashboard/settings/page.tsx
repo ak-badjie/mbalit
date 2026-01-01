@@ -1,14 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
     ArrowLeft,
     User,
     Bell,
-    Moon,
-    Sun,
     Lock,
     CreditCard,
     HelpCircle,
@@ -36,30 +34,28 @@ const SettingItem: React.FC<{
 }> = ({ icon, label, description, onClick, rightElement, danger }) => {
     const content = (
         <>
-            <div className={`p-2 rounded-xl ${danger ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                <div className={danger ? 'text-red-600' : 'text-gray-600 dark:text-gray-400'}>
+            <div className={`p-2 rounded-xl ${danger ? 'bg-red-100' : 'bg-gray-100'}`}>
+                <div className={danger ? 'text-red-600' : 'text-gray-600'}>
                     {icon}
                 </div>
             </div>
             <div className="flex-1 text-left">
-                <p className={`font-medium ${danger ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
+                <p className={`font-medium ${danger ? 'text-red-600' : 'text-gray-900'}`}>
                     {label}
                 </p>
                 {description && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
+                    <p className="text-sm text-gray-500">{description}</p>
                 )}
             </div>
             {rightElement || (onClick && <ChevronRight className="w-5 h-5 text-gray-400" />)}
         </>
     );
 
-    // Use div when there's a rightElement (which may contain buttons)
     if (rightElement) {
         return (
             <motion.div
                 whileTap={{ scale: 0.98 }}
-                className={`w-full flex items-center gap-4 p-4 rounded-xl transition-colors ${onClick ? 'hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer' : ''
-                    }`}
+                className={`w-full flex items-center gap-4 p-4 rounded-xl transition-colors ${onClick ? 'hover:bg-gray-50 cursor-pointer' : ''}`}
             >
                 {content}
             </motion.div>
@@ -71,8 +67,7 @@ const SettingItem: React.FC<{
             whileTap={{ scale: 0.98 }}
             onClick={onClick}
             disabled={!onClick}
-            className={`w-full flex items-center gap-4 p-4 rounded-xl transition-colors ${onClick ? 'hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer' : ''
-                }`}
+            className={`w-full flex items-center gap-4 p-4 rounded-xl transition-colors ${onClick ? 'hover:bg-gray-50 cursor-pointer' : ''}`}
         >
             {content}
         </motion.button>
@@ -86,8 +81,7 @@ const ToggleSwitch: React.FC<{
 }> = ({ enabled, onToggle }) => (
     <button
         onClick={onToggle}
-        className={`relative w-12 h-7 rounded-full transition-colors ${enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
-            }`}
+        className={`relative w-12 h-7 rounded-full transition-colors ${enabled ? 'bg-emerald-500' : 'bg-gray-300'}`}
     >
         <motion.div
             initial={false}
@@ -99,29 +93,8 @@ const ToggleSwitch: React.FC<{
 
 export default function SettingsPage() {
     const { user, logout } = useAuth();
-    const [isDarkMode, setIsDarkMode] = useState(false);
     const [notifications, setNotifications] = useState(true);
     const [emailNotifications, setEmailNotifications] = useState(true);
-
-    // Initialize dark mode from system/localStorage
-    useEffect(() => {
-        const isDark = document.documentElement.classList.contains('dark');
-        setIsDarkMode(isDark);
-    }, []);
-
-    // Toggle dark mode
-    const toggleDarkMode = () => {
-        const newValue = !isDarkMode;
-        setIsDarkMode(newValue);
-
-        if (newValue) {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
-        }
-    };
 
     const handleLogout = async () => {
         try {
@@ -133,16 +106,16 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50">
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
+            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200">
                 <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
                     <Link href="/dashboard">
-                        <button className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        <button className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                            <ArrowLeft className="w-5 h-5 text-gray-600" />
                         </button>
                     </Link>
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h1>
+                    <h1 className="text-xl font-bold text-gray-900">Settings</h1>
                 </div>
             </header>
 
@@ -158,10 +131,10 @@ export default function SettingsPage() {
                             )}
                         </div>
                         <div className="flex-1">
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                            <h2 className="text-lg font-bold text-gray-900">
                                 {user?.name || 'User'}
                             </h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
+                            <p className="text-sm text-gray-500">{user?.email}</p>
                         </div>
                         <Link href="/dashboard/profile">
                             <Button variant="secondary" size="sm">Edit</Button>
@@ -169,25 +142,9 @@ export default function SettingsPage() {
                     </div>
                 </Card>
 
-                {/* Appearance */}
-                <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-4">
-                        Appearance
-                    </h3>
-                    <Card variant="default" padding="none">
-                        <SettingItem
-                            icon={isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                            label="Dark Mode"
-                            description={isDarkMode ? 'Using dark theme' : 'Using light theme'}
-                            onClick={toggleDarkMode}
-                            rightElement={<ToggleSwitch enabled={isDarkMode} onToggle={toggleDarkMode} />}
-                        />
-                    </Card>
-                </div>
-
                 {/* Notifications */}
                 <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-4">
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider px-4">
                         Notifications
                     </h3>
                     <Card variant="default" padding="none">
@@ -198,7 +155,7 @@ export default function SettingsPage() {
                             onClick={() => setNotifications(!notifications)}
                             rightElement={<ToggleSwitch enabled={notifications} onToggle={() => setNotifications(!notifications)} />}
                         />
-                        <div className="border-t border-gray-100 dark:border-gray-800" />
+                        <div className="border-t border-gray-100" />
                         <SettingItem
                             icon={<Mail className="w-5 h-5" />}
                             label="Email Notifications"
@@ -211,7 +168,7 @@ export default function SettingsPage() {
 
                 {/* Account */}
                 <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-4">
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider px-4">
                         Account
                     </h3>
                     <Card variant="default" padding="none">
@@ -220,21 +177,21 @@ export default function SettingsPage() {
                             label="Phone Number"
                             description={user?.phone || 'Not set'}
                         />
-                        <div className="border-t border-gray-100 dark:border-gray-800" />
+                        <div className="border-t border-gray-100" />
                         <SettingItem
                             icon={<MapPin className="w-5 h-5" />}
                             label="Saved Locations"
                             description="Manage your addresses"
                             onClick={() => { }}
                         />
-                        <div className="border-t border-gray-100 dark:border-gray-800" />
+                        <div className="border-t border-gray-100" />
                         <SettingItem
                             icon={<CreditCard className="w-5 h-5" />}
                             label="Payment Methods"
                             description="Manage payment options"
                             onClick={() => { }}
                         />
-                        <div className="border-t border-gray-100 dark:border-gray-800" />
+                        <div className="border-t border-gray-100" />
                         <SettingItem
                             icon={<Lock className="w-5 h-5" />}
                             label="Change Password"
@@ -245,7 +202,7 @@ export default function SettingsPage() {
 
                 {/* Security */}
                 <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-4">
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider px-4">
                         Security & Privacy
                     </h3>
                     <Card variant="default" padding="none">
@@ -254,7 +211,7 @@ export default function SettingsPage() {
                             label="Privacy Settings"
                             onClick={() => { }}
                         />
-                        <div className="border-t border-gray-100 dark:border-gray-800" />
+                        <div className="border-t border-gray-100" />
                         <SettingItem
                             icon={<Globe className="w-5 h-5" />}
                             label="Language"
@@ -266,7 +223,7 @@ export default function SettingsPage() {
 
                 {/* Support */}
                 <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-4">
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider px-4">
                         Support
                     </h3>
                     <Card variant="default" padding="none">
@@ -275,13 +232,13 @@ export default function SettingsPage() {
                             label="Help Center"
                             onClick={() => { }}
                         />
-                        <div className="border-t border-gray-100 dark:border-gray-800" />
+                        <div className="border-t border-gray-100" />
                         <SettingItem
                             icon={<FileText className="w-5 h-5" />}
                             label="Terms of Service"
                             onClick={() => { }}
                         />
-                        <div className="border-t border-gray-100 dark:border-gray-800" />
+                        <div className="border-t border-gray-100" />
                         <SettingItem
                             icon={<FileText className="w-5 h-5" />}
                             label="Privacy Policy"
@@ -301,7 +258,7 @@ export default function SettingsPage() {
                 </Card>
 
                 {/* App Version */}
-                <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-8">
+                <p className="text-center text-xs text-gray-400 mt-8">
                     MBALit v1.0.0
                 </p>
             </main>
