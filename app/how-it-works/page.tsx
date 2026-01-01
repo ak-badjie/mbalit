@@ -116,14 +116,14 @@ const StepCard = ({
                     <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-bold text-xl shadow-lg">
                         {number}
                     </div>
-                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
-                        <Icon className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 ">
+                        <Icon className="w-6 h-6 text-emerald-600 " />
                     </div>
                 </div>
-                <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                <h3 className="text-2xl lg:text-3xl font-bold text-gray-900  mb-3">
                     {title}
                 </h3>
-                <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
+                <p className="text-lg text-gray-600  mb-6">
                     {description}
                 </p>
                 <ul className="space-y-3">
@@ -135,7 +135,7 @@ const StepCard = ({
                             className="flex items-start gap-3"
                         >
                             <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-gray-600 dark:text-gray-300">{detail}</span>
+                            <span className="text-gray-600 ">{detail}</span>
                         </motion.li>
                     ))}
                 </ul>
@@ -148,7 +148,7 @@ const StepCard = ({
                 className="flex-1 w-full"
             >
                 {image ? (
-                    <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700">
+                    <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-200 ">
                         <Image
                             src={image}
                             alt={imageAlt || title}
@@ -158,7 +158,7 @@ const StepCard = ({
                         />
                     </div>
                 ) : (
-                    <div className="aspect-video rounded-3xl bg-gradient-to-br from-emerald-100 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/20 flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
+                    <div className="aspect-video rounded-3xl bg-gradient-to-br from-emerald-100 to-teal-50   flex items-center justify-center border border-emerald-200 ">
                         <Icon className="w-24 h-24 text-emerald-400 opacity-50" />
                     </div>
                 )}
@@ -403,7 +403,7 @@ const PaymentSection = () => {
 
 export default function HowItWorksPage() {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
             <Header />
 
             {/* Hero Section */}
@@ -421,10 +421,10 @@ export default function HowItWorksPage() {
                             <ArrowLeft className="w-4 h-4" />
                             Back to Home
                         </Link>
-                        <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+                        <h1 className="text-4xl lg:text-6xl font-bold text-gray-900  mb-6">
                             How <span className="text-emerald-500">Mbalit</span> Works
                         </h1>
-                        <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                        <p className="text-xl text-gray-600  max-w-3xl mx-auto">
                             Getting rid of your waste has never been easier. Request a pickup in minutes,
                             track your collector in real-time, and pay securely with Wave.
                         </p>
@@ -441,14 +441,14 @@ export default function HowItWorksPage() {
                         transition={{ duration: 0.6, delay: 0.2 }}
                         className="text-center mb-16"
                     >
-                        <div className="inline-flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-4 py-2 rounded-full mb-4">
+                        <div className="inline-flex items-center gap-2 bg-emerald-100  text-emerald-700  px-4 py-2 rounded-full mb-4">
                             <Recycle className="w-5 h-5" />
                             <span className="font-semibold">For Waste Owners</span>
                         </div>
-                        <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                        <h2 className="text-3xl lg:text-4xl font-bold text-gray-900  mb-4">
                             Schedule a Pickup in 4 Easy Steps
                         </h2>
-                        <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                        <p className="text-lg text-gray-600  max-w-2xl mx-auto">
                             From request to collection, we&apos;ve made the process seamless and transparent.
                         </p>
                     </motion.div>
@@ -494,15 +494,15 @@ export default function HowItWorksPage() {
                                     <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-bold text-xl shadow-lg">
                                         3
                                     </div>
-                                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
-                                        <Navigation className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 ">
+                                        <Navigation className="w-6 h-6 text-emerald-600 " />
                                     </div>
                                 </div>
                                 <motion.div variants={fadeInUp}>
-                                    <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                                    <h3 className="text-2xl lg:text-3xl font-bold text-gray-900  mb-3">
                                         Track Your Collector in Real-Time
                                     </h3>
-                                    <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 max-w-2xl">
+                                    <p className="text-lg text-gray-600  mb-8 max-w-2xl">
                                         Watch as your assigned collector makes their way to you. Know exactly when they&apos;ll arrive with live GPS tracking.
                                     </p>
                                 </motion.div>
@@ -517,10 +517,10 @@ export default function HowItWorksPage() {
                                         <motion.li
                                             key={index}
                                             variants={fadeInUp}
-                                            className="flex items-center gap-3 bg-white dark:bg-gray-800/50 rounded-xl p-4 shadow-sm"
+                                            className="flex items-center gap-3 bg-white  rounded-xl p-4 shadow-sm"
                                         >
                                             <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                                            <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                                            <span className="text-gray-700 ">{feature}</span>
                                         </motion.li>
                                     ))}
                                 </motion.ul>
@@ -534,15 +534,15 @@ export default function HowItWorksPage() {
                                     <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-bold text-xl shadow-lg">
                                         4
                                     </div>
-                                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
-                                        <CreditCard className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 ">
+                                        <CreditCard className="w-6 h-6 text-emerald-600 " />
                                     </div>
                                 </div>
                                 <motion.div variants={fadeInUp}>
-                                    <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                                    <h3 className="text-2xl lg:text-3xl font-bold text-gray-900  mb-3">
                                         Pay Securely with Wave
                                     </h3>
-                                    <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 max-w-2xl">
+                                    <p className="text-lg text-gray-600  mb-8 max-w-2xl">
                                         No cash needed. Pay instantly through Wave mobile money – the most trusted payment method in The Gambia.
                                     </p>
                                 </motion.div>
@@ -554,10 +554,10 @@ export default function HowItWorksPage() {
             </section>
 
             {/* Why Choose Us */}
-            <AnimatedSection className="py-16 px-4 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30">
+            <AnimatedSection className="py-16 px-4 bg-gradient-to-br from-emerald-50 to-teal-50  ">
                 <div className="max-w-6xl mx-auto">
                     <motion.div variants={fadeInUp} className="text-center mb-12">
-                        <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                        <h2 className="text-3xl lg:text-4xl font-bold text-gray-900  mb-4">
                             Why Choose Mbalit?
                         </h2>
                     </motion.div>
@@ -581,13 +581,13 @@ export default function HowItWorksPage() {
                         ].map((feature, index) => (
                             <motion.div key={index} variants={fadeInUp}>
                                 <Card variant="elevated" padding="lg" className="h-full text-center">
-                                    <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
-                                        <feature.icon className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+                                    <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100  flex items-center justify-center mb-4">
+                                        <feature.icon className="w-7 h-7 text-emerald-600 " />
                                     </div>
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                    <h3 className="text-xl font-bold text-gray-900  mb-2">
                                         {feature.title}
                                     </h3>
-                                    <p className="text-gray-600 dark:text-gray-300">
+                                    <p className="text-gray-600 ">
                                         {feature.description}
                                     </p>
                                 </Card>
@@ -606,10 +606,10 @@ export default function HowItWorksPage() {
                         viewport={{ once: true }}
                         transition={{ duration: 0.6 }}
                     >
-                        <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-6">
+                        <h2 className="text-3xl lg:text-4xl font-bold text-gray-900  mb-6">
                             Ready to Get Started?
                         </h2>
-                        <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
+                        <p className="text-xl text-gray-600  mb-8">
                             Schedule your first waste pickup in less than 2 minutes.
                         </p>
                         <Link href="/">
@@ -627,8 +627,8 @@ export default function HowItWorksPage() {
             </section>
 
             {/* Footer */}
-            <footer className="py-8 px-4 border-t border-gray-200 dark:border-gray-800">
-                <div className="max-w-6xl mx-auto text-center text-gray-500 dark:text-gray-400">
+            <footer className="py-8 px-4 border-t border-gray-200 ">
+                <div className="max-w-6xl mx-auto text-center text-gray-500 ">
                     <p>&copy; {new Date().getFullYear()} Mbalit. Making The Gambia cleaner, one pickup at a time.</p>
                 </div>
             </footer>

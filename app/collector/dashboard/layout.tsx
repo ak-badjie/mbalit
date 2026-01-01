@@ -33,7 +33,7 @@ export default function CollectorDashboardLayout({
 
     return (
         <DynamicIslandProvider>
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
                 {/* Main content with padding for bottom nav */}
                 <main className="pb-24 md:pb-8">
                     {children}

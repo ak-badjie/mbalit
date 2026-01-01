@@ -161,8 +161,8 @@ const TipCard: React.FC<{ tip: RecyclingTip }> = ({ tip }) => {
                         {tip.icon}
                     </div>
                     <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 dark:text-white">{tip.title}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <h3 className="font-bold text-gray-900 ">{tip.title}</h3>
+                        <p className="text-sm text-gray-500 ">
                             {tip.items.slice(0, 2).join(', ')}...
                         </p>
                     </div>
@@ -191,7 +191,7 @@ const TipCard: React.FC<{ tip: RecyclingTip }> = ({ tip }) => {
                                         {tip.items.map((item) => (
                                             <span
                                                 key={item}
-                                                className="px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-xs text-gray-700 dark:text-gray-300"
+                                                className="px-3 py-1 bg-gray-100  rounded-full text-xs text-gray-700 "
                                             >
                                                 {item}
                                             </span>
@@ -207,7 +207,7 @@ const TipCard: React.FC<{ tip: RecyclingTip }> = ({ tip }) => {
                                     </p>
                                     <ul className="space-y-1">
                                         {tip.tips.map((t) => (
-                                            <li key={t} className="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2">
+                                            <li key={t} className="text-sm text-gray-600  flex items-start gap-2">
                                                 <span className="text-emerald-500 mt-1">✓</span>
                                                 {t}
                                             </li>
@@ -222,7 +222,7 @@ const TipCard: React.FC<{ tip: RecyclingTip }> = ({ tip }) => {
                                     </p>
                                     <ul className="space-y-1">
                                         {tip.doNot.map((d) => (
-                                            <li key={d} className="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2">
+                                            <li key={d} className="text-sm text-gray-600  flex items-start gap-2">
                                                 <span className="text-red-500 mt-1">✗</span>
                                                 {d}
                                             </li>
@@ -240,16 +240,16 @@ const TipCard: React.FC<{ tip: RecyclingTip }> = ({ tip }) => {
 
 export default function RecyclingTipsPage() {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
+            <header className="sticky top-0 z-40 bg-white/80  backdrop-blur-xl border-b border-gray-200 ">
                 <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
                     <Link href="/dashboard">
-                        <button className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        <button className="p-2 rounded-xl hover:bg-gray-100  transition-colors">
+                            <ArrowLeft className="w-5 h-5 text-gray-600 " />
                         </button>
                     </Link>
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">Recycling Guide</h1>
+                    <h1 className="text-xl font-bold text-gray-900 ">Recycling Guide</h1>
                 </div>
             </header>
 
@@ -292,7 +292,7 @@ export default function RecyclingTipsPage() {
 
                 {/* Tips List */}
                 <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">
+                    <h3 className="text-sm font-semibold text-gray-500  uppercase tracking-wider px-1">
                         Waste Categories
                     </h3>
                     {RECYCLING_TIPS.map((tip) => (

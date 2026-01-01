@@ -41,7 +41,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         return (
             <div className="w-full">
                 {label && (
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700  mb-2">
                         {label}
                     </label>
                 )}
@@ -60,10 +60,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                         className={`
               w-full rounded-xl
-              bg-white dark:bg-gray-900
-              border border-gray-200 dark:border-gray-700
-              text-gray-900 dark:text-white
-              placeholder:text-gray-400 dark:placeholder:text-gray-500
+              bg-white 
+              border border-gray-200 
+              text-gray-900 
+              placeholder:text-gray-400 
               transition-all duration-200
               focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500
               disabled:opacity-50 disabled:cursor-not-allowed
@@ -80,7 +80,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600  transition-colors"
                         >
                             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                         </button>
@@ -104,7 +104,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 )}
 
                 {hint && !error && (
-                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    <p className="mt-2 text-sm text-gray-500 ">
                         {hint}
                     </p>
                 )}

@@ -320,16 +320,16 @@ export const ProfileLocationMap: React.FC<ProfileLocationMapProps> = ({
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="flex flex-col items-center gap-4 p-6 bg-white/95 dark:bg-gray-900/95 rounded-2xl shadow-2xl max-w-sm mx-4"
+                            className="flex flex-col items-center gap-4 p-6 bg-white/95  rounded-2xl shadow-2xl max-w-sm mx-4"
                         >
-                            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-full bg-emerald-100  flex items-center justify-center">
                                 <Crosshair className="w-8 h-8 text-emerald-600" />
                             </div>
                             <div className="text-center">
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                                <h3 className="text-lg font-bold text-gray-900  mb-1">
                                     Get Your Precise Location
                                 </h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                <p className="text-sm text-gray-500 ">
                                     Click the button below to get your exact GPS location
                                 </p>
                             </div>
@@ -388,7 +388,7 @@ export const ProfileLocationMap: React.FC<ProfileLocationMapProps> = ({
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
-                        className="absolute bottom-4 left-4 right-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-xl p-4 shadow-2xl border border-gray-200 dark:border-gray-700 z-20"
+                        className="absolute bottom-4 left-4 right-4 bg-white/95  backdrop-blur-xl rounded-xl p-4 shadow-2xl border border-gray-200  z-20"
                     >
                         <div className="flex items-start gap-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center flex-shrink-0">
@@ -396,21 +396,21 @@ export const ProfileLocationMap: React.FC<ProfileLocationMapProps> = ({
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
+                                    <h4 className="font-semibold text-gray-900  text-sm">
                                         Precise Location
                                     </h4>
                                     <Check className="w-4 h-4 text-emerald-500" />
                                 </div>
-                                <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">
+                                <p className="text-xs text-gray-600  line-clamp-2">
                                     {currentLocation.formattedAddress}
                                 </p>
                                 <div className="flex items-center gap-2 mt-2">
-                                    <code className="text-[10px] bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono text-gray-600 dark:text-gray-400">
+                                    <code className="text-[10px] bg-gray-100  px-2 py-1 rounded font-mono text-gray-600 ">
                                         {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
                                     </code>
                                     <button
                                         onClick={handleCopyCoordinates}
-                                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                                        className="p-1 hover:bg-gray-100  rounded transition-colors"
                                     >
                                         {copied ? (
                                             <Check className="w-3 h-3 text-emerald-500" />
@@ -424,7 +424,7 @@ export const ProfileLocationMap: React.FC<ProfileLocationMapProps> = ({
                             <button
                                 onClick={handleGetPreciseLocation}
                                 disabled={isLocating}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                className="p-2 hover:bg-gray-100  rounded-lg transition-colors"
                                 title="Recalibrate location"
                             >
                                 {isLocating ? (

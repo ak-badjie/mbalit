@@ -113,7 +113,7 @@ export default function TrackingPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50    flex items-center justify-center">
                 <div className="text-center">
                     <motion.div
                         animate={{ rotate: 360 }}
@@ -129,10 +129,10 @@ export default function TrackingPage() {
 
     if (error || !job) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50    flex items-center justify-center">
                 <Card variant="elevated" padding="lg" className="text-center max-w-md mx-4">
                     <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    <h1 className="text-xl font-bold text-gray-900  mb-2">
                         Order Not Found
                     </h1>
                     <p className="text-gray-500 mb-6">
@@ -147,20 +147,20 @@ export default function TrackingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
             {/* Header */}
             <header className="fixed top-0 left-0 right-0 z-40">
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-400" />
-                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50">
+                <div className="bg-white/80  backdrop-blur-xl border-b border-gray-200/50 ">
                     <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <Link href="/">
-                                <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                                    <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                                <button className="p-2 rounded-full hover:bg-gray-100  transition-colors">
+                                    <ArrowLeft className="w-5 h-5 text-gray-600 " />
                                 </button>
                             </Link>
                             <div>
-                                <h1 className="font-semibold text-gray-900 dark:text-white">
+                                <h1 className="font-semibold text-gray-900 ">
                                     Track Your Pickup
                                 </h1>
                                 <p className="text-xs text-gray-500">
@@ -198,10 +198,10 @@ export default function TrackingPage() {
                         </div>
 
                         {/* Progress Steps */}
-                        <div className="p-4 bg-white dark:bg-gray-900">
+                        <div className="p-4 bg-white ">
                             <div className="flex items-center justify-between relative">
                                 {/* Progress Line */}
-                                <div className="absolute left-0 right-0 top-1/2 h-1 bg-gray-200 dark:bg-gray-700 -translate-y-1/2 z-0" />
+                                <div className="absolute left-0 right-0 top-1/2 h-1 bg-gray-200  -translate-y-1/2 z-0" />
                                 <motion.div
                                     className="absolute left-0 top-1/2 h-1 bg-emerald-500 -translate-y-1/2 z-0"
                                     initial={{ width: '0%' }}
@@ -222,7 +222,7 @@ export default function TrackingPage() {
                                             <motion.div
                                                 animate={isCurrent ? { scale: [1, 1.2, 1] } : {}}
                                                 transition={{ duration: 1, repeat: Infinity }}
-                                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isActive ? 'bg-emerald-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
+                                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isActive ? 'bg-emerald-500 text-white' : 'bg-gray-200  text-gray-500'
                                                     }`}
                                             >
                                                 {index + 1}
@@ -259,7 +259,7 @@ export default function TrackingPage() {
                         transition={{ delay: 0.2 }}
                     >
                         <Card variant="elevated" padding="md">
-                            <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900  mb-4 flex items-center gap-2">
                                 <Package className="w-5 h-5 text-emerald-500" />
                                 Order Details
                             </h3>
@@ -267,11 +267,11 @@ export default function TrackingPage() {
                             <div className="space-y-4">
                                 {/* Waste Type */}
                                 <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-2xl">
+                                    <div className="w-12 h-12 rounded-xl bg-emerald-100  flex items-center justify-center text-2xl">
                                         {wasteType?.icon || '📦'}
                                     </div>
                                     <div>
-                                        <p className="font-medium text-gray-900 dark:text-white">
+                                        <p className="font-medium text-gray-900 ">
                                             {wasteType?.name || job.wasteType}
                                         </p>
                                         <p className="text-sm text-gray-500">
@@ -281,13 +281,13 @@ export default function TrackingPage() {
                                 </div>
 
                                 {/* Location */}
-                                <div className="flex items-start gap-3 text-gray-600 dark:text-gray-400">
+                                <div className="flex items-start gap-3 text-gray-600 ">
                                     <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
                                     <span className="text-sm">{job.pickupLocation.formattedAddress}</span>
                                 </div>
 
                                 {/* Price */}
-                                <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+                                <div className="pt-3 border-t border-gray-100 ">
                                     <div className="flex items-center justify-between">
                                         <span className="text-gray-500">Total Amount</span>
                                         <span className="text-xl font-bold text-emerald-600">
@@ -310,7 +310,7 @@ export default function TrackingPage() {
                         transition={{ delay: 0.3 }}
                     >
                         <Card variant="elevated" padding="md">
-                            <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900  mb-4 flex items-center gap-2">
                                 <Truck className="w-5 h-5 text-emerald-500" />
                                 {job.collectorId ? 'Your Collector' : 'Waiting for Collector'}
                             </h3>
@@ -323,7 +323,7 @@ export default function TrackingPage() {
                                             {job.collectorName?.charAt(0) || 'C'}
                                         </div>
                                         <div>
-                                            <p className="font-semibold text-gray-900 dark:text-white">
+                                            <p className="font-semibold text-gray-900 ">
                                                 {job.collectorName || 'Collector'}
                                             </p>
                                             <div className="flex items-center gap-1 text-amber-500">
@@ -336,8 +336,8 @@ export default function TrackingPage() {
 
                                     {/* ETA */}
                                     {currentStatus === 'en_route' && (
-                                        <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4">
-                                            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                                        <div className="bg-emerald-50  rounded-xl p-4">
+                                            <div className="flex items-center gap-2 text-emerald-700 ">
                                                 <Clock className="w-5 h-5" />
                                                 <span className="font-medium">Estimated arrival:</span>
                                                 <span className="font-bold">5-10 mins</span>
@@ -369,7 +369,7 @@ export default function TrackingPage() {
                                         transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                                         className="w-16 h-16 mx-auto mb-4"
                                     >
-                                        <div className="w-full h-full rounded-full border-4 border-emerald-200 dark:border-emerald-800 border-t-emerald-500" />
+                                        <div className="w-full h-full rounded-full border-4 border-emerald-200  border-t-emerald-500" />
                                     </motion.div>
                                     <p className="text-gray-500">
                                         Finding a collector near you...
@@ -390,10 +390,10 @@ export default function TrackingPage() {
                             className="mt-6"
                         >
                             <Card variant="elevated" padding="lg" className="text-center">
-                                <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-4">
+                                <div className="w-20 h-20 rounded-full bg-emerald-100  flex items-center justify-center mx-auto mb-4">
                                     <CheckCircle className="w-10 h-10 text-emerald-600" />
                                 </div>
-                                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                <h2 className="text-xl font-bold text-gray-900  mb-2">
                                     Pickup Completed! 🎉
                                 </h2>
                                 <p className="text-gray-500 mb-6">

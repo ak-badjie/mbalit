@@ -96,7 +96,7 @@ export default function SettingsPage() {
     }) => (
         <button
             onClick={() => onChange(!enabled)}
-            className={`relative w-12 h-7 rounded-full transition-colors ${enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+            className={`relative w-12 h-7 rounded-full transition-colors ${enabled ? 'bg-emerald-500' : 'bg-gray-300 '
                 }`}
         >
             <motion.div
@@ -117,15 +117,15 @@ export default function SettingsPage() {
         description?: string;
         children: React.ReactNode;
     }) => (
-        <div className="flex items-center justify-between py-4 border-b border-gray-100 dark:border-gray-800 last:border-0">
+        <div className="flex items-center justify-between py-4 border-b border-gray-100  last:border-0">
             <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <div className="w-10 h-10 rounded-xl bg-gray-100  flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-gray-600 " />
                 </div>
                 <div>
-                    <h4 className="font-medium text-gray-900 dark:text-white">{title}</h4>
+                    <h4 className="font-medium text-gray-900 ">{title}</h4>
                     {description && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
+                        <p className="text-xs text-gray-500 ">{description}</p>
                     )}
                 </div>
             </div>
@@ -135,23 +135,23 @@ export default function SettingsPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50  flex items-center justify-center">
                 <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
+            <header className="sticky top-0 z-40 bg-white/80  backdrop-blur-xl border-b border-gray-200 ">
                 <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
                     <Link href="/collector/dashboard">
-                        <button className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        <button className="p-2 rounded-xl hover:bg-gray-100  transition-colors">
+                            <ArrowLeft className="w-5 h-5 text-gray-600 " />
                         </button>
                     </Link>
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h1>
+                    <h1 className="text-xl font-bold text-gray-900 ">Settings</h1>
                     {isSaving && (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.8 }}
@@ -168,8 +168,8 @@ export default function SettingsPage() {
             <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
                 {/* Notifications Section */}
                 <Card variant="elevated" padding="none">
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>
+                    <div className="px-4 py-3 border-b border-gray-100 ">
+                        <h3 className="font-semibold text-gray-900 ">Notifications</h3>
                     </div>
                     <div className="px-4">
                         <SettingRow
@@ -197,8 +197,8 @@ export default function SettingsPage() {
 
                 {/* Job Preferences Section */}
                 <Card variant="elevated" padding="none">
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">Job Preferences</h3>
+                    <div className="px-4 py-3 border-b border-gray-100 ">
+                        <h3 className="font-semibold text-gray-900 ">Job Preferences</h3>
                     </div>
                     <div className="px-4">
                         <SettingRow
@@ -219,7 +219,7 @@ export default function SettingsPage() {
                             <select
                                 value={settings.maxDistance}
                                 onChange={(e) => handleUpdateSetting('maxDistance', Number(e.target.value))}
-                                className="px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border-0 focus:ring-2 focus:ring-emerald-500"
+                                className="px-3 py-2 bg-gray-100  rounded-lg text-sm font-medium text-gray-700  border-0 focus:ring-2 focus:ring-emerald-500"
                             >
                                 <option value={5}>5 km</option>
                                 <option value={10}>10 km</option>
@@ -228,13 +228,13 @@ export default function SettingsPage() {
                                 <option value={50}>50 km</option>
                             </select>
                         </SettingRow>
-                        <div className="py-4 border-b border-gray-100 dark:border-gray-800">
+                        <div className="py-4 border-b border-gray-100 ">
                             <div className="flex items-center gap-4 mb-3">
-                                <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                    <Truck className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                                <div className="w-10 h-10 rounded-xl bg-gray-100  flex items-center justify-center">
+                                    <Truck className="w-5 h-5 text-gray-600 " />
                                 </div>
                                 <div>
-                                    <h4 className="font-medium text-gray-900 dark:text-white">Waste Types</h4>
+                                    <h4 className="font-medium text-gray-900 ">Waste Types</h4>
                                     <p className="text-xs text-gray-500">Select types you handle</p>
                                 </div>
                             </div>
@@ -252,7 +252,7 @@ export default function SettingsPage() {
                                             }}
                                             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${isSelected
                                                 ? 'bg-emerald-500 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
+                                                : 'bg-gray-100  text-gray-600  hover:bg-gray-200'
                                                 }`}
                                         >
                                             {type.icon} {type.name}
@@ -266,8 +266,8 @@ export default function SettingsPage() {
 
                 {/* Appearance Section */}
                 <Card variant="elevated" padding="none">
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">Appearance</h3>
+                    <div className="px-4 py-3 border-b border-gray-100 ">
+                        <h3 className="font-semibold text-gray-900 ">Appearance</h3>
                     </div>
                     <div className="px-4">
                         <SettingRow
@@ -288,7 +288,7 @@ export default function SettingsPage() {
                             <select
                                 value={settings.language}
                                 onChange={(e) => handleUpdateSetting('language', e.target.value as 'en' | 'wo' | 'ff')}
-                                className="px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border-0 focus:ring-2 focus:ring-emerald-500"
+                                className="px-3 py-2 bg-gray-100  rounded-lg text-sm font-medium text-gray-700  border-0 focus:ring-2 focus:ring-emerald-500"
                             >
                                 <option value="en">English</option>
                                 <option value="wo">Wolof</option>
@@ -300,18 +300,18 @@ export default function SettingsPage() {
 
                 {/* Account Section */}
                 <Card variant="elevated" padding="none">
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">Account</h3>
+                    <div className="px-4 py-3 border-b border-gray-100 ">
+                        <h3 className="font-semibold text-gray-900 ">Account</h3>
                     </div>
                     <div className="px-4">
                         <Link href="/collector/profile">
-                            <div className="flex items-center justify-between py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-4 px-4 transition-colors">
+                            <div className="flex items-center justify-between py-4 border-b border-gray-100  cursor-pointer hover:bg-gray-50  -mx-4 px-4 transition-colors">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-100  flex items-center justify-center">
                                         <MapPin className="w-5 h-5 text-emerald-600" />
                                     </div>
                                     <div>
-                                        <h4 className="font-medium text-gray-900 dark:text-white">Edit Profile</h4>
+                                        <h4 className="font-medium text-gray-900 ">Edit Profile</h4>
                                         <p className="text-xs text-gray-500">Update your location and details</p>
                                     </div>
                                 </div>
@@ -320,10 +320,10 @@ export default function SettingsPage() {
                         </Link>
                         <button
                             onClick={handleSignOut}
-                            className="w-full flex items-center justify-between py-4 text-left hover:bg-red-50 dark:hover:bg-red-900/10 -mx-4 px-4 transition-colors"
+                            className="w-full flex items-center justify-between py-4 text-left hover:bg-red-50  -mx-4 px-4 transition-colors"
                         >
                             <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-xl bg-red-100  flex items-center justify-center">
                                     <LogOut className="w-5 h-5 text-red-600" />
                                 </div>
                                 <div>

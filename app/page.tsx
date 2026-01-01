@@ -159,14 +159,14 @@ const StepCard = ({
           <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-bold text-xl shadow-lg">
             {number}
           </div>
-          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
-            <Icon className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 ">
+            <Icon className="w-6 h-6 text-emerald-600 " />
           </div>
         </div>
-        <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+        <h3 className="text-2xl lg:text-3xl font-bold text-gray-900  mb-3">
           {title}
         </h3>
-        <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
+        <p className="text-lg text-gray-600  mb-6">
           {description}
         </p>
         <ul className="space-y-3">
@@ -178,7 +178,7 @@ const StepCard = ({
               className="flex items-start gap-3"
             >
               <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-              <span className="text-gray-600 dark:text-gray-300">{detail}</span>
+              <span className="text-gray-600 ">{detail}</span>
             </motion.li>
           ))}
         </ul>
@@ -191,7 +191,7 @@ const StepCard = ({
         className="flex-1 w-full"
       >
         {image ? (
-          <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700">
+          <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-200 ">
             <Image
               src={image}
               alt={imageAlt || title}
@@ -201,7 +201,7 @@ const StepCard = ({
             />
           </div>
         ) : (
-          <div className="aspect-video rounded-3xl bg-gradient-to-br from-emerald-100 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/20 flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
+          <div className="aspect-video rounded-3xl bg-gradient-to-br from-emerald-100 to-teal-50   flex items-center justify-center border border-emerald-200 ">
             <Icon className="w-24 h-24 text-emerald-400 opacity-50" />
           </div>
         )}
@@ -548,7 +548,7 @@ export default function HomePage() {
         initial={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.5 }}
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-teal-50   "
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -613,7 +613,7 @@ export default function HomePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 0.5 }}
-            className="text-sm text-gray-500 dark:text-gray-400 mt-1"
+            className="text-sm text-gray-500  mt-1"
           >
             Waste Collection Made Easy
           </motion.span>
@@ -623,7 +623,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
       <Header />
 
       {/* Hero Section */}
@@ -635,7 +635,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-medium mb-6"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100  text-emerald-700  text-sm font-medium mb-6"
             >
               <Recycle className="w-4 h-4" />
               <span>Making The Gambia cleaner, one pickup at a time</span>
@@ -646,7 +646,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6"
+              className="text-4xl md:text-6xl font-bold text-gray-900  mb-6"
             >
               Waste Collection
               <br />
@@ -660,7 +660,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-10"
+              className="text-lg md:text-xl text-gray-600  max-w-2xl mx-auto mb-10"
             >
               Connect with verified waste collectors in your area. Schedule pickups,
               track in real-time, and contribute to a cleaner environment.
@@ -699,7 +699,7 @@ export default function HomePage() {
       </section>
 
       {/* Account Types Section */}
-      <section className="py-16 bg-white/50 dark:bg-gray-800/50">
+      <section className="py-16 bg-white/50 ">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -707,10 +707,10 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-3xl font-bold text-gray-900  mb-4">
               For Everyone
             </h2>
-            <p className="text-gray-600 dark:text-gray-300">
+            <p className="text-gray-600 ">
               Whether you're an individual, business, or organization
             </p>
           </motion.div>
@@ -729,13 +729,13 @@ export default function HomePage() {
                   padding="lg"
                   className="text-center hover:shadow-xl transition-shadow"
                 >
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 mb-4">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-100  text-emerald-600  mb-4">
                     {type.icon}
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="text-xl font-bold text-gray-900  mb-2">
                     {type.title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="text-gray-600 ">
                     {type.description}
                   </p>
                 </Card>
@@ -754,10 +754,10 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-3xl font-bold text-gray-900  mb-4">
               Why Choose Mbalit?
             </h2>
-            <p className="text-gray-600 dark:text-gray-300">
+            <p className="text-gray-600 ">
               The smarter way to handle waste collection
             </p>
           </motion.div>
@@ -770,15 +770,15 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow"
+                className="p-6 rounded-2xl bg-white  border border-gray-100  hover:shadow-lg transition-shadow"
               >
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 mb-4">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-100  text-emerald-600  mb-4">
                   {feature.icon}
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                <h3 className="text-lg font-bold text-gray-900  mb-2">
                   {feature.title}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-gray-600 ">
                   {feature.description}
                 </p>
               </motion.div>
@@ -796,14 +796,14 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <div className="inline-flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-4 py-2 rounded-full mb-4">
+            <div className="inline-flex items-center gap-2 bg-emerald-100  text-emerald-700  px-4 py-2 rounded-full mb-4">
               <Recycle className="w-5 h-5" />
               <span className="font-semibold">For Waste Owners</span>
             </div>
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900  mb-4">
               Schedule a Pickup in 4 Easy Steps
             </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-600  max-w-2xl mx-auto">
               From request to collection, we&apos;ve made the process seamless and transparent.
             </p>
           </motion.div>
@@ -849,15 +849,15 @@ export default function HomePage() {
                   <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-bold text-xl shadow-lg">
                     3
                   </div>
-                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
-                    <Navigation className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 ">
+                    <Navigation className="w-6 h-6 text-emerald-600 " />
                   </div>
                 </div>
                 <motion.div variants={fadeInUp}>
-                  <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                  <h3 className="text-2xl lg:text-3xl font-bold text-gray-900  mb-3">
                     Track Your Collector in Real-Time
                   </h3>
-                  <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 max-w-2xl">
+                  <p className="text-lg text-gray-600  mb-8 max-w-2xl">
                     Watch as your assigned collector makes their way to you. Know exactly when they&apos;ll arrive with live GPS tracking.
                   </p>
                 </motion.div>
@@ -872,10 +872,10 @@ export default function HomePage() {
                     <motion.li
                       key={index}
                       variants={fadeInUp}
-                      className="flex items-center gap-3 bg-white dark:bg-gray-800/50 rounded-xl p-4 shadow-sm"
+                      className="flex items-center gap-3 bg-white  rounded-xl p-4 shadow-sm"
                     >
                       <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                      <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                      <span className="text-gray-700 ">{feature}</span>
                     </motion.li>
                   ))}
                 </motion.ul>
@@ -889,15 +889,15 @@ export default function HomePage() {
                   <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-bold text-xl shadow-lg">
                     4
                   </div>
-                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
-                    <CreditCard className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 ">
+                    <CreditCard className="w-6 h-6 text-emerald-600 " />
                   </div>
                 </div>
                 <motion.div variants={fadeInUp}>
-                  <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                  <h3 className="text-2xl lg:text-3xl font-bold text-gray-900  mb-3">
                     Pay Securely with Wave
                   </h3>
-                  <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 max-w-2xl">
+                  <p className="text-lg text-gray-600  mb-8 max-w-2xl">
                     No cash needed. Pay instantly through Wave mobile money – the most trusted payment method in The Gambia.
                   </p>
                 </motion.div>
@@ -939,13 +939,13 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-gray-200 dark:border-gray-800">
+      <footer className="py-8 border-t border-gray-200 ">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500 ">
               © {new Date().getFullYear()} Mbalit. All rights reserved.
             </p>
-            <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-6 text-sm text-gray-500 ">
               <Link href="/auth" className="hover:text-emerald-500 transition-colors">
                 Login
               </Link>

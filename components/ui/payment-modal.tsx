@@ -142,13 +142,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
-                    className="relative w-full max-w-md mx-4 bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden"
+                    className="relative w-full max-w-md mx-4 bg-white  rounded-3xl shadow-2xl overflow-hidden"
                 >
                     {/* Close button */}
                     {status !== 'processing' && status !== 'success' && (
                         <button
                             onClick={onClose}
-                            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors z-10"
+                            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100  transition-colors z-10"
                         >
                             <X className="w-5 h-5 text-gray-500" />
                         </button>
@@ -165,7 +165,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                             <motion.path
                                 d="M0,100 C280,180 720,20 1440,100 L1440,200 L0,200 Z"
                                 fill="white"
-                                className="dark:fill-gray-900"
+                                className=""
                                 animate={{
                                     d: [
                                         "M0,100 C280,180 720,20 1440,100 L1440,200 L0,200 Z",
@@ -219,14 +219,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     <div className="p-6">
                         {status === 'pending' && (
                             <div className="text-center">
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                                <h2 className="text-2xl font-bold text-gray-900  mb-2">
                                     Complete Payment
                                 </h2>
-                                <p className="text-gray-500 dark:text-gray-400 mb-6">
+                                <p className="text-gray-500  mb-6">
                                     Pay {currency} {amount.toLocaleString()} to confirm your pickup
                                 </p>
 
-                                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 mb-6">
+                                <div className="bg-gray-50  rounded-xl p-4 mb-6">
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-gray-500">Amount</span>
                                         <span className="text-2xl font-bold text-emerald-600">
@@ -237,12 +237,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
                                 {/* Payment Methods Grid */}
                                 <div className="mb-6">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                    <p className="text-sm text-gray-500  mb-3">
                                         Supported Payment Methods
                                     </p>
                                     <div className="grid grid-cols-3 gap-3">
                                         {/* Wave */}
-                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center">
+                                        <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
                                             <img
                                                 src="/wave.png"
                                                 alt="Wave"
@@ -252,7 +252,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                         </div>
 
                                         {/* AfriMoney */}
-                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center">
+                                        <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
                                             <img
                                                 src="/afrimoneylogo.png"
                                                 alt="AfriMoney"
@@ -262,7 +262,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                         </div>
 
                                         {/* QMoney */}
-                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center">
+                                        <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
                                             <img
                                                 src="/qmoneylogo.png"
                                                 alt="QMoney"
@@ -272,7 +272,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                         </div>
 
                                         {/* Yonna Wallet */}
-                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center">
+                                        <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
                                             <img
                                                 src="/yonnawalletlogo.png"
                                                 alt="Yonna Wallet"
@@ -282,7 +282,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                         </div>
 
                                         {/* ASP */}
-                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center">
+                                        <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
                                             <img
                                                 src="/asplogo.svg"
                                                 alt="ASP"
@@ -311,10 +311,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
                         {status === 'processing' && (
                             <div className="text-center py-4">
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                                <h2 className="text-2xl font-bold text-gray-900  mb-2">
                                     Processing Payment
                                 </h2>
-                                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                                <p className="text-gray-500  mb-4">
                                     Please complete payment in the popup window
                                 </p>
                                 <div className="flex items-center justify-center gap-2 text-sm text-emerald-600">
@@ -338,11 +338,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                 <motion.h2
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="text-2xl font-bold text-gray-900 dark:text-white mb-2"
+                                    className="text-2xl font-bold text-gray-900  mb-2"
                                 >
                                     Payment Successful! 🎉
                                 </motion.h2>
-                                <p className="text-gray-500 dark:text-gray-400">
+                                <p className="text-gray-500 ">
                                     Redirecting to tracking page...
                                 </p>
                             </div>
@@ -350,10 +350,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
                         {status === 'failed' && (
                             <div className="text-center py-4">
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                                <h2 className="text-2xl font-bold text-gray-900  mb-2">
                                     Payment Failed
                                 </h2>
-                                <p className="text-gray-500 dark:text-gray-400 mb-6">
+                                <p className="text-gray-500  mb-6">
                                     Something went wrong. Please try again.
                                 </p>
                                 <div className="flex gap-3">

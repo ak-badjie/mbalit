@@ -80,7 +80,7 @@ export const TrackOrderModal: React.FC<TrackOrderModalProps> = ({ isOpen, onClos
                     initial={{ scale: 0.9, opacity: 0, y: 20 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                    className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden"
+                    className="relative w-full max-w-md bg-white  rounded-3xl shadow-2xl overflow-hidden"
                 >
                     {/* Header */}
                     <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-6 text-white">
@@ -105,7 +105,7 @@ export const TrackOrderModal: React.FC<TrackOrderModalProps> = ({ isOpen, onClos
                     <div className="p-6">
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <label className="block text-sm font-medium text-gray-700  mb-2">
                                     Email Address
                                 </label>
                                 <div className="relative">
@@ -120,7 +120,7 @@ export const TrackOrderModal: React.FC<TrackOrderModalProps> = ({ isOpen, onClos
                                         }}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                         placeholder="your@email.com"
-                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200  bg-gray-50  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                     />
                                 </div>
                             </div>
@@ -140,9 +140,9 @@ export const TrackOrderModal: React.FC<TrackOrderModalProps> = ({ isOpen, onClos
                                 <motion.div
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800"
+                                    className="p-4 bg-amber-50  rounded-xl border border-amber-200 "
                                 >
-                                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                                    <p className="text-sm text-amber-700 ">
                                         No active orders found for this email. If you just placed an order, please wait a moment and try again.
                                     </p>
                                 </motion.div>

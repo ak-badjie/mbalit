@@ -120,7 +120,7 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
                     initial={{ y: 100, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 100, opacity: 0 }}
-                    className="w-full max-w-md bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden"
+                    className="w-full max-w-md bg-white  rounded-3xl shadow-2xl overflow-hidden"
                 >
                     {/* Header */}
                     <div className="relative bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-5 text-white">
@@ -142,14 +142,14 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
                             <motion.div
                                 initial={{ scale: 0.95, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
-                                className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-800"
+                                className="flex items-center gap-3 p-4 bg-amber-50  rounded-2xl border border-amber-200 "
                             >
                                 <Loader2 className="w-5 h-5 text-amber-600 animate-spin" />
                                 <div>
-                                    <p className="font-medium text-amber-800 dark:text-amber-200">
+                                    <p className="font-medium text-amber-800 ">
                                         Waiting for collector
                                     </p>
-                                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                                    <p className="text-sm text-amber-600 ">
                                         Your offer of {formatPrice(currentOffer.totalAmount)} is pending
                                     </p>
                                 </div>
@@ -160,14 +160,14 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
                             <motion.div
                                 initial={{ scale: 0.95, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
-                                className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-200 dark:border-emerald-800"
+                                className="flex items-center gap-3 p-4 bg-emerald-50  rounded-2xl border border-emerald-200 "
                             >
                                 <Check className="w-6 h-6 text-emerald-600" />
                                 <div>
-                                    <p className="font-medium text-emerald-800 dark:text-emerald-200">
+                                    <p className="font-medium text-emerald-800 ">
                                         Payment Accepted! 🎉
                                     </p>
-                                    <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                                    <p className="text-sm text-emerald-600 ">
                                         Transaction complete. Thank you!
                                     </p>
                                 </div>
@@ -178,20 +178,20 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
                             <motion.div
                                 initial={{ scale: 0.95, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
-                                className="p-4 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-200 dark:border-red-800"
+                                className="p-4 bg-red-50  rounded-2xl border border-red-200 "
                             >
                                 <div className="flex items-center gap-3">
                                     <XCircle className="w-5 h-5 text-red-600" />
-                                    <p className="font-medium text-red-800 dark:text-red-200">
+                                    <p className="font-medium text-red-800 ">
                                         Offer Declined
                                     </p>
                                 </div>
                                 {currentOffer.rejectionReason && (
-                                    <p className="text-sm text-red-600 dark:text-red-400 mt-2">
+                                    <p className="text-sm text-red-600  mt-2">
                                         "{currentOffer.rejectionReason}"
                                     </p>
                                 )}
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                                <p className="text-sm text-gray-600  mt-2">
                                     Adjust your offer and try again.
                                 </p>
                             </motion.div>
@@ -201,9 +201,9 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
                         {(!currentOffer || currentOffer.status === 'rejected') && (
                             <>
                                 <div className="space-y-3">
-                                    <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                                    <div className="flex justify-between text-gray-600 ">
                                         <span>Service Fee</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="font-medium text-gray-900 ">
                                             {formatPrice(baseAmount)}
                                         </span>
                                     </div>
@@ -213,7 +213,7 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2">
                                         <Sparkles className="w-4 h-4 text-amber-500" />
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="font-medium text-gray-900 ">
                                             Add a tip (optional)
                                         </span>
                                     </div>
@@ -223,8 +223,8 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
                                                 key={preset}
                                                 onClick={() => setTipAmount(preset)}
                                                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${tipAmount === preset
-                                                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-                                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                                                    : 'bg-gray-100  text-gray-700  hover:bg-gray-200 '
                                                     }`}
                                             >
                                                 {preset === 0 ? 'No tip' : `D${preset}`}
@@ -233,16 +233,16 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
                                     </div>
 
                                     {/* Custom tip input */}
-                                    <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                                    <div className="flex items-center gap-2 p-2 bg-gray-50  rounded-xl">
                                         <button
                                             onClick={() => setTipAmount(Math.max(0, tipAmount - 25))}
-                                            className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center"
+                                            className="w-10 h-10 rounded-full bg-gray-200  flex items-center justify-center"
                                         >
                                             <Minus size={18} />
                                         </button>
                                         <div className="flex-1 text-center">
                                             <span className="text-sm text-gray-500">Custom tip</span>
-                                            <p className="text-xl font-bold text-gray-900 dark:text-white">
+                                            <p className="text-xl font-bold text-gray-900 ">
                                                 {formatPrice(tipAmount)}
                                             </p>
                                         </div>
@@ -256,9 +256,9 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
                                 </div>
 
                                 {/* Total */}
-                                <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-2xl">
+                                <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50   rounded-2xl">
                                     <div className="flex justify-between items-center">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                                        <span className="font-medium text-gray-700 ">
                                             Total Payment
                                         </span>
                                         <span className="text-2xl font-bold text-emerald-600">
@@ -385,7 +385,7 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
                     initial={{ y: 100, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 100, opacity: 0 }}
-                    className="w-full max-w-md bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden"
+                    className="w-full max-w-md bg-white  rounded-3xl shadow-2xl overflow-hidden"
                 >
                     {/* Header */}
                     <div className="relative bg-gradient-to-r from-purple-500 to-indigo-500 px-6 py-5 text-white">
@@ -412,10 +412,10 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
                             <>
                                 {/* Offer Details */}
                                 <div className="text-center space-y-2">
-                                    <p className="text-gray-500 dark:text-gray-400">
+                                    <p className="text-gray-500 ">
                                         Customer is offering
                                     </p>
-                                    <p className="text-4xl font-bold text-gray-900 dark:text-white">
+                                    <p className="text-4xl font-bold text-gray-900 ">
                                         {formatPrice(currentOffer.totalAmount)}
                                     </p>
                                     {currentOffer.tipAmount > 0 && (
@@ -426,10 +426,10 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
                                 </div>
 
                                 {/* Breakdown */}
-                                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl space-y-2">
+                                <div className="p-4 bg-gray-50  rounded-2xl space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-500">Base amount</span>
-                                        <span className="text-gray-900 dark:text-white">
+                                        <span className="text-gray-900 ">
                                             {formatPrice(currentOffer.baseAmount)}
                                         </span>
                                     </div>
@@ -441,8 +441,8 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
                                             </span>
                                         </div>
                                     )}
-                                    <div className="border-t border-gray-200 dark:border-gray-700 pt-2 flex justify-between">
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                    <div className="border-t border-gray-200  pt-2 flex justify-between">
+                                        <span className="font-medium text-gray-900 ">
                                             Your earnings (70%)
                                         </span>
                                         <span className="font-bold text-emerald-600">
@@ -478,14 +478,14 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
                         {currentOffer?.status === 'pending' && showRejectForm && (
                             <>
                                 <div className="space-y-3">
-                                    <p className="font-medium text-gray-900 dark:text-white">
+                                    <p className="font-medium text-gray-900 ">
                                         Why are you declining?
                                     </p>
                                     <textarea
                                         value={rejectionReason}
                                         onChange={(e) => setRejectionReason(e.target.value)}
                                         placeholder="e.g., Amount too low for the service"
-                                        className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 resize-none"
+                                        className="w-full p-3 rounded-xl border border-gray-200  bg-gray-50  resize-none"
                                         rows={3}
                                     />
                                 </div>
@@ -516,13 +516,13 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
                                 animate={{ scale: 1, opacity: 1 }}
                                 className="text-center py-6"
                             >
-                                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <div className="w-16 h-16 bg-emerald-100  rounded-full flex items-center justify-center mx-auto mb-4">
                                     <Check className="w-8 h-8 text-emerald-600" />
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                <h3 className="text-xl font-bold text-gray-900  mb-2">
                                     Payment Complete! 🎉
                                 </h3>
-                                <p className="text-gray-500 dark:text-gray-400">
+                                <p className="text-gray-500 ">
                                     {formatPrice(Math.round(currentOffer.totalAmount * 0.7))} added to your wallet
                                 </p>
                             </motion.div>
@@ -530,7 +530,7 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
 
                         {currentOffer?.status === 'rejected' && (
                             <div className="text-center py-6">
-                                <p className="text-gray-500 dark:text-gray-400">
+                                <p className="text-gray-500 ">
                                     Waiting for customer to send a new offer...
                                 </p>
                             </div>

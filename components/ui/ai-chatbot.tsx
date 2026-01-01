@@ -172,7 +172,7 @@ export const AIChatbot: React.FC = () => {
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        className="fixed bottom-20 right-4 z-50 w-[calc(100vw-2rem)] max-w-md h-[500px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-gray-700"
+                        className="fixed bottom-20 right-4 z-50 w-[calc(100vw-2rem)] max-w-md h-[500px] bg-white  rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-gray-200 "
                     >
                         {/* Header */}
                         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 flex items-center justify-between">
@@ -210,14 +210,14 @@ export const AIChatbot: React.FC = () => {
                                     <div
                                         className={`max-w-[80%] px-4 py-2 rounded-2xl ${message.role === 'user'
                                             ? 'bg-emerald-500 text-white rounded-br-md'
-                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md'
+                                            : 'bg-gray-100  text-gray-900  rounded-bl-md'
                                             }`}
                                     >
                                         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                                     </div>
                                     {message.role === 'user' && (
-                                        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                            <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                                        <div className="w-8 h-8 rounded-full bg-gray-200  flex items-center justify-center flex-shrink-0">
+                                            <User className="w-4 h-4 text-gray-600 " />
                                         </div>
                                     )}
                                 </motion.div>
@@ -228,7 +228,7 @@ export const AIChatbot: React.FC = () => {
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
                                         <Bot className="w-4 h-4 text-white" />
                                     </div>
-                                    <div className="bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-2xl rounded-bl-md">
+                                    <div className="bg-gray-100  px-4 py-3 rounded-2xl rounded-bl-md">
                                         <div className="flex gap-1">
                                             <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                                             <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -252,7 +252,7 @@ export const AIChatbot: React.FC = () => {
                                                 setInput(suggestion);
                                                 setTimeout(() => sendMessage(), 100);
                                             }}
-                                            className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                            className="px-3 py-1.5 text-xs bg-gray-100  text-gray-700  rounded-full hover:bg-gray-200  transition-colors"
                                         >
                                             {suggestion}
                                         </button>
@@ -262,7 +262,7 @@ export const AIChatbot: React.FC = () => {
                         )}
 
                         {/* Input */}
-                        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="p-4 border-t border-gray-200 ">
                             <div className="flex gap-2">
                                 <input
                                     ref={inputRef}
@@ -271,7 +271,7 @@ export const AIChatbot: React.FC = () => {
                                     onChange={(e) => setInput(e.target.value)}
                                     onKeyDown={handleKeyDown}
                                     placeholder="Ask about recycling..."
-                                    className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    className="flex-1 px-4 py-2 bg-gray-100  rounded-full text-gray-900  placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                 />
                                 <button
                                     onClick={sendMessage}

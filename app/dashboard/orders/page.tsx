@@ -47,11 +47,11 @@ const getWasteTypeInfo = (wasteTypeId: string) => {
 // Status badge
 const StatusBadge: React.FC<{ status: Order['status'] }> = ({ status }) => {
     const configs = {
-        pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', icon: Clock },
-        accepted: { label: 'Accepted', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', icon: CheckCircle },
-        in_progress: { label: 'In Progress', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', icon: Truck },
-        completed: { label: 'Completed', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: CheckCircle },
-        cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', icon: XCircle },
+        pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700  ', icon: Clock },
+        accepted: { label: 'Accepted', color: 'bg-blue-100 text-blue-700  ', icon: CheckCircle },
+        in_progress: { label: 'In Progress', color: 'bg-purple-100 text-purple-700  ', icon: Truck },
+        completed: { label: 'Completed', color: 'bg-emerald-100 text-emerald-700  ', icon: CheckCircle },
+        cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-700  ', icon: XCircle },
     };
 
     const config = configs[status];
@@ -79,7 +79,7 @@ const OrderCard: React.FC<{ order: Order; index: number }> = ({ order, index }) 
                 <Card variant="elevated" padding="md" className="hover:shadow-lg transition-shadow cursor-pointer">
                     <div className="flex items-start gap-4">
                         {/* Icon */}
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center text-2xl flex-shrink-0">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100   flex items-center justify-center text-2xl flex-shrink-0">
                             {wasteInfo.icon}
                         </div>
 
@@ -87,10 +87,10 @@ const OrderCard: React.FC<{ order: Order; index: number }> = ({ order, index }) 
                         <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
                                 <div>
-                                    <h3 className="font-bold text-gray-900 dark:text-white">
+                                    <h3 className="font-bold text-gray-900 ">
                                         {wasteInfo.name}
                                     </h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    <p className="text-sm text-gray-500 ">
                                         {order.wasteSize} • {formatPrice(order.amount)}
                                     </p>
                                 </div>
@@ -98,7 +98,7 @@ const OrderCard: React.FC<{ order: Order; index: number }> = ({ order, index }) 
                             </div>
 
                             {/* Location */}
-                            <div className="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                            <div className="mt-2 flex items-center gap-1 text-xs text-gray-500 ">
                                 <MapPin className="w-3 h-3" />
                                 <span className="truncate">{order.location.formattedAddress}</span>
                             </div>
@@ -110,7 +110,7 @@ const OrderCard: React.FC<{ order: Order; index: number }> = ({ order, index }) 
                                     {order.createdAt.toLocaleDateString()}
                                 </span>
                                 {order.collectorName && (
-                                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                    <span className="text-xs text-emerald-600  font-medium">
                                         {order.collectorName}
                                     </span>
                                 )}
@@ -162,17 +162,17 @@ export default function OrdersPage() {
     const totalSpent = orders.filter(o => o.status === 'completed').reduce((sum, o) => sum + o.amount, 0);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
+            <header className="sticky top-0 z-40 bg-white/80  backdrop-blur-xl border-b border-gray-200 ">
                 <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/dashboard">
-                            <button className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                                <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                            <button className="p-2 rounded-xl hover:bg-gray-100  transition-colors">
+                                <ArrowLeft className="w-5 h-5 text-gray-600 " />
                             </button>
                         </Link>
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white">My Orders</h1>
+                        <h1 className="text-xl font-bold text-gray-900 ">My Orders</h1>
                     </div>
                     <Button
                         variant="ghost"
@@ -193,7 +193,7 @@ export default function OrdersPage() {
                         <p className="text-xs text-gray-500">Active</p>
                     </Card>
                     <Card variant="default" padding="sm" className="text-center">
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{completedCount}</p>
+                        <p className="text-2xl font-bold text-gray-900 ">{completedCount}</p>
                         <p className="text-xs text-gray-500">Completed</p>
                     </Card>
                     <Card variant="default" padding="sm" className="text-center">
@@ -203,14 +203,14 @@ export default function OrdersPage() {
                 </div>
 
                 {/* Filter Tabs */}
-                <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                <div className="flex gap-2 p-1 bg-gray-100  rounded-xl">
                     {(['all', 'active', 'completed'] as const).map((f) => (
                         <button
                             key={f}
                             onClick={() => setFilter(f)}
                             className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${filter === f
-                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                ? 'bg-white  text-gray-900  shadow-sm'
+                                : 'text-gray-500  hover:text-gray-700 '
                                 }`}
                         >
                             {f === 'all' ? 'All' : f === 'active' ? 'Active' : 'History'}
@@ -225,11 +225,11 @@ export default function OrdersPage() {
                     </div>
                 ) : filteredOrders.length === 0 ? (
                     <div className="text-center py-12">
-                        <Package className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        <Package className="w-16 h-16 text-gray-300  mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900  mb-2">
                             No orders found
                         </h3>
-                        <p className="text-gray-500 dark:text-gray-400 mb-6">
+                        <p className="text-gray-500  mb-6">
                             {filter === 'all'
                                 ? "You haven't placed any orders yet"
                                 : filter === 'active'

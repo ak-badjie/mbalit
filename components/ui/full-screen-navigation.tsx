@@ -246,10 +246,10 @@ export function FullScreenNavigation({
                         <div className="w-10 h-1 bg-white/30 rounded-full" />
                     </div>
 
-                    <div className="bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl overflow-hidden">
+                    <div className="bg-white  rounded-t-3xl shadow-2xl overflow-hidden">
                         {/* Customer Info Header */}
                         <div
-                            className="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer"
+                            className="px-4 py-4 border-b border-gray-100  cursor-pointer"
                             onClick={() => setDetailsExpanded(!detailsExpanded)}
                         >
                             <div className="flex items-center justify-between">
@@ -258,7 +258,7 @@ export function FullScreenNavigation({
                                         {pickup.customerName.charAt(0).toUpperCase()}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white">
+                                        <h3 className="font-bold text-gray-900 ">
                                             {pickup.customerName}
                                         </h3>
                                         <p className="text-sm text-gray-500 flex items-center gap-1">
@@ -284,13 +284,13 @@ export function FullScreenNavigation({
                                     exit={{ height: 0, opacity: 0 }}
                                     className="overflow-hidden"
                                 >
-                                    <div className="px-4 py-4 space-y-4 border-b border-gray-100 dark:border-gray-800">
+                                    <div className="px-4 py-4 space-y-4 border-b border-gray-100 ">
                                         {/* Location */}
                                         <div className="flex items-start gap-3">
                                             <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
                                             <div>
                                                 <p className="text-sm text-gray-500">Pickup Location</p>
-                                                <p className="text-gray-900 dark:text-white">
+                                                <p className="text-gray-900 ">
                                                     {pickup.pickupLocation.formattedAddress || 'Location on map'}
                                                 </p>
                                             </div>
@@ -313,7 +313,7 @@ export function FullScreenNavigation({
                                                 <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5" />
                                                 <div>
                                                     <p className="text-sm text-gray-500">Customer Notes</p>
-                                                    <p className="text-gray-900 dark:text-white">
+                                                    <p className="text-gray-900 ">
                                                         {pickup.notes}
                                                     </p>
                                                 </div>
@@ -333,7 +333,7 @@ export function FullScreenNavigation({
                                     fullWidth
                                     onClick={handleCall}
                                     leftIcon={<Phone size={18} />}
-                                    className="border-gray-200 dark:border-gray-700"
+                                    className="border-gray-200 "
                                 >
                                     Call
                                 </Button>
@@ -342,7 +342,7 @@ export function FullScreenNavigation({
                                     fullWidth
                                     onClick={onMessage}
                                     leftIcon={<MessageCircle size={18} />}
-                                    className="border-gray-200 dark:border-gray-700"
+                                    className="border-gray-200 "
                                 >
                                     Message
                                 </Button>

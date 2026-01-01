@@ -107,25 +107,25 @@ export default function NotificationsPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50  flex items-center justify-center">
                 <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 pb-24">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50    pb-24">
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
+            <header className="sticky top-0 z-40 bg-white/80  backdrop-blur-xl border-b border-gray-200 ">
                 <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/collector/dashboard">
-                            <button className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                                <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                            <button className="p-2 rounded-xl hover:bg-gray-100  transition-colors">
+                                <ArrowLeft className="w-5 h-5 text-gray-600 " />
                             </button>
                         </Link>
                         <div>
-                            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Notifications</h1>
+                            <h1 className="text-xl font-bold text-gray-900 ">Notifications</h1>
                             {unreadCount > 0 && (
                                 <p className="text-xs text-gray-500">{unreadCount} unread</p>
                             )}
@@ -146,12 +146,12 @@ export default function NotificationsPage() {
 
             {/* Filter Tabs */}
             <div className="max-w-2xl mx-auto px-4 py-4">
-                <div className="flex gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                <div className="flex gap-2 bg-gray-100  p-1 rounded-xl">
                     <button
                         onClick={() => setFilter('all')}
                         className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${filter === 'all'
-                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                : 'text-gray-600 dark:text-gray-400'
+                            ? 'bg-white  text-gray-900  shadow-sm'
+                            : 'text-gray-600 '
                             }`}
                     >
                         All ({notifications.length})
@@ -159,8 +159,8 @@ export default function NotificationsPage() {
                     <button
                         onClick={() => setFilter('unread')}
                         className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${filter === 'unread'
-                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                : 'text-gray-600 dark:text-gray-400'
+                            ? 'bg-white  text-gray-900  shadow-sm'
+                            : 'text-gray-600 '
                             }`}
                     >
                         Unread ({unreadCount})
@@ -177,10 +177,10 @@ export default function NotificationsPage() {
                             animate={{ opacity: 1 }}
                             className="text-center py-16"
                         >
-                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100  flex items-center justify-center">
                                 <Bell className="w-8 h-8 text-gray-400" />
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900  mb-2">
                                 {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
                             </h3>
                             <p className="text-gray-500">
@@ -203,23 +203,23 @@ export default function NotificationsPage() {
                                         variant="default"
                                         padding="md"
                                         className={`cursor-pointer transition-all hover:shadow-md ${!notification.read
-                                                ? 'border-l-4 border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10'
-                                                : ''
+                                            ? 'border-l-4 border-l-emerald-500 bg-emerald-50/50 '
+                                            : ''
                                             }`}
                                         onClick={() => !notification.read && handleMarkAsRead(notification.id)}
                                     >
                                         <div className="flex items-start gap-4">
                                             <div className={`p-2 rounded-xl ${!notification.read
-                                                    ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                                                    : 'bg-gray-100 dark:bg-gray-800'
+                                                ? 'bg-emerald-100 '
+                                                : 'bg-gray-100 '
                                                 }`}>
                                                 {getNotificationIcon(notification.type)}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-start justify-between gap-2">
                                                     <h4 className={`font-medium ${!notification.read
-                                                            ? 'text-gray-900 dark:text-white'
-                                                            : 'text-gray-700 dark:text-gray-300'
+                                                        ? 'text-gray-900 '
+                                                        : 'text-gray-700 '
                                                         }`}>
                                                         {notification.title}
                                                     </h4>
@@ -227,7 +227,7 @@ export default function NotificationsPage() {
                                                         <span className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0 mt-2" />
                                                     )}
                                                 </div>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                <p className="text-sm text-gray-600  mt-1">
                                                     {notification.message}
                                                 </p>
                                                 <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">

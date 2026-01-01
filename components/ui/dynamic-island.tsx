@@ -177,7 +177,7 @@ export function DynamicIsland({
             }}
             className={`
         relative mx-auto overflow-hidden
-        bg-black dark:bg-gray-900
+        bg-black 
         rounded-[28px] shadow-2xl
         ${className}
       `}

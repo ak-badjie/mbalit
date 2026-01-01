@@ -47,14 +47,14 @@ const OnboardingSteps: React.FC<{ currentStep: number; totalSteps: number }> = (
                         scale: currentStep === i + 1 ? 1.1 : 1,
                         backgroundColor: i + 1 <= currentStep ? '#10b981' : '#e5e7eb',
                     }}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${i + 1 <= currentStep ? 'text-white' : 'text-gray-500 dark:text-gray-400'
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${i + 1 <= currentStep ? 'text-white' : 'text-gray-500 '
                         }`}
                 >
                     {i + 1 < currentStep ? <Check size={18} /> : i + 1}
                 </motion.div>
                 {i < totalSteps - 1 && (
                     <div
-                        className={`flex-1 h-1 rounded-full transition-colors ${i + 1 < currentStep ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'
+                        className={`flex-1 h-1 rounded-full transition-colors ${i + 1 < currentStep ? 'bg-emerald-500' : 'bg-gray-200 '
                             }`}
                     />
                 )}
@@ -92,7 +92,7 @@ const GoogleIcon = () => (
 export default function AuthPageWrapper() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
                 <div className="text-center">
                     <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-gray-500">Loading...</p>
@@ -407,7 +407,7 @@ function AuthPage() {
     // Role Selection Screen
     if (!selectedRole && mode === 'signup') {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50    flex items-center justify-center p-4">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -423,10 +423,10 @@ function AuthPage() {
                         >
                             <TruckLogo size="lg" showText={true} />
                         </motion.div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                        <h1 className="text-2xl font-bold text-gray-900  mb-2">
                             Join Mbalit
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400">
+                        <p className="text-gray-500 ">
                             How would you like to use Mbalit?
                         </p>
                     </div>
@@ -437,17 +437,17 @@ function AuthPage() {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => setSelectedRole('user')}
-                            className="w-full p-6 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-500 hover:shadow-lg transition-all text-left group"
+                            className="w-full p-6 rounded-2xl border-2 border-gray-200  bg-white  hover:border-emerald-500 hover:shadow-lg transition-all text-left group"
                         >
                             <div className="flex items-start gap-4">
-                                <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                                <div className="p-3 rounded-xl bg-emerald-100  text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
                                     <Users className="w-8 h-8" />
                                 </div>
                                 <div className="flex-1">
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                                    <h3 className="text-lg font-bold text-gray-900  mb-1">
                                         Waste Owner <span className="font-normal text-gray-500">(I want my waste collected)</span>
                                     </h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    <p className="text-sm text-gray-500 ">
                                         For individuals, businesses, and organizations with waste to collect
                                     </p>
                                 </div>
@@ -460,17 +460,17 @@ function AuthPage() {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => setSelectedRole('collector')}
-                            className="w-full p-6 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-500 hover:shadow-lg transition-all text-left group"
+                            className="w-full p-6 rounded-2xl border-2 border-gray-200  bg-white  hover:border-emerald-500 hover:shadow-lg transition-all text-left group"
                         >
                             <div className="flex items-start gap-4">
-                                <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                                <div className="p-3 rounded-xl bg-blue-100  text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition-colors">
                                     <Truck className="w-8 h-8" />
                                 </div>
                                 <div className="flex-1">
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                                    <h3 className="text-lg font-bold text-gray-900  mb-1">
                                         Waste Collector <span className="font-normal text-gray-500">(I want to collect waste)</span>
                                     </h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    <p className="text-sm text-gray-500 ">
                                         Become a collector and earn money by picking up waste in your area
                                     </p>
                                 </div>
@@ -483,7 +483,7 @@ function AuthPage() {
                     <div className="mt-6 text-center">
                         <button
                             onClick={() => setMode('login')}
-                            className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                            className="text-sm text-gray-500  hover:text-emerald-600 transition-colors"
                         >
                             Already have an account? <span className="font-medium">Login</span>
                         </button>
@@ -493,7 +493,7 @@ function AuthPage() {
                     <div className="mt-4 text-center">
                         <a
                             href="/"
-                            className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                            className="text-sm text-gray-500  hover:text-emerald-600 transition-colors"
                         >
                             ← Back to home
                         </a>
@@ -506,7 +506,7 @@ function AuthPage() {
     // Account Type Selection for Users
     if (selectedRole === 'user' && mode === 'signup' && !selectedAccountType) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50    flex items-center justify-center p-4">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -522,10 +522,10 @@ function AuthPage() {
                         >
                             <TruckLogo size="lg" showText={true} />
                         </motion.div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                        <h1 className="text-2xl font-bold text-gray-900  mb-2">
                             Select Account Type
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400">
+                        <p className="text-gray-500 ">
                             Choose the type of account that best fits your needs
                         </p>
                     </div>
@@ -537,17 +537,17 @@ function AuthPage() {
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setSelectedAccountType(type.id)}
-                                className="w-full p-5 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-500 hover:shadow-lg transition-all text-left group"
+                                className="w-full p-5 rounded-2xl border-2 border-gray-200  bg-white  hover:border-emerald-500 hover:shadow-lg transition-all text-left group"
                             >
                                 <div className="flex items-start gap-4">
-                                    <div className="p-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                                    <div className="p-3 rounded-xl bg-gray-100  text-gray-600  group-hover:bg-emerald-500 group-hover:text-white transition-colors">
                                         {type.icon}
                                     </div>
                                     <div className="flex-1">
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                                        <h3 className="text-lg font-bold text-gray-900  mb-1">
                                             {type.name}
                                         </h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        <p className="text-sm text-gray-500 ">
                                             {type.description}
                                         </p>
                                     </div>
@@ -561,7 +561,7 @@ function AuthPage() {
                     <div className="mt-6 text-center">
                         <button
                             onClick={() => setSelectedRole(null)}
-                            className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                            className="text-sm text-gray-500  hover:text-emerald-600 transition-colors"
                         >
                             ← Back to role selection
                         </button>
@@ -576,7 +576,7 @@ function AuthPage() {
         // User onboarding step 1: Name, Phone, Organization (if applicable)
         if (userOnboardingStep === 1) {
             return (
-                <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
+                <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50    flex items-center justify-center p-4">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -584,10 +584,10 @@ function AuthPage() {
                     >
                         <Card variant="elevated" padding="lg">
                             <div className="text-center mb-6">
-                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                <h1 className="text-2xl font-bold text-gray-900 ">
                                     Complete Your Profile
                                 </h1>
-                                <p className="text-gray-500 dark:text-gray-400 mt-1">
+                                <p className="text-gray-500  mt-1">
                                     {selectedAccountType === 'individual' ? 'Tell us about yourself' : 'Tell us about your organization'}
                                 </p>
                             </div>
@@ -609,9 +609,9 @@ function AuthPage() {
                                         <button
                                             type="button"
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                            className="absolute bottom-0 right-0 w-8 h-8 bg-white  rounded-full shadow-lg flex items-center justify-center border border-gray-200  hover:bg-gray-50  transition-colors"
                                         >
-                                            <Camera className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                                            <Camera className="w-4 h-4 text-gray-600 " />
                                         </button>
                                         <input
                                             ref={fileInputRef}
@@ -621,13 +621,13 @@ function AuthPage() {
                                             onChange={handleImageUpload}
                                         />
                                     </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                    <p className="text-sm text-gray-500  mt-2">
                                         {profileImage ? 'Tap to change photo' : 'Add a profile photo'}
                                     </p>
                                 </div>
                                 {/* Full Name / Contact Person */}
                                 <div className="space-y-1">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <label className="block text-sm font-medium text-gray-700 ">
                                         {selectedAccountType === 'individual' ? 'Full Name' : 'Contact Person'} *
                                     </label>
                                     <div className="relative">
@@ -638,7 +638,7 @@ function AuthPage() {
                                             onChange={(e) => setFullName(e.target.value)}
                                             placeholder="Enter your name"
                                             required
-                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                         />
                                     </div>
                                 </div>
@@ -646,7 +646,7 @@ function AuthPage() {
                                 {/* Organization Name (for business/corporate) */}
                                 {selectedAccountType !== 'individual' && (
                                     <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        <label className="block text-sm font-medium text-gray-700 ">
                                             {selectedAccountType === 'business' ? 'Business Name' : 'Organization Name'} *
                                         </label>
                                         <div className="relative">
@@ -657,7 +657,7 @@ function AuthPage() {
                                                 onChange={(e) => setOrganizationName(e.target.value)}
                                                 placeholder={selectedAccountType === 'business' ? 'Enter business name' : 'Enter organization name'}
                                                 required
-                                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                             />
                                         </div>
                                     </div>
@@ -665,7 +665,7 @@ function AuthPage() {
 
                                 {/* Phone Number */}
                                 <div className="space-y-1">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <label className="block text-sm font-medium text-gray-700 ">
                                         Phone Number *
                                     </label>
                                     <div className="relative">
@@ -676,7 +676,7 @@ function AuthPage() {
                                             onChange={(e) => setPhoneNumber(e.target.value)}
                                             placeholder="+220 123 4567"
                                             required
-                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                         />
                                     </div>
                                 </div>
@@ -686,7 +686,7 @@ function AuthPage() {
                                     <motion.div
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm"
+                                        className="p-3 rounded-lg bg-red-50  border border-red-200  text-red-600  text-sm"
                                     >
                                         {error}
                                     </motion.div>
@@ -721,7 +721,7 @@ function AuthPage() {
 
         // User email/password form
         return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50    flex items-center justify-center p-4">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -740,7 +740,7 @@ function AuthPage() {
                         <Badge variant="secondary" className="mb-2">
                             {ACCOUNT_TYPES.find(t => t.id === selectedAccountType)?.name} Account
                         </Badge>
-                        <p className="text-gray-500 dark:text-gray-400">
+                        <p className="text-gray-500 ">
                             Create your account to get started
                         </p>
                     </div>
@@ -749,7 +749,7 @@ function AuthPage() {
                         <form onSubmit={handleUserSignupStart} className="space-y-4">
                             {/* Email */}
                             <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="block text-sm font-medium text-gray-700 ">
                                     Email
                                 </label>
                                 <div className="relative">
@@ -760,14 +760,14 @@ function AuthPage() {
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="you@example.com"
                                         required
-                                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                     />
                                 </div>
                             </div>
 
                             {/* Password */}
                             <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="block text-sm font-medium text-gray-700 ">
                                     Password
                                 </label>
                                 <div className="relative">
@@ -779,7 +779,7 @@ function AuthPage() {
                                         placeholder="••••••••"
                                         required
                                         minLength={6}
-                                        className="w-full pl-10 pr-12 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                        className="w-full pl-10 pr-12 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                     />
                                     <button
                                         type="button"
@@ -796,7 +796,7 @@ function AuthPage() {
                                 <motion.div
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm"
+                                    className="p-3 rounded-lg bg-red-50  border border-red-200  text-red-600  text-sm"
                                 >
                                     {error}
                                 </motion.div>
@@ -819,10 +819,10 @@ function AuthPage() {
                         {/* Divider */}
                         <div className="relative my-6">
                             <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+                                <div className="w-full border-t border-gray-200 " />
                             </div>
                             <div className="relative flex justify-center text-sm">
-                                <span className="px-3 bg-white dark:bg-gray-800 text-gray-500">
+                                <span className="px-3 bg-white  text-gray-500">
                                     or continue with
                                 </span>
                             </div>
@@ -859,7 +859,7 @@ function AuthPage() {
                         <div className="mt-6 text-center">
                             <button
                                 onClick={() => setSelectedAccountType(null)}
-                                className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                                className="text-sm text-gray-500  hover:text-emerald-600 transition-colors"
                             >
                                 ← Change account type
                             </button>
@@ -873,7 +873,7 @@ function AuthPage() {
     // Auth form (login or collector signup initial step)
     if (onboardingStep === 0) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50    flex items-center justify-center p-4">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -889,14 +889,14 @@ function AuthPage() {
                         >
                             <TruckLogo size="lg" showText={true} />
                         </motion.div>
-                        <p className="text-gray-500 dark:text-gray-400">
+                        <p className="text-gray-500 ">
                             {mode === 'login' ? 'Welcome back!' : selectedRole === 'collector' ? 'Become a Waste Collector' : 'Create your account'}
                         </p>
                     </div>
 
                     <Card variant="elevated" padding="lg">
                         {/* Mode Tabs */}
-                        <div className="flex mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                        <div className="flex mb-6 bg-gray-100  rounded-lg p-1">
                             {(['login', 'signup'] as const).map((m) => (
                                 <button
                                     key={m}
@@ -907,8 +907,8 @@ function AuthPage() {
                                         }
                                     }}
                                     className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${mode === m
-                                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                        ? 'bg-white  text-gray-900  shadow-sm'
+                                        : 'text-gray-500  hover:text-gray-700'
                                         }`}
                                 >
                                     {m === 'login' ? 'Login' : 'Sign Up'}
@@ -919,7 +919,7 @@ function AuthPage() {
                         <form onSubmit={mode === 'login' ? handleLogin : handleSignupStart} className="space-y-4">
                             {/* Email */}
                             <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="block text-sm font-medium text-gray-700 ">
                                     Email
                                 </label>
                                 <div className="relative">
@@ -930,14 +930,14 @@ function AuthPage() {
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="you@example.com"
                                         required
-                                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                     />
                                 </div>
                             </div>
 
                             {/* Password */}
                             <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="block text-sm font-medium text-gray-700 ">
                                     Password
                                 </label>
                                 <div className="relative">
@@ -949,7 +949,7 @@ function AuthPage() {
                                         placeholder="••••••••"
                                         required
                                         minLength={6}
-                                        className="w-full pl-10 pr-12 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                        className="w-full pl-10 pr-12 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                     />
                                     <button
                                         type="button"
@@ -966,7 +966,7 @@ function AuthPage() {
                                 <motion.div
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm"
+                                    className="p-3 rounded-lg bg-red-50  border border-red-200  text-red-600  text-sm"
                                 >
                                     {error}
                                 </motion.div>
@@ -989,10 +989,10 @@ function AuthPage() {
                         {/* Divider */}
                         <div className="relative my-6">
                             <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+                                <div className="w-full border-t border-gray-200 " />
                             </div>
                             <div className="relative flex justify-center text-sm">
-                                <span className="px-3 bg-white dark:bg-gray-800 text-gray-500">
+                                <span className="px-3 bg-white  text-gray-500">
                                     or continue with
                                 </span>
                             </div>
@@ -1037,14 +1037,14 @@ function AuthPage() {
                             {selectedRole === 'collector' && mode === 'signup' ? (
                                 <button
                                     onClick={() => setSelectedRole(null)}
-                                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                                    className="text-sm text-gray-500  hover:text-emerald-600 transition-colors"
                                 >
                                     ← Back to role selection
                                 </button>
                             ) : (
                                 <a
                                     href="/"
-                                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+                                    className="text-sm text-gray-500  hover:text-emerald-600 transition-colors"
                                 >
                                     ← Back to home
                                 </a>
@@ -1058,7 +1058,7 @@ function AuthPage() {
 
     // Collector onboarding steps
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50    flex items-center justify-center p-4">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1066,10 +1066,10 @@ function AuthPage() {
             >
                 <Card variant="elevated" padding="lg">
                     <div className="text-center mb-6">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <h1 className="text-2xl font-bold text-gray-900 ">
                             Complete Your Profile
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-gray-500  mt-1">
                             Step {onboardingStep} of 4
                         </p>
                     </div>
@@ -1086,7 +1086,7 @@ function AuthPage() {
                                 exit={{ opacity: 0, x: -20 }}
                                 className="space-y-6"
                             >
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                <h2 className="text-lg font-semibold text-gray-900 ">
                                     Your Profile
                                 </h2>
 
@@ -1094,7 +1094,7 @@ function AuthPage() {
                                 <div className="flex flex-col items-center">
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="relative w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden hover:ring-4 hover:ring-emerald-500/50 transition-all"
+                                        className="relative w-24 h-24 rounded-full bg-gray-200  flex items-center justify-center overflow-hidden hover:ring-4 hover:ring-emerald-500/50 transition-all"
                                     >
                                         {profileImage ? (
                                             <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
@@ -1116,7 +1116,7 @@ function AuthPage() {
 
                                 {/* Full Name */}
                                 <div className="space-y-1">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <label className="block text-sm font-medium text-gray-700 ">
                                         Full Name *
                                     </label>
                                     <div className="relative">
@@ -1127,7 +1127,7 @@ function AuthPage() {
                                             onChange={(e) => setFullName(e.target.value)}
                                             placeholder="Amadou Bah"
                                             required
-                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                         />
                                     </div>
                                 </div>
@@ -1143,13 +1143,13 @@ function AuthPage() {
                                 exit={{ opacity: 0, x: -20 }}
                                 className="space-y-6"
                             >
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                <h2 className="text-lg font-semibold text-gray-900 ">
                                     Contact & Vehicle
                                 </h2>
 
                                 {/* Phone Number */}
                                 <div className="space-y-1">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <label className="block text-sm font-medium text-gray-700 ">
                                         Phone Number *
                                     </label>
                                     <div className="relative">
@@ -1160,14 +1160,14 @@ function AuthPage() {
                                             onChange={(e) => setPhoneNumber(e.target.value)}
                                             placeholder="+220 123 4567"
                                             required
-                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                         />
                                     </div>
                                 </div>
 
                                 {/* Car Size */}
                                 <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <label className="block text-sm font-medium text-gray-700 ">
                                         Vehicle Type *
                                     </label>
                                     <div className="grid grid-cols-2 gap-3">
@@ -1179,12 +1179,12 @@ function AuthPage() {
                                                 whileTap={{ scale: 0.98 }}
                                                 onClick={() => setCarSize(size.id)}
                                                 className={`p-4 rounded-xl border-2 text-left transition-all ${carSize === size.id
-                                                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                                    ? 'border-emerald-500 bg-emerald-50 '
+                                                    : 'border-gray-200  hover:border-gray-300'
                                                     }`}
                                             >
                                                 <span className="text-2xl">{size.icon}</span>
-                                                <h3 className="font-semibold text-sm text-gray-900 dark:text-white mt-1">
+                                                <h3 className="font-semibold text-sm text-gray-900  mt-1">
                                                     {size.name}
                                                 </h3>
                                                 <Badge variant="secondary" className="mt-1">{size.capacity}</Badge>
@@ -1204,7 +1204,7 @@ function AuthPage() {
                                 exit={{ opacity: 0, x: -20 }}
                                 className="space-y-6"
                             >
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                <h2 className="text-lg font-semibold text-gray-900 ">
                                     Waste Types You'll Collect
                                 </h2>
                                 <p className="text-sm text-gray-500">
@@ -1220,12 +1220,12 @@ function AuthPage() {
                                             whileTap={{ scale: 0.98 }}
                                             onClick={() => toggleWasteType(type.id)}
                                             className={`p-4 rounded-xl border-2 text-center transition-all ${selectedWasteTypes.includes(type.id)
-                                                ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                                ? 'border-emerald-500 bg-emerald-50 '
+                                                : 'border-gray-200  hover:border-gray-300'
                                                 }`}
                                         >
                                             <span className="text-2xl">{type.icon}</span>
-                                            <h3 className="font-semibold text-sm text-gray-900 dark:text-white mt-1">
+                                            <h3 className="font-semibold text-sm text-gray-900  mt-1">
                                                 {type.name}
                                             </h3>
                                         </motion.button>
@@ -1243,7 +1243,7 @@ function AuthPage() {
                                 exit={{ opacity: 0, x: -20 }}
                                 className="space-y-6"
                             >
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                <h2 className="text-lg font-semibold text-gray-900 ">
                                     Maximum Capacity
                                 </h2>
                                 <p className="text-sm text-gray-500">
@@ -1254,7 +1254,7 @@ function AuthPage() {
                                     <div className="flex items-center justify-center gap-4">
                                         <Scale className="w-8 h-8 text-emerald-500" />
                                         <div className="text-center">
-                                            <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                                            <span className="text-4xl font-bold text-gray-900 ">
                                                 {maxCapacity}
                                             </span>
                                             <span className="text-xl text-gray-500 ml-1">kg</span>
@@ -1285,7 +1285,7 @@ function AuthPage() {
                         <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm"
+                            className="mt-4 p-3 rounded-lg bg-red-50  border border-red-200  text-red-600  text-sm"
                         >
                             {error}
                         </motion.div>

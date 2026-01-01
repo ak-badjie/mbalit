@@ -22,13 +22,13 @@ const NavLink = ({ href, icon: Icon, children, onClick }: {
 }) => (
     <Link href={href} onClick={onClick}>
         <motion.div
-            className="group relative flex items-center gap-2 px-4 py-2 rounded-xl text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+            className="group relative flex items-center gap-2 px-4 py-2 rounded-xl text-gray-600  hover:text-emerald-600  transition-colors"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
         >
             {/* Animated background on hover */}
             <motion.div
-                className="absolute inset-0 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute inset-0 bg-emerald-50  rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
                 layoutId="navBackground"
             />
             <Icon className="w-4 h-4 relative z-10 group-hover:text-emerald-500 transition-colors" />
@@ -80,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
                 />
 
                 {/* Main header with enhanced frosted glass */}
-                <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl backdrop-saturate-200 border-b border-white/30 dark:border-gray-700/30 shadow-xl shadow-black/5">
+                <div className="bg-white/60  backdrop-blur-2xl backdrop-saturate-200 border-b border-white/30  shadow-xl shadow-black/5">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex items-center justify-between h-16">
                             {/* Logo with hover animation */}
@@ -111,11 +111,11 @@ export const Header: React.FC<HeaderProps> = ({
                                         {/* User Avatar/Dashboard */}
                                         <Link href="/collector/dashboard">
                                             <motion.div
-                                                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-200 dark:border-emerald-800 rounded-full hover:from-emerald-500/20 hover:to-teal-500/20 transition-all"
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-200  rounded-full hover:from-emerald-500/20 hover:to-teal-500/20 transition-all"
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
-                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden ring-2 ring-white dark:ring-gray-800">
+                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden ring-2 ring-white ">
                                                     {user?.profileImage ? (
                                                         <img
                                                             src={user.profileImage}
@@ -126,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
                                                         userName?.charAt(0).toUpperCase() || 'U'
                                                     )}
                                                 </div>
-                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                <span className="text-sm font-medium text-gray-700 ">
                                                     {userName || 'Dashboard'}
                                                 </span>
                                             </motion.div>
@@ -135,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
                                         {/* Logout Button */}
                                         <motion.button
                                             onClick={handleLogout}
-                                            className="p-2 rounded-xl text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                            className="p-2 rounded-xl text-gray-500 hover:text-red-500 hover:bg-red-50  transition-colors"
                                             whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.9 }}
                                             title="Logout"

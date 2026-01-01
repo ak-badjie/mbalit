@@ -277,7 +277,7 @@ export const MapView: React.FC<MapViewProps> = ({
         <motion.div
             layout
             className={`
-        relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800
+        relative rounded-2xl overflow-hidden bg-gray-100 
         ${isFullscreen ? 'fixed inset-4 z-50' : ''}
         ${className}
       `}
@@ -285,7 +285,7 @@ export const MapView: React.FC<MapViewProps> = ({
         >
             {/* Loading State */}
             {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100  z-10">
                     <div className="flex flex-col items-center gap-3">
                         <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
                         <p className="text-sm text-gray-500">Loading map...</p>
@@ -295,10 +295,10 @@ export const MapView: React.FC<MapViewProps> = ({
 
             {/* Error State */}
             {error && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100  z-10">
                     <div className="text-center p-6">
                         <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-gray-600 dark:text-gray-300">{error}</p>
+                        <p className="text-gray-600 ">{error}</p>
                     </div>
                 </div>
             )}
@@ -312,7 +312,7 @@ export const MapView: React.FC<MapViewProps> = ({
                     variant="secondary"
                     size="sm"
                     onClick={handleCenterOnUser}
-                    className="shadow-lg bg-white dark:bg-gray-800"
+                    className="shadow-lg bg-white "
                 >
                     <Navigation size={18} />
                 </Button>
@@ -327,7 +327,7 @@ export const MapView: React.FC<MapViewProps> = ({
                             );
                         }
                     }}
-                    className="shadow-lg bg-white dark:bg-gray-800"
+                    className="shadow-lg bg-white "
                     title={isSatellite ? 'Switch to Map' : 'Switch to Satellite'}
                 >
                     <Layers size={18} />
@@ -336,7 +336,7 @@ export const MapView: React.FC<MapViewProps> = ({
                     variant="secondary"
                     size="sm"
                     onClick={toggleFullscreen}
-                    className="shadow-lg bg-white dark:bg-gray-800"
+                    className="shadow-lg bg-white "
                 >
                     {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                 </Button>
@@ -347,18 +347,18 @@ export const MapView: React.FC<MapViewProps> = ({
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="absolute bottom-4 left-4 right-4 bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg"
+                    className="absolute bottom-4 left-4 right-4 bg-white  rounded-xl p-4 shadow-lg"
                 >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Collector arriving</p>
-                            <p className="text-lg font-bold text-gray-900 dark:text-white">
+                            <p className="text-sm text-gray-500 ">Collector arriving</p>
+                            <p className="text-lg font-bold text-gray-900 ">
                                 {eta}
                             </p>
                         </div>
                         <div className="text-right">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Distance</p>
-                            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                            <p className="text-sm text-gray-500 ">Distance</p>
+                            <p className="text-lg font-bold text-emerald-600 ">
                                 {distance}
                             </p>
                         </div>

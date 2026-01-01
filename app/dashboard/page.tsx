@@ -70,14 +70,14 @@ const StepIndicator: React.FC<{ currentStep: number; totalSteps: number }> = ({
                         scale: currentStep === i + 1 ? 1.1 : 1,
                         backgroundColor: i + 1 <= currentStep ? '#10b981' : '#e5e7eb',
                     }}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${i + 1 <= currentStep ? 'text-white' : 'text-gray-500 dark:text-gray-400'
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${i + 1 <= currentStep ? 'text-white' : 'text-gray-500 '
                         }`}
                 >
                     {i + 1 < currentStep ? <Check size={14} /> : i + 1}
                 </motion.div>
                 {i < totalSteps - 1 && (
                     <div
-                        className={`flex-1 h-1 rounded-full transition-colors ${i + 1 < currentStep ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'
+                        className={`flex-1 h-1 rounded-full transition-colors ${i + 1 < currentStep ? 'bg-emerald-500' : 'bg-gray-200 '
                             }`}
                     />
                 )}
@@ -112,12 +112,12 @@ const QuickActionButton: React.FC<{
         onClick={onClick}
         className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all ${variant === 'primary'
             ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 shadow-sm border border-gray-100 dark:border-gray-700'
+            : 'bg-white  text-gray-700  shadow-sm border border-gray-100 '
             }`}
     >
         <div className={`p-3 rounded-xl ${variant === 'primary'
             ? 'bg-white/20'
-            : 'bg-gray-100 dark:bg-gray-700'
+            : 'bg-gray-100 '
             }`}>
             {icon}
         </div>
@@ -136,15 +136,15 @@ const MenuItem: React.FC<{
     <motion.button
         whileTap={{ scale: 0.98 }}
         onClick={onClick}
-        className="w-full flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-left"
+        className="w-full flex items-center gap-4 p-4 bg-white  rounded-2xl shadow-sm border border-gray-100  text-left"
     >
-        <div className="p-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+        <div className="p-3 rounded-xl bg-gray-100  text-gray-600 ">
             {icon}
         </div>
         <div className="flex-1">
-            <h3 className="font-medium text-gray-900 dark:text-white">{label}</h3>
+            <h3 className="font-medium text-gray-900 ">{label}</h3>
             {description && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
+                <p className="text-sm text-gray-500 ">{description}</p>
             )}
         </div>
         {badge && (
@@ -299,16 +299,16 @@ function DashboardContent() {
                 {/* Mobile Header */}
                 <div className="flex items-center justify-between mb-6 md:hidden">
                     <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Good morning,</p>
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                        <p className="text-sm text-gray-500 ">Good morning,</p>
+                        <h1 className="text-xl font-bold text-gray-900 ">
                             {user?.name?.split(' ')[0] || 'User'}
                         </h1>
                     </div>
                     <motion.button
                         whileTap={{ scale: 0.95 }}
-                        className="relative p-3 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700"
+                        className="relative p-3 rounded-full bg-white  shadow-sm border border-gray-100 "
                     >
-                        <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                        <Bell className="w-5 h-5 text-gray-600 " />
                         <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full" />
                     </motion.button>
                 </div>
@@ -367,7 +367,7 @@ function DashboardContent() {
                     transition={{ delay: 0.1 }}
                     className="mb-6"
                 >
-                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                    <h3 className="text-sm font-semibold text-gray-500  uppercase tracking-wider mb-3">
                         Quick Actions
                     </h3>
                     <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
@@ -378,17 +378,17 @@ function DashboardContent() {
                             variant="primary"
                         />
                         <QuickActionButton
-                            icon={<History className="w-6 h-6 text-gray-600 dark:text-gray-300" />}
+                            icon={<History className="w-6 h-6 text-gray-600 " />}
                             label="History"
                             onClick={() => { }}
                         />
                         <QuickActionButton
-                            icon={<MapPin className="w-6 h-6 text-gray-600 dark:text-gray-300" />}
+                            icon={<MapPin className="w-6 h-6 text-gray-600 " />}
                             label="Locations"
                             onClick={() => { }}
                         />
                         <QuickActionButton
-                            icon={<Settings className="w-6 h-6 text-gray-600 dark:text-gray-300" />}
+                            icon={<Settings className="w-6 h-6 text-gray-600 " />}
                             label="Settings"
                             onClick={() => { }}
                         />
@@ -402,7 +402,7 @@ function DashboardContent() {
                     transition={{ delay: 0.2 }}
                     className="space-y-3"
                 >
-                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                    <h3 className="text-sm font-semibold text-gray-500  uppercase tracking-wider mb-3">
                         Account
                     </h3>
 
@@ -469,10 +469,10 @@ function DashboardContent() {
                     animate={{ opacity: 1, y: 0 }}
                 >
                     <div className="mb-6">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                        <h1 className="text-2xl font-bold text-gray-900  mb-2">
                             What type of waste?
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400">
+                        <p className="text-gray-500 ">
                             Select the type of waste for pickup
                         </p>
                     </div>
@@ -489,13 +489,13 @@ function DashboardContent() {
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setSelectedWasteType(type.id)}
                                 className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${selectedWasteType === type.id
-                                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                                    : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800'
+                                    ? 'border-emerald-500 bg-emerald-50 '
+                                    : 'border-gray-100  bg-white '
                                     }`}
                             >
                                 <span className="text-3xl">{type.icon}</span>
                                 <div className="flex-1 text-left">
-                                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                                    <h3 className="font-semibold text-gray-900 ">
                                         {type.name}
                                     </h3>
                                 </div>
@@ -540,11 +540,11 @@ function DashboardContent() {
                     <div className="mb-6">
                         <div className="flex items-center gap-2 mb-2">
                             <span className="text-2xl">{selectedWasteInfo?.icon}</span>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                            <h1 className="text-2xl font-bold text-gray-900 ">
                                 How much waste?
                             </h1>
                         </div>
-                        <p className="text-gray-500 dark:text-gray-400">
+                        <p className="text-gray-500 ">
                             Select the number of containers
                         </p>
                     </div>
@@ -553,20 +553,20 @@ function DashboardContent() {
 
                     <div className="space-y-4">
                         {/* Small Bucket Selector */}
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border-2 border-gray-100 dark:border-gray-700">
+                        <div className="bg-white  rounded-2xl p-5 border-2 border-gray-100 ">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3">
                                     <span className="text-3xl">🪣</span>
                                     <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white">
+                                        <h3 className="font-bold text-gray-900 ">
                                             Small Bucket
                                         </h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        <p className="text-sm text-gray-500 ">
                                             ~10 liters capacity
                                         </p>
                                     </div>
                                 </div>
-                                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                                <Badge className="bg-emerald-100 text-emerald-700  ">
                                     D25 each
                                 </Badge>
                             </div>
@@ -575,11 +575,11 @@ function DashboardContent() {
                                     whileTap={{ scale: 0.9 }}
                                     onClick={() => setBucketCount(Math.max(0, bucketCount - 1))}
                                     disabled={bucketCount === 0}
-                                    className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xl font-bold text-gray-600 dark:text-gray-300 disabled:opacity-40"
+                                    className="w-12 h-12 rounded-full bg-gray-100  flex items-center justify-center text-xl font-bold text-gray-600  disabled:opacity-40"
                                 >
                                     −
                                 </motion.button>
-                                <span className="text-3xl font-bold text-gray-900 dark:text-white w-16 text-center">
+                                <span className="text-3xl font-bold text-gray-900  w-16 text-center">
                                     {bucketCount}
                                 </span>
                                 <motion.button
@@ -598,20 +598,20 @@ function DashboardContent() {
                         </div>
 
                         {/* Large Trash Bin Selector */}
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border-2 border-gray-100 dark:border-gray-700">
+                        <div className="bg-white  rounded-2xl p-5 border-2 border-gray-100 ">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3">
                                     <span className="text-3xl">🗑️</span>
                                     <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white">
+                                        <h3 className="font-bold text-gray-900 ">
                                             Large Trash Bin
                                         </h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        <p className="text-sm text-gray-500 ">
                                             ~200 liters capacity
                                         </p>
                                     </div>
                                 </div>
-                                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                                <Badge className="bg-emerald-100 text-emerald-700  ">
                                     D500 each
                                 </Badge>
                             </div>
@@ -620,11 +620,11 @@ function DashboardContent() {
                                     whileTap={{ scale: 0.9 }}
                                     onClick={() => setLargeBinCount(Math.max(0, largeBinCount - 1))}
                                     disabled={largeBinCount === 0}
-                                    className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xl font-bold text-gray-600 dark:text-gray-300 disabled:opacity-40"
+                                    className="w-12 h-12 rounded-full bg-gray-100  flex items-center justify-center text-xl font-bold text-gray-600  disabled:opacity-40"
                                 >
                                     −
                                 </motion.button>
-                                <span className="text-3xl font-bold text-gray-900 dark:text-white w-16 text-center">
+                                <span className="text-3xl font-bold text-gray-900  w-16 text-center">
                                     {largeBinCount}
                                 </span>
                                 <motion.button
@@ -696,10 +696,10 @@ function DashboardContent() {
                     animate={{ opacity: 1, x: 0 }}
                 >
                     <div className="mb-6">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                        <h1 className="text-2xl font-bold text-gray-900  mb-2">
                             Pickup Location
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400">
+                        <p className="text-gray-500 ">
                             Where should we collect?
                         </p>
                     </div>
@@ -708,11 +708,11 @@ function DashboardContent() {
 
                     <div className="space-y-4">
                         {/* Plus Code Instructions */}
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-4 border border-blue-100 dark:border-blue-800">
-                            <h3 className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50   rounded-2xl p-4 border border-blue-100 ">
+                            <h3 className="font-bold text-gray-900  mb-2 flex items-center gap-2">
                                 📍 How to find your Plus Code
                             </h3>
-                            <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2 mb-4">
+                            <ol className="text-sm text-gray-600  space-y-2 mb-4">
                                 <li className="flex items-start gap-2">
                                     <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center font-bold">1</span>
                                     <span>Go to the <strong>front of your gate</strong> or entrance</span>
@@ -728,19 +728,19 @@ function DashboardContent() {
                             </ol>
 
                             {/* Plus Code Example Image */}
-                            <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700">
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">Look for something like this on your wall:</p>
+                            <div className="bg-white  rounded-xl p-3 border border-gray-200 ">
+                                <p className="text-xs text-gray-500  mb-2 font-medium">Look for something like this on your wall:</p>
                                 <img
                                     src="/google_plus_code_sample.webp"
                                     alt="Google Plus Code sign example on a wall or fence"
-                                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600"
+                                    className="w-full rounded-lg border border-gray-200 "
                                 />
                             </div>
                         </div>
 
                         {/* Plus Code Input */}
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <div className="bg-white  rounded-2xl p-4 border border-gray-100 ">
+                            <label className="block text-sm font-medium text-gray-700  mb-2">
                                 Enter your Google Plus Code
                             </label>
                             <div className="flex gap-2">
@@ -755,7 +755,7 @@ function DashboardContent() {
                                             }
                                         }}
                                         placeholder="e.g., 4HMQ+3C Banjul"
-                                        className={`w-full px-4 py-3 rounded-xl border ${plusCodeError ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'} bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                                        className={`w-full px-4 py-3 rounded-xl border ${plusCodeError ? 'border-red-500' : 'border-gray-200 '} bg-gray-50  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
                                     />
                                     {isGeocodingPlusCode && (
                                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -782,7 +782,7 @@ function DashboardContent() {
                         </div>
 
                         {/* Map */}
-                        <div className="rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700">
+                        <div className="rounded-2xl overflow-hidden border border-gray-100 ">
                             <ProfileLocationMap
                                 location={location || undefined}
                                 onLocationChange={(loc) => setLocation(loc)}
@@ -796,34 +796,34 @@ function DashboardContent() {
                             <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4 border border-emerald-200 dark:border-emerald-800"
+                                className="bg-emerald-50  rounded-2xl p-4 border border-emerald-200 "
                             >
                                 <div className="flex items-center gap-2 mb-1">
                                     <MapPin className="w-4 h-4 text-emerald-600" />
-                                    <span className="font-medium text-emerald-800 dark:text-emerald-300 text-sm">Location Set</span>
+                                    <span className="font-medium text-emerald-800  text-sm">Location Set</span>
                                 </div>
-                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                <p className="text-xs text-gray-600 ">
                                     {location.formattedAddress || `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`}
                                 </p>
                             </motion.div>
                         )}
 
                         {/* Order Summary */}
-                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4">
-                            <h3 className="font-bold text-gray-900 dark:text-white mb-3">
+                        <div className="bg-gray-50  rounded-2xl p-4">
+                            <h3 className="font-bold text-gray-900  mb-3">
                                 Summary
                             </h3>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-gray-500">Type</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">
+                                    <span className="font-medium text-gray-900 ">
                                         {selectedWasteInfo?.icon} {selectedWasteInfo?.name}
                                     </span>
                                 </div>
                                 {bucketCount > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-gray-500">Buckets</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="font-medium text-gray-900 ">
                                             {bucketCount} × D25 = {formatPrice(bucketCount * 25)}
                                         </span>
                                     </div>
@@ -831,14 +831,14 @@ function DashboardContent() {
                                 {largeBinCount > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-gray-500">Large Bins</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="font-medium text-gray-900 ">
                                             {largeBinCount} × D500 = {formatPrice(largeBinCount * 500)}
                                         </span>
                                     </div>
                                 )}
-                                <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
+                                <div className="border-t border-gray-200  pt-2 mt-2">
                                     <div className="flex justify-between items-center">
-                                        <span className="font-bold text-gray-900 dark:text-white">Total</span>
+                                        <span className="font-bold text-gray-900 ">Total</span>
                                         <span className="text-xl font-bold text-emerald-600">
                                             {estimatedPrice ? formatPrice(estimatedPrice) : '---'}
                                         </span>

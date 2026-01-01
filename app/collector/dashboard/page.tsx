@@ -329,14 +329,14 @@ function DashboardContent() {
             <header className="hidden md:block fixed top-0 left-0 right-0 z-40">
                 {/* Gradient accent line */}
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-400" />
-                <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl backdrop-saturate-200 border-b border-white/30 dark:border-gray-700/30 shadow-xl shadow-black/5">
+                <div className="bg-white/60  backdrop-blur-2xl backdrop-saturate-200 border-b border-white/30  shadow-xl shadow-black/5">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex items-center justify-between h-16">
                             {/* Left Side - Profile or Logo */}
                             {isAuthenticated ? (
                                 <Link href="/collector/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                                     {/* Profile Image or Initials */}
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold shadow-lg overflow-hidden ring-2 ring-white dark:ring-gray-800">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold shadow-lg overflow-hidden ring-2 ring-white ">
                                         {user?.profileImage ? (
                                             <img src={user.profileImage} alt={user.name} className="w-full h-full object-cover" />
                                         ) : (
@@ -344,10 +344,10 @@ function DashboardContent() {
                                         )}
                                     </div>
                                     <div>
-                                        <h1 className="font-semibold text-gray-900 dark:text-white">
+                                        <h1 className="font-semibold text-gray-900 ">
                                             {user?.name || 'Collector'}
                                         </h1>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        <p className="text-xs text-gray-500 ">
                                             {user?.email}
                                         </p>
                                     </div>
@@ -367,9 +367,9 @@ function DashboardContent() {
                             {isAuthenticated ? (
                                 <div className="flex items-center gap-2">
                                     {/* Star Rating Badge */}
-                                    <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 rounded-full">
+                                    <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-amber-50  rounded-full">
                                         <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                                        <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                                        <span className="text-sm font-medium text-amber-700 ">
                                             {stats?.averageRating?.toFixed(1) || '0.0'}
                                         </span>
                                     </div>
@@ -381,18 +381,18 @@ function DashboardContent() {
                                     />
                                     <Link href="/collector/settings">
                                         <motion.button
-                                            className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                            className="p-2 rounded-xl hover:bg-gray-100  transition-colors"
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}
                                         >
-                                            <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                                            <Settings className="w-5 h-5 text-gray-600 " />
                                         </motion.button>
                                     </Link>
 
                                     {/* Logout Button */}
                                     <motion.button
                                         onClick={handleLogout}
-                                        className="p-2 rounded-xl text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                        className="p-2 rounded-xl text-gray-500 hover:text-red-500 hover:bg-red-50  transition-colors"
                                         whileHover={{ scale: 1.1 }}
                                         whileTap={{ scale: 0.9 }}
                                         title="Logout"
@@ -539,14 +539,14 @@ function DashboardContent() {
                 {/* Capacity Indicator */}
                 <Card variant="default" padding="md" className="mb-6">
                     <div className="flex items-center justify-between mb-3">
-                        <span className="font-semibold text-gray-900 dark:text-white">
+                        <span className="font-semibold text-gray-900 ">
                             Remaining Capacity
                         </span>
                         <span className="text-2xl font-bold text-emerald-600">
                             {remainingCapacity}%
                         </span>
                     </div>
-                    <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div className="w-full h-3 bg-gray-200  rounded-full overflow-hidden">
                         <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${remainingCapacity}%` }}
@@ -562,7 +562,7 @@ function DashboardContent() {
                                 onClick={() => handleUpdateCapacity(value)}
                                 className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${remainingCapacity === value
                                     ? 'bg-emerald-500 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
+                                    : 'bg-gray-100  text-gray-600  hover:bg-gray-200'
                                     }`}
                             >
                                 {value}%
@@ -580,7 +580,7 @@ function DashboardContent() {
                         <Card variant="elevated" padding="lg" className="mb-6 border-2 border-emerald-500">
                             <div className="flex items-center gap-2 mb-4">
                                 <Package className="w-6 h-6 text-emerald-500" />
-                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                                <h2 className="text-xl font-bold text-gray-900 ">
                                     Incoming Job Request
                                 </h2>
                             </div>
@@ -590,7 +590,7 @@ function DashboardContent() {
                                     <div className="flex items-center gap-3">
                                         <span className="text-3xl">{getWasteTypeInfo(incomingJob.wasteType).icon}</span>
                                         <div>
-                                            <p className="font-semibold text-gray-900 dark:text-white">
+                                            <p className="font-semibold text-gray-900 ">
                                                 {getWasteTypeInfo(incomingJob.wasteType).name}
                                             </p>
                                             <p className="text-sm text-gray-500">
@@ -599,13 +599,13 @@ function DashboardContent() {
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                                    <div className="flex items-center gap-3 text-gray-600 ">
                                         <MapPin className="w-5 h-5" />
                                         <span>{incomingJob.pickupLocation.formattedAddress}</span>
                                     </div>
 
-                                    <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    <div className="p-4 bg-emerald-50  rounded-xl">
+                                        <p className="text-sm text-gray-600 ">
                                             Estimated Earnings
                                         </p>
                                         <p className="text-2xl font-bold text-emerald-600">
@@ -655,7 +655,7 @@ function DashboardContent() {
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
                                     <Truck className="w-6 h-6 text-blue-500" />
-                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                                    <h2 className="text-xl font-bold text-gray-900 ">
                                         Active Pickup
                                     </h2>
                                 </div>
@@ -669,7 +669,7 @@ function DashboardContent() {
                                             👤
                                         </div>
                                         <div>
-                                            <p className="font-semibold text-gray-900 dark:text-white">
+                                            <p className="font-semibold text-gray-900 ">
                                                 {activeJob.customerEmail}
                                             </p>
                                             <p className="text-sm text-gray-500">
@@ -688,13 +688,13 @@ function DashboardContent() {
                                         </a>
                                     </div>
 
-                                    <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                                    <div className="flex items-center gap-3 text-gray-600 ">
                                         <MapPin className="w-5 h-5" />
                                         <span>{activeJob.pickupLocation.formattedAddress}</span>
                                     </div>
 
-                                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    <div className="p-4 bg-blue-50  rounded-xl">
+                                        <p className="text-sm text-gray-600 ">
                                             You'll Earn
                                         </p>
                                         <p className="text-2xl font-bold text-blue-600">
@@ -735,21 +735,21 @@ function DashboardContent() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                             <Card variant="default" padding="sm" className="p-3">
                                 <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 mb-2">
+                                    <div className="p-2 rounded-xl bg-emerald-100  mb-2">
                                         <Package className="w-5 h-5 text-emerald-600" />
                                     </div>
                                     <p className="text-xs text-gray-500">Today's Pickups</p>
-                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{stats?.todayPickups || 0}</p>
+                                    <p className="text-xl font-bold text-gray-900 ">{stats?.todayPickups || 0}</p>
                                 </div>
                             </Card>
 
                             <Card variant="default" padding="sm" className="p-3">
                                 <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30 mb-2">
+                                    <div className="p-2 rounded-xl bg-blue-100  mb-2">
                                         <DollarSign className="w-5 h-5 text-blue-600" />
                                     </div>
                                     <p className="text-xs text-gray-500">Today's Earnings</p>
-                                    <p className="text-xl font-bold text-gray-900 dark:text-white">
+                                    <p className="text-xl font-bold text-gray-900 ">
                                         {formatPrice(stats?.todayEarnings || 0)}
                                     </p>
                                 </div>
@@ -757,21 +757,21 @@ function DashboardContent() {
 
                             <Card variant="default" padding="sm" className="p-3">
                                 <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/30 mb-2">
+                                    <div className="p-2 rounded-xl bg-amber-100  mb-2">
                                         <Clock className="w-5 h-5 text-amber-600" />
                                     </div>
                                     <p className="text-xs text-gray-500">Hours Online</p>
-                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{stats?.hoursOnlineToday?.toFixed(1) || '0'}h</p>
+                                    <p className="text-xl font-bold text-gray-900 ">{stats?.hoursOnlineToday?.toFixed(1) || '0'}h</p>
                                 </div>
                             </Card>
 
                             <Card variant="default" padding="sm" className="p-3">
                                 <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/30 mb-2">
+                                    <div className="p-2 rounded-xl bg-purple-100  mb-2">
                                         <Calendar className="w-5 h-5 text-purple-600" />
                                     </div>
                                     <p className="text-xs text-gray-500">This Week</p>
-                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{formatPrice(stats?.weeklyEarnings || 0)}</p>
+                                    <p className="text-xl font-bold text-gray-900 ">{formatPrice(stats?.weeklyEarnings || 0)}</p>
                                 </div>
                             </Card>
                         </div>
@@ -780,41 +780,41 @@ function DashboardContent() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <Card variant="default" padding="sm" className="p-3">
                                 <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 mb-2">
+                                    <div className="p-2 rounded-xl bg-indigo-100  mb-2">
                                         <TrendingUp className="w-5 h-5 text-indigo-600" />
                                     </div>
                                     <p className="text-xs text-gray-500">This Month</p>
-                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{formatPrice(stats?.monthlyEarnings || 0)}</p>
+                                    <p className="text-xl font-bold text-gray-900 ">{formatPrice(stats?.monthlyEarnings || 0)}</p>
                                 </div>
                             </Card>
 
                             <Card variant="default" padding="sm" className="p-3">
                                 <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-teal-100 dark:bg-teal-900/30 mb-2">
+                                    <div className="p-2 rounded-xl bg-teal-100  mb-2">
                                         <Percent className="w-5 h-5 text-teal-600" />
                                     </div>
                                     <p className="text-xs text-gray-500">Acceptance</p>
-                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{stats?.acceptanceRate || 0}%</p>
+                                    <p className="text-xl font-bold text-gray-900 ">{stats?.acceptanceRate || 0}%</p>
                                 </div>
                             </Card>
 
                             <Card variant="default" padding="sm" className="p-3">
                                 <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/30 mb-2">
+                                    <div className="p-2 rounded-xl bg-rose-100  mb-2">
                                         <Star className="w-5 h-5 text-rose-600" />
                                     </div>
                                     <p className="text-xs text-gray-500">Rating</p>
-                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{stats?.averageRating?.toFixed(1) || '0.0'} ⭐</p>
+                                    <p className="text-xl font-bold text-gray-900 ">{stats?.averageRating?.toFixed(1) || '0.0'} ⭐</p>
                                 </div>
                             </Card>
 
                             <Card variant="default" padding="sm" className="p-3">
                                 <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 mb-2">
+                                    <div className="p-2 rounded-xl bg-gray-100  mb-2">
                                         <Navigation className="w-5 h-5 text-gray-600" />
                                     </div>
                                     <p className="text-xs text-gray-500">Total KM</p>
-                                    <p className="text-xl font-bold text-gray-900 dark:text-white">0</p>
+                                    <p className="text-xl font-bold text-gray-900 ">0</p>
                                 </div>
                             </Card>
                         </div>
@@ -824,7 +824,7 @@ function DashboardContent() {
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
                                     <MapPin className="w-5 h-5 text-emerald-500" />
-                                    <h3 className="font-semibold text-gray-900 dark:text-white">Your Location</h3>
+                                    <h3 className="font-semibold text-gray-900 ">Your Location</h3>
                                 </div>
                                 {isOnline && currentLocation && (
                                     <Badge variant="success" className="flex items-center gap-1">
@@ -852,7 +852,7 @@ function DashboardContent() {
                 {!isOnline && !incomingJob && !activeJob && (
                     <Card variant="default" padding="lg" className="mt-6 text-center">
                         <Power className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900  mb-2">
                             You're currently offline
                         </h3>
                         <p className="text-gray-500 mb-4">
@@ -879,21 +879,21 @@ function DashboardContent() {
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl"
+                            className="bg-white  rounded-2xl p-6 w-full max-w-md shadow-2xl"
                             onClick={e => e.stopPropagation()}
                         >
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                            <h2 className="text-xl font-bold text-gray-900  mb-4">
                                 Withdraw Funds
                             </h2>
 
-                            <div className="mb-4 p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
-                                <p className="text-sm text-gray-600 dark:text-gray-400">Available Balance</p>
+                            <div className="mb-4 p-4 bg-emerald-50  rounded-xl">
+                                <p className="text-sm text-gray-600 ">Available Balance</p>
                                 <p className="text-2xl font-bold text-emerald-600">{formatPrice(walletBalance)}</p>
                             </div>
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700  mb-2">
                                         Amount (GMD)
                                     </label>
                                     <input
@@ -903,12 +903,12 @@ function DashboardContent() {
                                         placeholder="Enter amount (min 50 GMD)"
                                         min="50"
                                         max={walletBalance}
-                                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                        className="w-full px-4 py-3 border border-gray-300  rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white  text-gray-900 "
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700  mb-2">
                                         Phone Number (Wave / Orange Money)
                                     </label>
                                     <input
@@ -916,7 +916,7 @@ function DashboardContent() {
                                         value={withdrawPhone}
                                         onChange={e => setWithdrawPhone(e.target.value)}
                                         placeholder="+220 XXXXXXXX"
-                                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                        className="w-full px-4 py-3 border border-gray-300  rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white  text-gray-900 "
                                     />
                                 </div>
                             </div>

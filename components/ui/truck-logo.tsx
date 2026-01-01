@@ -125,7 +125,7 @@ export const AnimatedRecyclingLogo: React.FC<{ className?: string }> = ({ classN
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.6, duration: 0.5 }}
-                className="text-sm text-gray-500 dark:text-gray-400 mt-1"
+                className="text-sm text-gray-500  mt-1"
             >
                 Waste Collection Made Easy
             </motion.span>
@@ -164,7 +164,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-teal-50   "
         >
             <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}

@@ -65,17 +65,17 @@ export default function ProfilePage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
+            <header className="sticky top-0 z-40 bg-white/80  backdrop-blur-xl border-b border-gray-200 ">
                 <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/dashboard">
-                            <button className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                                <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                            <button className="p-2 rounded-xl hover:bg-gray-100  transition-colors">
+                                <ArrowLeft className="w-5 h-5 text-gray-600 " />
                             </button>
                         </Link>
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white">My Profile</h1>
+                        <h1 className="text-xl font-bold text-gray-900 ">My Profile</h1>
                     </div>
                     {!isEditing ? (
                         <Button
@@ -138,10 +138,10 @@ export default function ProfilePage() {
                                 onChange={handleImageUpload}
                             />
                         </div>
-                        <h2 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">
+                        <h2 className="mt-4 text-xl font-bold text-gray-900 ">
                             {user?.name || 'User'}
                         </h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <p className="text-sm text-gray-500 ">
                             {(user as any)?.accountType === 'individual' ? 'Individual Account' :
                                 (user as any)?.accountType === 'business' ? 'Business Account' :
                                     (user as any)?.accountType === 'corporate' ? 'Corporate Account' : 'Account'}
@@ -151,13 +151,13 @@ export default function ProfilePage() {
 
                 {/* Profile Details */}
                 <Card variant="elevated" padding="lg">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                    <h3 className="text-lg font-bold text-gray-900  mb-4">
                         Personal Information
                     </h3>
                     <div className="space-y-4">
                         {/* Name */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            <label className="block text-sm font-medium text-gray-700  mb-1">
                                 Full Name
                             </label>
                             {isEditing ? (
@@ -167,31 +167,31 @@ export default function ProfilePage() {
                                         type="text"
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200  bg-white  text-gray-900  focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                     />
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                                <div className="flex items-center gap-3 p-3 bg-gray-50  rounded-xl">
                                     <User className="w-5 h-5 text-gray-400" />
-                                    <span className="text-gray-900 dark:text-white">{user?.name || 'Not set'}</span>
+                                    <span className="text-gray-900 ">{user?.name || 'Not set'}</span>
                                 </div>
                             )}
                         </div>
 
                         {/* Email */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            <label className="block text-sm font-medium text-gray-700  mb-1">
                                 Email Address
                             </label>
-                            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                            <div className="flex items-center gap-3 p-3 bg-gray-50  rounded-xl">
                                 <Mail className="w-5 h-5 text-gray-400" />
-                                <span className="text-gray-900 dark:text-white">{user?.email || 'Not set'}</span>
+                                <span className="text-gray-900 ">{user?.email || 'Not set'}</span>
                             </div>
                         </div>
 
                         {/* Phone */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            <label className="block text-sm font-medium text-gray-700  mb-1">
                                 Phone Number
                             </label>
                             {isEditing ? (
@@ -201,13 +201,13 @@ export default function ProfilePage() {
                                         type="tel"
                                         value={phone}
                                         onChange={(e) => setPhone(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200  bg-white  text-gray-900  focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                     />
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                                <div className="flex items-center gap-3 p-3 bg-gray-50  rounded-xl">
                                     <Phone className="w-5 h-5 text-gray-400" />
-                                    <span className="text-gray-900 dark:text-white">{user?.phone || 'Not set'}</span>
+                                    <span className="text-gray-900 ">{user?.phone || 'Not set'}</span>
                                 </div>
                             )}
                         </div>
@@ -215,12 +215,12 @@ export default function ProfilePage() {
                         {/* Organization Name (if applicable) */}
                         {(user as any)?.organizationName && (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label className="block text-sm font-medium text-gray-700  mb-1">
                                     Organization
                                 </label>
-                                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                                <div className="flex items-center gap-3 p-3 bg-gray-50  rounded-xl">
                                     <Building2 className="w-5 h-5 text-gray-400" />
-                                    <span className="text-gray-900 dark:text-white">{(user as any).organizationName}</span>
+                                    <span className="text-gray-900 ">{(user as any).organizationName}</span>
                                 </div>
                             </div>
                         )}
@@ -230,14 +230,14 @@ export default function ProfilePage() {
                 {/* Saved Locations */}
                 <Card variant="elevated" padding="lg">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                        <h3 className="text-lg font-bold text-gray-900 ">
                             Saved Locations
                         </h3>
                         <Button variant="secondary" size="sm">Add</Button>
                     </div>
                     <div className="text-center py-8">
-                        <MapPin className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                        <p className="text-gray-500 dark:text-gray-400">No saved locations yet</p>
+                        <MapPin className="w-12 h-12 text-gray-300  mx-auto mb-3" />
+                        <p className="text-gray-500 ">No saved locations yet</p>
                         <p className="text-xs text-gray-400 mt-1">Add your frequently used pickup locations</p>
                     </div>
                 </Card>

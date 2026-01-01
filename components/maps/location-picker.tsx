@@ -206,9 +206,9 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                     placeholder={placeholder}
                     className="
             w-full py-4 pl-12 pr-24
-            bg-white dark:bg-gray-900
-            border border-gray-200 dark:border-gray-700
-            rounded-xl text-gray-900 dark:text-white
+            bg-white 
+            border border-gray-200 
+            rounded-xl text-gray-900 
             placeholder:text-gray-400
             focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500
             transition-all duration-200
@@ -219,7 +219,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                     {inputValue && (
                         <button
                             onClick={handleClear}
-                            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            className="p-2 text-gray-400 hover:text-gray-600 "
                         >
                             <X size={18} />
                         </button>
@@ -257,8 +257,8 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                         exit={{ opacity: 0, y: -10 }}
                         className="
               absolute top-full left-0 right-0 z-50
-              mt-2 bg-white dark:bg-gray-800
-              border border-gray-200 dark:border-gray-700
+              mt-2 bg-white 
+              border border-gray-200 
               rounded-xl shadow-lg overflow-hidden
             "
                     >
@@ -268,18 +268,18 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                                 onClick={() => handleSelectPlace(prediction)}
                                 className="
                   w-full px-4 py-3 text-left
-                  hover:bg-gray-50 dark:hover:bg-gray-700
-                  border-b border-gray-100 dark:border-gray-700 last:border-0
+                  hover:bg-gray-50 
+                  border-b border-gray-100  last:border-0
                   transition-colors
                 "
                             >
                                 <div className="flex items-start gap-3">
                                     <MapPin size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
                                     <div>
-                                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                                        <p className="font-medium text-gray-900  text-sm">
                                             {prediction.structured_formatting.main_text}
                                         </p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        <p className="text-xs text-gray-500 ">
                                             {prediction.structured_formatting.secondary_text}
                                         </p>
                                     </div>
@@ -295,7 +295,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="mt-2 flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400"
+                    className="mt-2 flex items-center gap-2 text-sm text-emerald-600 "
                 >
                     <Check size={16} />
                     <span>Location selected</span>

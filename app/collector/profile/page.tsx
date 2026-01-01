@@ -131,24 +131,24 @@ export default function ProfilePage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50  flex items-center justify-center">
                 <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
+            <header className="sticky top-0 z-40 bg-white/80  backdrop-blur-xl border-b border-gray-200 ">
                 <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/collector/dashboard">
-                            <button className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                                <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                            <button className="p-2 rounded-xl hover:bg-gray-100  transition-colors">
+                                <ArrowLeft className="w-5 h-5 text-gray-600 " />
                             </button>
                         </Link>
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white">My Profile</h1>
+                        <h1 className="text-xl font-bold text-gray-900 ">My Profile</h1>
                     </div>
                     {!isEditing ? (
                         <Button
@@ -200,8 +200,8 @@ export default function ProfilePage() {
                                     (profile?.displayName || 'U').charAt(0).toUpperCase()
                                 )}
                             </div>
-                            <button className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                <Camera className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                            <button className="absolute bottom-0 right-0 w-8 h-8 bg-white  rounded-full shadow-lg flex items-center justify-center border border-gray-200  hover:bg-gray-50  transition-colors">
+                                <Camera className="w-4 h-4 text-gray-600 " />
                             </button>
                         </div>
 
@@ -212,11 +212,11 @@ export default function ProfilePage() {
                                     type="text"
                                     value={editForm.displayName}
                                     onChange={(e) => setEditForm(prev => ({ ...prev, displayName: e.target.value }))}
-                                    className="text-2xl font-bold bg-transparent border-b-2 border-emerald-500 focus:outline-none text-gray-900 dark:text-white w-full"
+                                    className="text-2xl font-bold bg-transparent border-b-2 border-emerald-500 focus:outline-none text-gray-900  w-full"
                                     placeholder="Your name"
                                 />
                             ) : (
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                <h2 className="text-2xl font-bold text-gray-900 ">
                                     {profile?.displayName || 'Set your name'}
                                 </h2>
                             )}
@@ -247,12 +247,12 @@ export default function ProfilePage() {
                                 <textarea
                                     value={editForm.bio}
                                     onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
-                                    className="mt-3 w-full p-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    className="mt-3 w-full p-2 bg-gray-100  rounded-lg text-sm text-gray-600  focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                     placeholder="Tell customers about yourself..."
                                     rows={2}
                                 />
                             ) : (
-                                <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                                <p className="mt-3 text-sm text-gray-600 ">
                                     {profile?.bio || 'Add a bio to tell customers about yourself'}
                                 </p>
                             )}
@@ -260,7 +260,7 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Contact Info */}
-                    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 grid grid-cols-2 gap-4">
+                    <div className="mt-6 pt-6 border-t border-gray-100  grid grid-cols-2 gap-4">
                         <div className="flex items-center gap-3">
                             <Phone className="w-5 h-5 text-gray-400" />
                             {isEditing ? (
@@ -268,18 +268,18 @@ export default function ProfilePage() {
                                     type="tel"
                                     value={editForm.phone}
                                     onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
-                                    className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    className="flex-1 bg-gray-100  rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                     placeholder="Phone number"
                                 />
                             ) : (
-                                <span className="text-sm text-gray-600 dark:text-gray-300">
+                                <span className="text-sm text-gray-600 ">
                                     {profile?.phone || 'Add phone'}
                                 </span>
                             )}
                         </div>
                         <div className="flex items-center gap-3">
                             <Mail className="w-5 h-5 text-gray-400" />
-                            <span className="text-sm text-gray-600 dark:text-gray-300">
+                            <span className="text-sm text-gray-600 ">
                                 {profile?.email || user?.email || 'No email'}
                             </span>
                         </div>
@@ -288,14 +288,14 @@ export default function ProfilePage() {
 
                 {/* Precise Location Map */}
                 <Card variant="elevated" padding="none" className="overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                    <div className="px-4 py-3 border-b border-gray-100  flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <MapPin className="w-5 h-5 text-emerald-600" />
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                            <h3 className="font-semibold text-gray-900 ">
                                 Precise Location
                             </h3>
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-xs text-gray-500 ">
                             Drag the pin to set your exact location
                         </span>
                     </div>
@@ -313,7 +313,7 @@ export default function ProfilePage() {
                     <Card variant="elevated" padding="md">
                         <div className="flex items-center gap-2 mb-4">
                             <Truck className="w-5 h-5 text-emerald-600" />
-                            <h3 className="font-semibold text-gray-900 dark:text-white">Vehicle</h3>
+                            <h3 className="font-semibold text-gray-900 ">Vehicle</h3>
                         </div>
 
                         {isEditing ? (
@@ -324,7 +324,7 @@ export default function ProfilePage() {
                                         ...prev,
                                         vehicleType: e.target.value as CollectorProfile['vehicleType']
                                     }))}
-                                    className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    className="w-full px-3 py-2 bg-gray-100  rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                 >
                                     <option value="bicycle">🚲 Bicycle</option>
                                     <option value="motorcycle">🏍️ Motorcycle</option>
@@ -335,20 +335,20 @@ export default function ProfilePage() {
                                     type="text"
                                     value={editForm.vehicleCapacity}
                                     onChange={(e) => setEditForm(prev => ({ ...prev, vehicleCapacity: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    className="w-full px-3 py-2 bg-gray-100  rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                     placeholder="Capacity (e.g., 100kg, 1 ton)"
                                 />
                             </div>
                         ) : (
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-2xl">
+                                <div className="w-12 h-12 rounded-xl bg-emerald-100  flex items-center justify-center text-2xl">
                                     {profile?.vehicleType === 'bicycle' && '🚲'}
                                     {profile?.vehicleType === 'motorcycle' && '🏍️'}
                                     {profile?.vehicleType === 'tricycle' && '🛺'}
                                     {profile?.vehicleType === 'truck' && '🚛'}
                                 </div>
                                 <div>
-                                    <p className="font-medium text-gray-900 dark:text-white capitalize">
+                                    <p className="font-medium text-gray-900  capitalize">
                                         {profile?.vehicleType || 'Not set'}
                                     </p>
                                     <p className="text-xs text-gray-500">
@@ -363,7 +363,7 @@ export default function ProfilePage() {
                     <Card variant="elevated" padding="md">
                         <div className="flex items-center gap-2 mb-4">
                             <Package className="w-5 h-5 text-emerald-600" />
-                            <h3 className="font-semibold text-gray-900 dark:text-white">Waste Types Handled</h3>
+                            <h3 className="font-semibold text-gray-900 ">Waste Types Handled</h3>
                         </div>
 
                         <div className="flex flex-wrap gap-2">
@@ -377,8 +377,8 @@ export default function ProfilePage() {
                                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${isEditing
                                             ? isSelected
                                                 ? 'bg-emerald-500 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
-                                            : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                                                : 'bg-gray-100  text-gray-600  hover:bg-gray-200'
+                                            : 'bg-emerald-100  text-emerald-700 '
                                             }`}
                                     >
                                         <span>{wasteType.icon}</span>
@@ -396,7 +396,7 @@ export default function ProfilePage() {
                     <Card variant="elevated" padding="md">
                         <div className="flex items-center gap-2 mb-4">
                             <MapPin className="w-5 h-5 text-emerald-600" />
-                            <h3 className="font-semibold text-gray-900 dark:text-white">Your Location</h3>
+                            <h3 className="font-semibold text-gray-900 ">Your Location</h3>
                         </div>
                         <ProfileLocationMap
                             location={profile?.preciseLocation}
@@ -408,15 +408,15 @@ export default function ProfilePage() {
 
                 {/* Reviews Section */}
                 <Card variant="elevated" padding="none">
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                    <div className="px-4 py-3 border-b border-gray-100 ">
                         <div className="flex items-center gap-2">
                             <Star className="w-5 h-5 text-amber-400" />
-                            <h3 className="font-semibold text-gray-900 dark:text-white">Reviews</h3>
+                            <h3 className="font-semibold text-gray-900 ">Reviews</h3>
                         </div>
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex border-b border-gray-100 dark:border-gray-800">
+                    <div className="flex border-b border-gray-100 ">
                         <button
                             onClick={() => setActiveTab('received')}
                             className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'received'
