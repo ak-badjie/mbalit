@@ -120,13 +120,12 @@ const CapsuleNav: React.FC<CapsuleNavProps> = ({ isOpen, onClose }) => {
         const isMobile = dimensions.width < 768;
 
         const width = isMobile ? '100%' : '45%'; // Cards take full width on mobile
-        const height = 'auto';
 
         return {
             width: width,
             minHeight: '120px',
             padding: '24px',
-            backgroundColor: cardColors[index % cardColors.length],
+            // Removed alternating colors, using className for gradient instead
         };
     };
 
@@ -183,7 +182,8 @@ const CapsuleNav: React.FC<CapsuleNavProps> = ({ isOpen, onClose }) => {
                                 <motion.div
                                     key={section.title}
                                     style={getCardStyle(section.size, sectionIndex)}
-                                    className="rounded-[32px] flex flex-col justify-between shadow-lg relative overflow-hidden backdrop-blur-md border border-white/20 hover:scale-[1.02] transition-transform duration-300 group mx-auto"
+                                    // UNIFORM COLOR: Using a consistent gradient for all cards
+                                    className="rounded-[32px] flex flex-col justify-between shadow-lg relative overflow-hidden backdrop-blur-md border border-white/20 hover:scale-[1.02] transition-transform duration-300 group mx-auto bg-gradient-to-br from-emerald-600/90 to-teal-600/90"
                                     initial={{ opacity: 0, y: 50, scale: 0.9 }}
                                     animate={{
                                         opacity: 1,

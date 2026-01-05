@@ -152,12 +152,14 @@ export const AIChatbot: React.FC = () => {
 
     return (
         <>
-            {/* Chat Button */}
+            {/* Chat Button - Draggable */}
             <motion.button
+                drag
+                dragMomentum={false}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsOpen(true)}
-                className={`fixed bottom-24 right-4 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg flex items-center justify-center text-white ${isOpen ? 'hidden' : ''}`}
+                className={`fixed bottom-24 right-4 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg flex items-center justify-center text-white cursor-grab active:cursor-grabbing ${isOpen ? 'hidden' : ''}`}
             >
                 <MessageCircle className="w-6 h-6" />
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center">

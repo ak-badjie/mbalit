@@ -21,15 +21,32 @@ export default function HomePage() {
       <section className="relative h-[100dvh] w-full flex items-center justify-center overflow-hidden">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
-          <Image
-            src="/hero.jpeg"
-            alt="Mbalit Hero Background"
-            fill
-            className="object-cover object-center"
-            priority
-            quality={100}
-          />
-          {/* Gradient Overlay for Readability */}
+
+          {/* Desktop Image (Hidden on Mobile) */}
+          <div className="hidden md:block absolute inset-0">
+            <Image
+              src="/hero.jpeg"
+              alt="Mbalit Hero Background Desktop"
+              fill
+              className="object-cover object-center"
+              priority
+              quality={100}
+            />
+          </div>
+
+          {/* Mobile Image (Visible on Mobile) */}
+          <div className="block md:hidden absolute inset-0">
+            <Image
+              src="/hero-mobile.jpeg"
+              alt="Mbalit Hero Background Mobile"
+              fill
+              className="object-cover object-center"
+              priority
+              quality={100}
+            />
+          </div>
+
+          {/* Gradient Overlay for Readability - Consistent on both */}
           <div className="absolute inset-0 bg-black/40" />
         </div>
 
