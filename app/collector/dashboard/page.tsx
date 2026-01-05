@@ -32,8 +32,9 @@ import { MapView } from '@/components/maps/map-view';
 import { ProfileLocationMap } from '@/components/maps/profile-location-map';
 import { NotificationDropdown } from '@/components/ui/notification-dropdown';
 import { formatPrice, WASTE_TYPES } from '@/lib/waste-config';
-import { GeoLocation, CollectorStats, Notification } from '@/types';
+import { GeoLocation, CollectorStats, Notification, CollectorType } from '@/types';
 import { useAuth } from '@/lib/auth-context';
+import { AgencyOwnerDashboard, DriverDashboard } from './agency-dashboards';
 import {
     updateCollectorLocation,
     setCollectorOnlineStatus,
@@ -486,382 +487,399 @@ function DashboardContent() {
             </AnimatePresence>
 
             <main className="pt-6 md:pt-20 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-                {/* Credit Card Style Wallet */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 p-5 mb-4 shadow-xl shadow-emerald-500/20"
-                >
-                    <CardPattern />
-
-                    <div className="relative z-10">
-                        {/* Card Header */}
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-2">
-                                <Wallet className="w-5 h-5 text-white" />
-                                <span className="text-emerald-100 text-sm font-medium">Mbalit Wallet</span>
-                            </div>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => setShowWithdrawModal(true)}
-                                leftIcon={<ArrowDownToLine size={16} />}
-                                className="bg-white/20 hover:bg-white/30 border-0 text-white text-xs"
-                            >
-                                Withdraw
-                            </Button>
-                        </div>
-
-                        {/* Balance */}
-                        <p className="text-4xl font-bold text-white mb-4">{formatPrice(walletBalance)}</p>
-
-                        {/* Online Toggle in Card */}
-                        <div className="flex items-center justify-between pt-4 border-t border-white/20">
-                            <div className="flex items-center gap-2">
-                                <Power className={`w-5 h-5 ${isOnline ? 'text-white' : 'text-white/60'}`} />
-                                <span className="text-white/90 text-sm">
-                                    {isOnline ? 'Online - Receiving Jobs' : 'Go online to start earning'}
-                                </span>
-                            </div>
-                            <button
-                                onClick={handleToggleOnline}
-                                className={`relative w-12 h-6 rounded-full transition-colors ${isOnline ? 'bg-white/30' : 'bg-white/10'}`}
-                            >
-                                <motion.div
-                                    animate={{ x: isOnline ? 22 : 2 }}
-                                    className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-md"
-                                />
-                            </button>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Capacity Indicator */}
-                <Card variant="default" padding="md" className="mb-6">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="font-semibold text-gray-900 ">
-                            Remaining Capacity
-                        </span>
-                        <span className="text-2xl font-bold text-emerald-600">
-                            {remainingCapacity}%
-                        </span>
-                    </div>
-                    <div className="w-full h-3 bg-gray-200  rounded-full overflow-hidden">
+                {/* Role-based dashboard rendering */}
+                {(user as any)?.collectorType === 'agency_owner' ? (
+                    <AgencyOwnerDashboard
+                        userId={user?.id || ''}
+                        userName={user?.name || 'Agency Owner'}
+                    />
+                ) : (user as any)?.collectorType === 'agency_driver' ? (
+                    <DriverDashboard
+                        userId={user?.id || ''}
+                        userName={user?.name || 'Driver'}
+                        agencyId={(user as any)?.agencyId}
+                        isApproved={(user as any)?.isApproved}
+                    />
+                ) : (
+                    <>
+                        {/* Credit Card Style Wallet - Only for individual collectors */}
                         <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${remainingCapacity}%` }}
-                            className={`h-full rounded-full ${remainingCapacity > 50 ? 'bg-emerald-500' :
-                                remainingCapacity > 20 ? 'bg-amber-500' : 'bg-red-500'
-                                }`}
-                        />
-                    </div>
-                    <div className="mt-3 flex gap-2">
-                        {[100, 75, 50, 25, 0].map((value) => (
-                            <button
-                                key={value}
-                                onClick={() => handleUpdateCapacity(value)}
-                                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${remainingCapacity === value
-                                    ? 'bg-emerald-500 text-white'
-                                    : 'bg-gray-100  text-gray-600  hover:bg-gray-200'
-                                    }`}
-                            >
-                                {value}%
-                            </button>
-                        ))}
-                    </div>
-                </Card>
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 p-5 mb-4 shadow-xl shadow-emerald-500/20"
+                        >
+                            <CardPattern />
 
-                {/* Incoming Job or Active Job View */}
-                {incomingJob && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                    >
-                        <Card variant="elevated" padding="lg" className="mb-6 border-2 border-emerald-500">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Package className="w-6 h-6 text-emerald-500" />
-                                <h2 className="text-xl font-bold text-gray-900 ">
-                                    Incoming Job Request
-                                </h2>
-                            </div>
-
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-3xl">{getWasteTypeInfo(incomingJob.wasteType).icon}</span>
-                                        <div>
-                                            <p className="font-semibold text-gray-900 ">
-                                                {getWasteTypeInfo(incomingJob.wasteType).name}
-                                            </p>
-                                            <p className="text-sm text-gray-500">
-                                                Size: {incomingJob.wasteSize}
-                                            </p>
-                                        </div>
+                            <div className="relative z-10">
+                                {/* Card Header */}
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-2">
+                                        <Wallet className="w-5 h-5 text-white" />
+                                        <span className="text-emerald-100 text-sm font-medium">Mbalit Wallet</span>
                                     </div>
-
-                                    <div className="flex items-center gap-3 text-gray-600 ">
-                                        <MapPin className="w-5 h-5" />
-                                        <span>{incomingJob.pickupLocation.formattedAddress}</span>
-                                    </div>
-
-                                    <div className="p-4 bg-emerald-50  rounded-xl">
-                                        <p className="text-sm text-gray-600 ">
-                                            Estimated Earnings
-                                        </p>
-                                        <p className="text-2xl font-bold text-emerald-600">
-                                            {formatPrice(incomingJob.amount)}
-                                        </p>
-                                    </div>
-
-                                    <div className="flex gap-3">
-                                        <Button
-                                            variant="secondary"
-                                            fullWidth
-                                            onClick={handleDeclineJob}
-                                            leftIcon={<XCircle size={18} />}
-                                        >
-                                            Decline
-                                        </Button>
-                                        <Button
-                                            variant="primary"
-                                            fullWidth
-                                            onClick={handleAcceptJob}
-                                            leftIcon={<CheckCircle size={18} />}
-                                        >
-                                            Accept Job
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                <Card variant="default" padding="none" className="overflow-hidden h-[300px]">
-                                    <MapView
-                                        center={incomingJob.pickupLocation}
-                                        customerLocation={incomingJob.pickupLocation}
-                                        collectorLocation={currentLocation || undefined}
-                                        height="100%"
-                                    />
-                                </Card>
-                            </div>
-                        </Card>
-                    </motion.div>
-                )}
-
-                {activeJob && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                    >
-                        <Card variant="elevated" padding="lg" className="mb-6 border-2 border-blue-500">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <Truck className="w-6 h-6 text-blue-500" />
-                                    <h2 className="text-xl font-bold text-gray-900 ">
-                                        Active Pickup
-                                    </h2>
-                                </div>
-                                <Badge variant="success">In Progress</Badge>
-                            </div>
-
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-xl">
-                                            👤
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-gray-900 ">
-                                                {activeJob.customerEmail}
-                                            </p>
-                                            <p className="text-sm text-gray-500">
-                                                {getWasteTypeInfo(activeJob.wasteType).icon} {getWasteTypeInfo(activeJob.wasteType).name}
-                                            </p>
-                                        </div>
-                                        <a href={`tel:${activeJob.customerPhone}`}>
-                                            <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                leftIcon={<Phone size={16} />}
-                                                className="ml-auto"
-                                            >
-                                                Call
-                                            </Button>
-                                        </a>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 text-gray-600 ">
-                                        <MapPin className="w-5 h-5" />
-                                        <span>{activeJob.pickupLocation.formattedAddress}</span>
-                                    </div>
-
-                                    <div className="p-4 bg-blue-50  rounded-xl">
-                                        <p className="text-sm text-gray-600 ">
-                                            You'll Earn
-                                        </p>
-                                        <p className="text-2xl font-bold text-blue-600">
-                                            {formatPrice(activeJob.amount)}
-                                        </p>
-                                    </div>
-
                                     <Button
-                                        variant="primary"
-                                        fullWidth
-                                        onClick={handleCompleteJob}
-                                        leftIcon={<CheckCircle size={18} />}
-                                        className="bg-blue-600 hover:bg-blue-700"
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => setShowWithdrawModal(true)}
+                                        leftIcon={<ArrowDownToLine size={16} />}
+                                        className="bg-white/20 hover:bg-white/30 border-0 text-white text-xs"
                                     >
-                                        Mark as Completed
+                                        Withdraw
                                     </Button>
                                 </div>
 
-                                <Card variant="default" padding="none" className="overflow-hidden h-[300px]">
-                                    <MapView
-                                        center={activeJob.pickupLocation}
-                                        customerLocation={activeJob.pickupLocation}
-                                        collectorLocation={currentLocation || undefined}
-                                        showRoute
-                                        isTracking
-                                        height="100%"
+                                {/* Balance */}
+                                <p className="text-4xl font-bold text-white mb-4">{formatPrice(walletBalance)}</p>
+
+                                {/* Online Toggle in Card */}
+                                <div className="flex items-center justify-between pt-4 border-t border-white/20">
+                                    <div className="flex items-center gap-2">
+                                        <Power className={`w-5 h-5 ${isOnline ? 'text-white' : 'text-white/60'}`} />
+                                        <span className="text-white/90 text-sm">
+                                            {isOnline ? 'Online - Receiving Jobs' : 'Go online to start earning'}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={handleToggleOnline}
+                                        className={`relative w-12 h-6 rounded-full transition-colors ${isOnline ? 'bg-white/30' : 'bg-white/10'}`}
+                                    >
+                                        <motion.div
+                                            animate={{ x: isOnline ? 22 : 2 }}
+                                            className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-md"
+                                        />
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Capacity Indicator */}
+                        <Card variant="default" padding="md" className="mb-6">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="font-semibold text-gray-900 ">
+                                    Remaining Capacity
+                                </span>
+                                <span className="text-2xl font-bold text-emerald-600">
+                                    {remainingCapacity}%
+                                </span>
+                            </div>
+                            <div className="w-full h-3 bg-gray-200  rounded-full overflow-hidden">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${remainingCapacity}%` }}
+                                    className={`h-full rounded-full ${remainingCapacity > 50 ? 'bg-emerald-500' :
+                                        remainingCapacity > 20 ? 'bg-amber-500' : 'bg-red-500'
+                                        }`}
+                                />
+                            </div>
+                            <div className="mt-3 flex gap-2">
+                                {[100, 75, 50, 25, 0].map((value) => (
+                                    <button
+                                        key={value}
+                                        onClick={() => handleUpdateCapacity(value)}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${remainingCapacity === value
+                                            ? 'bg-emerald-500 text-white'
+                                            : 'bg-gray-100  text-gray-600  hover:bg-gray-200'
+                                            }`}
+                                    >
+                                        {value}%
+                                    </button>
+                                ))}
+                            </div>
+                        </Card>
+
+                        {/* Incoming Job or Active Job View */}
+                        {incomingJob && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                            >
+                                <Card variant="elevated" padding="lg" className="mb-6 border-2 border-emerald-500">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Package className="w-6 h-6 text-emerald-500" />
+                                        <h2 className="text-xl font-bold text-gray-900 ">
+                                            Incoming Job Request
+                                        </h2>
+                                    </div>
+
+                                    <div className="grid md:grid-cols-2 gap-6">
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-3xl">{getWasteTypeInfo(incomingJob.wasteType).icon}</span>
+                                                <div>
+                                                    <p className="font-semibold text-gray-900 ">
+                                                        {getWasteTypeInfo(incomingJob.wasteType).name}
+                                                    </p>
+                                                    <p className="text-sm text-gray-500">
+                                                        Size: {incomingJob.wasteSize}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 text-gray-600 ">
+                                                <MapPin className="w-5 h-5" />
+                                                <span>{incomingJob.pickupLocation.formattedAddress}</span>
+                                            </div>
+
+                                            <div className="p-4 bg-emerald-50  rounded-xl">
+                                                <p className="text-sm text-gray-600 ">
+                                                    Estimated Earnings
+                                                </p>
+                                                <p className="text-2xl font-bold text-emerald-600">
+                                                    {formatPrice(incomingJob.amount)}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex gap-3">
+                                                <Button
+                                                    variant="secondary"
+                                                    fullWidth
+                                                    onClick={handleDeclineJob}
+                                                    leftIcon={<XCircle size={18} />}
+                                                >
+                                                    Decline
+                                                </Button>
+                                                <Button
+                                                    variant="primary"
+                                                    fullWidth
+                                                    onClick={handleAcceptJob}
+                                                    leftIcon={<CheckCircle size={18} />}
+                                                >
+                                                    Accept Job
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <Card variant="default" padding="none" className="overflow-hidden h-[300px]">
+                                            <MapView
+                                                center={incomingJob.pickupLocation}
+                                                customerLocation={incomingJob.pickupLocation}
+                                                collectorLocation={currentLocation || undefined}
+                                                height="100%"
+                                            />
+                                        </Card>
+                                    </div>
+                                </Card>
+                            </motion.div>
+                        )}
+
+                        {activeJob && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                            >
+                                <Card variant="elevated" padding="lg" className="mb-6 border-2 border-blue-500">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <Truck className="w-6 h-6 text-blue-500" />
+                                            <h2 className="text-xl font-bold text-gray-900 ">
+                                                Active Pickup
+                                            </h2>
+                                        </div>
+                                        <Badge variant="success">In Progress</Badge>
+                                    </div>
+
+                                    <div className="grid md:grid-cols-2 gap-6">
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-xl">
+                                                    👤
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-gray-900 ">
+                                                        {activeJob.customerEmail}
+                                                    </p>
+                                                    <p className="text-sm text-gray-500">
+                                                        {getWasteTypeInfo(activeJob.wasteType).icon} {getWasteTypeInfo(activeJob.wasteType).name}
+                                                    </p>
+                                                </div>
+                                                <a href={`tel:${activeJob.customerPhone}`}>
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        leftIcon={<Phone size={16} />}
+                                                        className="ml-auto"
+                                                    >
+                                                        Call
+                                                    </Button>
+                                                </a>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 text-gray-600 ">
+                                                <MapPin className="w-5 h-5" />
+                                                <span>{activeJob.pickupLocation.formattedAddress}</span>
+                                            </div>
+
+                                            <div className="p-4 bg-blue-50  rounded-xl">
+                                                <p className="text-sm text-gray-600 ">
+                                                    You'll Earn
+                                                </p>
+                                                <p className="text-2xl font-bold text-blue-600">
+                                                    {formatPrice(activeJob.amount)}
+                                                </p>
+                                            </div>
+
+                                            <Button
+                                                variant="primary"
+                                                fullWidth
+                                                onClick={handleCompleteJob}
+                                                leftIcon={<CheckCircle size={18} />}
+                                                className="bg-blue-600 hover:bg-blue-700"
+                                            >
+                                                Mark as Completed
+                                            </Button>
+                                        </div>
+
+                                        <Card variant="default" padding="none" className="overflow-hidden h-[300px]">
+                                            <MapView
+                                                center={activeJob.pickupLocation}
+                                                customerLocation={activeJob.pickupLocation}
+                                                collectorLocation={currentLocation || undefined}
+                                                showRoute
+                                                isTracking
+                                                height="100%"
+                                            />
+                                        </Card>
+                                    </div>
+                                </Card>
+                            </motion.div>
+                        )}
+
+                        {/* Stats when no active job - 2 Column Grid for Mobile */}
+                        {!incomingJob && !activeJob && (
+                            <>
+                                {/* Stats Grid - 2 columns on mobile, 3-4 on desktop */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                                    <Card variant="default" padding="sm" className="p-3">
+                                        <div className="flex flex-col items-center text-center">
+                                            <div className="p-2 rounded-xl bg-emerald-100  mb-2">
+                                                <Package className="w-5 h-5 text-emerald-600" />
+                                            </div>
+                                            <p className="text-xs text-gray-500">Today's Pickups</p>
+                                            <p className="text-xl font-bold text-gray-900 ">{stats?.todayPickups || 0}</p>
+                                        </div>
+                                    </Card>
+
+                                    <Card variant="default" padding="sm" className="p-3">
+                                        <div className="flex flex-col items-center text-center">
+                                            <div className="p-2 rounded-xl bg-blue-100  mb-2">
+                                                <DollarSign className="w-5 h-5 text-blue-600" />
+                                            </div>
+                                            <p className="text-xs text-gray-500">Today's Earnings</p>
+                                            <p className="text-xl font-bold text-gray-900 ">
+                                                {formatPrice(stats?.todayEarnings || 0)}
+                                            </p>
+                                        </div>
+                                    </Card>
+
+                                    <Card variant="default" padding="sm" className="p-3">
+                                        <div className="flex flex-col items-center text-center">
+                                            <div className="p-2 rounded-xl bg-amber-100  mb-2">
+                                                <Clock className="w-5 h-5 text-amber-600" />
+                                            </div>
+                                            <p className="text-xs text-gray-500">Hours Online</p>
+                                            <p className="text-xl font-bold text-gray-900 ">{stats?.hoursOnlineToday?.toFixed(1) || '0'}h</p>
+                                        </div>
+                                    </Card>
+
+                                    <Card variant="default" padding="sm" className="p-3">
+                                        <div className="flex flex-col items-center text-center">
+                                            <div className="p-2 rounded-xl bg-purple-100  mb-2">
+                                                <Calendar className="w-5 h-5 text-purple-600" />
+                                            </div>
+                                            <p className="text-xs text-gray-500">This Week</p>
+                                            <p className="text-xl font-bold text-gray-900 ">{formatPrice(stats?.weeklyEarnings || 0)}</p>
+                                        </div>
+                                    </Card>
+                                </div>
+
+                                {/* Secondary Stats Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <Card variant="default" padding="sm" className="p-3">
+                                        <div className="flex flex-col items-center text-center">
+                                            <div className="p-2 rounded-xl bg-indigo-100  mb-2">
+                                                <TrendingUp className="w-5 h-5 text-indigo-600" />
+                                            </div>
+                                            <p className="text-xs text-gray-500">This Month</p>
+                                            <p className="text-xl font-bold text-gray-900 ">{formatPrice(stats?.monthlyEarnings || 0)}</p>
+                                        </div>
+                                    </Card>
+
+                                    <Card variant="default" padding="sm" className="p-3">
+                                        <div className="flex flex-col items-center text-center">
+                                            <div className="p-2 rounded-xl bg-teal-100  mb-2">
+                                                <Percent className="w-5 h-5 text-teal-600" />
+                                            </div>
+                                            <p className="text-xs text-gray-500">Acceptance</p>
+                                            <p className="text-xl font-bold text-gray-900 ">{stats?.acceptanceRate || 0}%</p>
+                                        </div>
+                                    </Card>
+
+                                    <Card variant="default" padding="sm" className="p-3">
+                                        <div className="flex flex-col items-center text-center">
+                                            <div className="p-2 rounded-xl bg-rose-100  mb-2">
+                                                <Star className="w-5 h-5 text-rose-600" />
+                                            </div>
+                                            <p className="text-xs text-gray-500">Rating</p>
+                                            <p className="text-xl font-bold text-gray-900 ">{stats?.averageRating?.toFixed(1) || '0.0'} ⭐</p>
+                                        </div>
+                                    </Card>
+
+                                    <Card variant="default" padding="sm" className="p-3">
+                                        <div className="flex flex-col items-center text-center">
+                                            <div className="p-2 rounded-xl bg-gray-100  mb-2">
+                                                <Navigation className="w-5 h-5 text-gray-600" />
+                                            </div>
+                                            <p className="text-xs text-gray-500">Total KM</p>
+                                            <p className="text-xl font-bold text-gray-900 ">0</p>
+                                        </div>
+                                    </Card>
+                                </div>
+
+                                {/* Your Location Map */}
+                                <Card variant="elevated" padding="md" className="mt-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <MapPin className="w-5 h-5 text-emerald-500" />
+                                            <h3 className="font-semibold text-gray-900 ">Your Location</h3>
+                                        </div>
+                                        {isOnline && currentLocation && (
+                                            <Badge variant="success" className="flex items-center gap-1">
+                                                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                                                Live
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <ProfileLocationMap
+                                        location={currentLocation || undefined}
+                                        onLocationChange={(loc) => setCurrentLocation(loc)}
+                                        onPreciseLocationAcquired={() => {
+                                            // When precise location is acquired, if not online, just update location
+                                            // If online, it will be synced via the watch effect
+                                            console.log('Precise location acquired');
+                                        }}
+                                        enableLiveTracking={isOnline}
+                                        height="350px"
                                     />
                                 </Card>
-                            </div>
-                        </Card>
-                    </motion.div>
-                )}
+                            </>
+                        )}
 
-                {/* Stats when no active job - 2 Column Grid for Mobile */}
-                {!incomingJob && !activeJob && (
-                    <>
-                        {/* Stats Grid - 2 columns on mobile, 3-4 on desktop */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                            <Card variant="default" padding="sm" className="p-3">
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-emerald-100  mb-2">
-                                        <Package className="w-5 h-5 text-emerald-600" />
-                                    </div>
-                                    <p className="text-xs text-gray-500">Today's Pickups</p>
-                                    <p className="text-xl font-bold text-gray-900 ">{stats?.todayPickups || 0}</p>
-                                </div>
+                        {/* Info when offline */}
+                        {!isOnline && !incomingJob && !activeJob && (
+                            <Card variant="default" padding="lg" className="mt-6 text-center">
+                                <Power className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold text-gray-900  mb-2">
+                                    You're currently offline
+                                </h3>
+                                <p className="text-gray-500 mb-4">
+                                    Go online to start receiving job requests and earn money
+                                </p>
+                                <Button variant="primary" onClick={handleToggleOnline}>
+                                    Go Online
+                                </Button>
                             </Card>
-
-                            <Card variant="default" padding="sm" className="p-3">
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-blue-100  mb-2">
-                                        <DollarSign className="w-5 h-5 text-blue-600" />
-                                    </div>
-                                    <p className="text-xs text-gray-500">Today's Earnings</p>
-                                    <p className="text-xl font-bold text-gray-900 ">
-                                        {formatPrice(stats?.todayEarnings || 0)}
-                                    </p>
-                                </div>
-                            </Card>
-
-                            <Card variant="default" padding="sm" className="p-3">
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-amber-100  mb-2">
-                                        <Clock className="w-5 h-5 text-amber-600" />
-                                    </div>
-                                    <p className="text-xs text-gray-500">Hours Online</p>
-                                    <p className="text-xl font-bold text-gray-900 ">{stats?.hoursOnlineToday?.toFixed(1) || '0'}h</p>
-                                </div>
-                            </Card>
-
-                            <Card variant="default" padding="sm" className="p-3">
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-purple-100  mb-2">
-                                        <Calendar className="w-5 h-5 text-purple-600" />
-                                    </div>
-                                    <p className="text-xs text-gray-500">This Week</p>
-                                    <p className="text-xl font-bold text-gray-900 ">{formatPrice(stats?.weeklyEarnings || 0)}</p>
-                                </div>
-                            </Card>
-                        </div>
-
-                        {/* Secondary Stats Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <Card variant="default" padding="sm" className="p-3">
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-indigo-100  mb-2">
-                                        <TrendingUp className="w-5 h-5 text-indigo-600" />
-                                    </div>
-                                    <p className="text-xs text-gray-500">This Month</p>
-                                    <p className="text-xl font-bold text-gray-900 ">{formatPrice(stats?.monthlyEarnings || 0)}</p>
-                                </div>
-                            </Card>
-
-                            <Card variant="default" padding="sm" className="p-3">
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-teal-100  mb-2">
-                                        <Percent className="w-5 h-5 text-teal-600" />
-                                    </div>
-                                    <p className="text-xs text-gray-500">Acceptance</p>
-                                    <p className="text-xl font-bold text-gray-900 ">{stats?.acceptanceRate || 0}%</p>
-                                </div>
-                            </Card>
-
-                            <Card variant="default" padding="sm" className="p-3">
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-rose-100  mb-2">
-                                        <Star className="w-5 h-5 text-rose-600" />
-                                    </div>
-                                    <p className="text-xs text-gray-500">Rating</p>
-                                    <p className="text-xl font-bold text-gray-900 ">{stats?.averageRating?.toFixed(1) || '0.0'} ⭐</p>
-                                </div>
-                            </Card>
-
-                            <Card variant="default" padding="sm" className="p-3">
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="p-2 rounded-xl bg-gray-100  mb-2">
-                                        <Navigation className="w-5 h-5 text-gray-600" />
-                                    </div>
-                                    <p className="text-xs text-gray-500">Total KM</p>
-                                    <p className="text-xl font-bold text-gray-900 ">0</p>
-                                </div>
-                            </Card>
-                        </div>
-
-                        {/* Your Location Map */}
-                        <Card variant="elevated" padding="md" className="mt-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="w-5 h-5 text-emerald-500" />
-                                    <h3 className="font-semibold text-gray-900 ">Your Location</h3>
-                                </div>
-                                {isOnline && currentLocation && (
-                                    <Badge variant="success" className="flex items-center gap-1">
-                                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                                        Live
-                                    </Badge>
-                                )}
-                            </div>
-                            <ProfileLocationMap
-                                location={currentLocation || undefined}
-                                onLocationChange={(loc) => setCurrentLocation(loc)}
-                                onPreciseLocationAcquired={() => {
-                                    // When precise location is acquired, if not online, just update location
-                                    // If online, it will be synced via the watch effect
-                                    console.log('Precise location acquired');
-                                }}
-                                enableLiveTracking={isOnline}
-                                height="350px"
-                            />
-                        </Card>
+                        )}
                     </>
-                )}
-
-                {/* Info when offline */}
-                {!isOnline && !incomingJob && !activeJob && (
-                    <Card variant="default" padding="lg" className="mt-6 text-center">
-                        <Power className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900  mb-2">
-                            You're currently offline
-                        </h3>
-                        <p className="text-gray-500 mb-4">
-                            Go online to start receiving job requests and earn money
-                        </p>
-                        <Button variant="primary" onClick={handleToggleOnline}>
-                            Go Online
-                        </Button>
-                    </Card>
                 )}
             </main>
 

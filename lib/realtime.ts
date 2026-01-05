@@ -69,7 +69,8 @@ export interface RealtimeJob {
     collectorId?: string;
     collectorName?: string;
     collectorPhone?: string;
-    wasteType: string;
+    wasteType?: string; // Legacy single type, optional
+    wasteTypes?: string[]; // New multi-select array
     wasteSize?: string; // Legacy, optional
     bucketCount?: number;
     largeBinCount?: number;

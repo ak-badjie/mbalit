@@ -20,6 +20,7 @@ export interface User {
   location?: GeoLocation;
   profileImage?: string;
   onboardingComplete?: boolean;
+  preferredAgencies?: string[]; // User's preferred agency IDs
 }
 
 // User profile (individual, business, or corporate account)
@@ -66,8 +67,46 @@ export interface Agency {
   totalEarnings: number;
   walletBalance: number;
   isActive: boolean;
+  description?: string;
+  serviceAreas?: string[];
+  rating?: number;
+  totalPickups?: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Agency subscription plan (created by agency owners)
+export interface AgencySubscriptionPlan {
+  id: string;
+  agencyId: string;
+  name: string; // e.g., "Weekly Standard", "Monthly Premium"
+  description?: string;
+  frequency: 'weekly' | 'biweekly' | 'monthly';
+  bucketCount: number;
+  trashBagCount: number;
+  largeBinCount: number;
+  price: number; // Total price set by agency
+  platformFee: number; // 30% of price
+  agencyEarnings: number; // 70% of price
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// User subscription to an agency plan
+export interface UserAgencySubscription {
+  id: string;
+  userId: string;
+  agencyId: string;
+  planId: string;
+  planName: string;
+  status: 'active' | 'paused' | 'cancelled';
+  nextPickupDate: Date;
+  pickupsCompleted: number;
+  totalPaid: number;
+  startedAt: Date;
+  pausedAt?: Date;
+  cancelledAt?: Date;
 }
 
 // Waste Types
@@ -91,7 +130,7 @@ export interface WasteTypeInfo {
 }
 
 // Container Types (replaces WasteSize)
-export type ContainerType = 'bucket' | 'large_bin';
+export type ContainerType = 'bucket' | 'trash_bag' | 'large_bin';
 
 export interface ContainerInfo {
   id: ContainerType;
@@ -271,6 +310,8 @@ export interface ApiResponse<T> {
 export interface PriceEstimate {
   bucketCount: number;
   bucketCost: number;
+  trashBagCount: number;
+  trashBagCost: number;
   largeBinCount: number;
   largeBinCost: number;
   totalPrice: number;

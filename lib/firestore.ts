@@ -74,7 +74,7 @@ export async function createBucketPickupRequest(
     const requestRef = doc(collection(db, 'requests'));
 
     // Calculate price from container quantities
-    const priceEstimate = calculatePrice(bucketCount, largeBinCount);
+    const priceEstimate = calculatePrice(bucketCount, 0, largeBinCount);
 
     const requestData = {
         customerId,

@@ -22,6 +22,8 @@ import {
     Users,
     Briefcase,
     Truck,
+    UserPlus,
+    Crown,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -31,7 +33,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TruckLogo } from '@/components/ui/truck-logo';
 import { WASTE_TYPES } from '@/lib/waste-config';
-import { WasteType, AccountType } from '@/types';
+import { WasteType, AccountType, CollectorType } from '@/types';
+import { createAgency, requestToJoinAgency } from '@/lib/agencies';
 
 // Step indicator for onboarding
 const OnboardingSteps: React.FC<{ currentStep: number; totalSteps: number }> = ({
@@ -76,6 +79,13 @@ const ACCOUNT_TYPES: { id: AccountType; name: string; description: string; icon:
     { id: 'individual', name: 'Individual', description: 'Personal account for home waste collection', icon: <User className="w-6 h-6" /> },
     { id: 'business', name: 'Business', description: 'For small to medium businesses', icon: <Briefcase className="w-6 h-6" /> },
     { id: 'corporate', name: 'Corporate', description: 'For large organizations & UN agencies', icon: <Building2 className="w-6 h-6" /> },
+];
+
+// Collector type options for collector signup
+const COLLECTOR_TYPES: { id: CollectorType; name: string; description: string; icon: React.ReactNode; color: string }[] = [
+    { id: 'individual', name: 'Individual Collector', description: 'Work independently, collect waste on your own', icon: <User className="w-6 h-6" />, color: 'emerald' },
+    { id: 'agency_owner', name: 'Create Agency', description: 'Start your own collection agency and hire drivers', icon: <Crown className="w-6 h-6" />, color: 'amber' },
+    { id: 'agency_driver', name: 'Join Agency', description: 'Work for an existing agency with a code', icon: <UserPlus className="w-6 h-6" />, color: 'blue' },
 ];
 
 // Google icon SVG
@@ -136,6 +146,12 @@ function AuthPage() {
     const [carSize, setCarSize] = useState<string | null>(null);
     const [selectedWasteTypes, setSelectedWasteTypes] = useState<WasteType[]>([]);
     const [maxCapacity, setMaxCapacity] = useState<number>(100);
+
+    // Collector type selection (individual, agency_owner, agency_driver)
+    const [selectedCollectorType, setSelectedCollectorType] = useState<CollectorType | null>(null);
+    const [agencyName, setAgencyName] = useState('');
+    const [agencyCode, setAgencyCode] = useState('');
+    const [isValidatingAgencyCode, setIsValidatingAgencyCode] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -285,9 +301,11 @@ function AuthPage() {
         setError(null);
 
         try {
+            const collectorType = selectedCollectorType || 'individual';
+
             if (isGoogleUser && firebaseUser) {
                 // For Google users, UPDATE the existing profile with all onboarding data
-                const collectorData = {
+                const collectorData: Record<string, unknown> = {
                     name: fullName,
                     phone: phoneNumber,
                     profileImage: profileImage || user?.profileImage || '',
@@ -295,18 +313,35 @@ function AuthPage() {
                     wasteTypesHandled: selectedWasteTypes,
                     maxCapacity,
                     isAvailable: false,
-                    rating: 0, // Will be calculated from reviews
+                    rating: 0,
                     totalPickups: 0,
                     earnings: 0,
-                    onboardingComplete: true, // NOW they can access dashboard
+                    collectorType,
+                    onboardingComplete: true,
                     updatedAt: serverTimestamp(),
                 };
+
+                // Handle agency creation/joining
+                if (collectorType === 'agency_owner') {
+                    // Create agency
+                    const { agency, code } = await createAgency(firebaseUser.uid, agencyName);
+                    collectorData.agencyId = agency.id;
+                    collectorData.isApproved = true;
+                } else if (collectorType === 'agency_driver') {
+                    // Request to join agency
+                    const result = await requestToJoinAgency(firebaseUser.uid, agencyCode);
+                    if (!result.success) {
+                        setError(result.error || 'Failed to join agency');
+                        return;
+                    }
+                    // Note: isApproved will be false until agency owner approves
+                }
 
                 // Update users collection
                 await updateDoc(doc(db, 'users', firebaseUser.uid), collectorData);
 
                 // Also create/update collectorProfiles document for profile page
-                const profileData = {
+                const profileData: Record<string, unknown> = {
                     displayName: fullName,
                     bio: '',
                     profileImage: profileImage || user?.profileImage || '',
@@ -315,6 +350,7 @@ function AuthPage() {
                     vehicleType: carSize,
                     vehicleCapacity: `${maxCapacity} kg`,
                     wasteTypesHandled: selectedWasteTypes,
+                    collectorType,
                     isVerified: false,
                     documentsSubmitted: false,
                     joinedAt: serverTimestamp(),
@@ -329,7 +365,7 @@ function AuthPage() {
 
                 // Update with additional collector data
                 if (firebaseUser) {
-                    const collectorData = {
+                    const collectorData: Record<string, unknown> = {
                         vehicleType: carSize,
                         wasteTypesHandled: selectedWasteTypes,
                         maxCapacity,
@@ -337,13 +373,28 @@ function AuthPage() {
                         rating: 0,
                         totalPickups: 0,
                         earnings: 0,
+                        collectorType,
                         onboardingComplete: true,
                         updatedAt: serverTimestamp(),
                     };
+
+                    // Handle agency creation/joining
+                    if (collectorType === 'agency_owner') {
+                        const { agency, code } = await createAgency(firebaseUser.uid, agencyName);
+                        collectorData.agencyId = agency.id;
+                        collectorData.isApproved = true;
+                    } else if (collectorType === 'agency_driver') {
+                        const result = await requestToJoinAgency(firebaseUser.uid, agencyCode);
+                        if (!result.success) {
+                            setError(result.error || 'Failed to join agency');
+                            return;
+                        }
+                    }
+
                     await updateDoc(doc(db, 'users', firebaseUser.uid), collectorData);
 
                     // Also create collectorProfiles document
-                    const profileData = {
+                    const profileData: Record<string, unknown> = {
                         displayName: fullName,
                         bio: '',
                         profileImage: profileImage || '',
@@ -352,6 +403,7 @@ function AuthPage() {
                         vehicleType: carSize,
                         vehicleCapacity: `${maxCapacity} kg`,
                         wasteTypesHandled: selectedWasteTypes,
+                        collectorType,
                         isVerified: false,
                         documentsSubmitted: false,
                         joinedAt: serverTimestamp(),
@@ -393,8 +445,24 @@ function AuthPage() {
             case 2: return phoneNumber.trim().length > 0 && carSize !== null;
             case 3: return selectedWasteTypes.length > 0;
             case 4: return maxCapacity > 0;
+            case 5:
+                // Agency info step - only for agency_owner or agency_driver
+                if (selectedCollectorType === 'agency_owner') {
+                    return agencyName.trim().length > 3;
+                } else if (selectedCollectorType === 'agency_driver') {
+                    return agencyCode.trim().length > 0;
+                }
+                return true; // Individual collectors skip this step
             default: return false;
         }
+    };
+
+    // Get total onboarding steps based on collector type
+    const getTotalOnboardingSteps = () => {
+        if (selectedCollectorType === 'agency_owner' || selectedCollectorType === 'agency_driver') {
+            return 5; // Include agency info step
+        }
+        return 4; // Standard for individual collectors
     };
 
     const canProceedUserOnboarding = () => {
@@ -497,6 +565,74 @@ function AuthPage() {
                         >
                             ← Back to home
                         </a>
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
+
+    // Collector Type Selection (Individual, Create Agency, Join Agency)
+    if (selectedRole === 'collector' && mode === 'signup' && !selectedCollectorType) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50    flex items-center justify-center p-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full max-w-lg"
+                >
+                    {/* Logo */}
+                    <div className="text-center mb-8">
+                        <motion.div
+                            initial={{ scale: 0.5 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 200 }}
+                            className="inline-flex justify-center mb-4"
+                        >
+                            <TruckLogo size="lg" showText={true} />
+                        </motion.div>
+                        <h1 className="text-2xl font-bold text-gray-900  mb-2">
+                            How will you collect?
+                        </h1>
+                        <p className="text-gray-500 ">
+                            Choose how you want to operate as a collector
+                        </p>
+                    </div>
+
+                    <div className="space-y-4">
+                        {COLLECTOR_TYPES.map((type) => (
+                            <motion.button
+                                key={type.id}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setSelectedCollectorType(type.id)}
+                                className={`w-full p-5 rounded-2xl border-2 border-gray-200  bg-white  hover:border-${type.color}-500 hover:shadow-lg transition-all text-left group`}
+                            >
+                                <div className="flex items-start gap-4">
+                                    <div className={`p-3 rounded-xl bg-${type.color}-100  text-${type.color}-600  group-hover:bg-${type.color}-500 group-hover:text-white transition-colors`}>
+                                        {type.icon}
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-bold text-gray-900  mb-1">
+                                            {type.name}
+                                        </h3>
+                                        <p className="text-sm text-gray-500 ">
+                                            {type.description}
+                                        </p>
+                                    </div>
+                                    <ArrowRight className={`w-5 h-5 text-gray-400 group-hover:text-${type.color}-500 transition-colors`} />
+                                </div>
+                            </motion.button>
+                        ))}
+                    </div>
+
+                    {/* Back button */}
+                    <div className="mt-6 text-center">
+                        <button
+                            onClick={() => setSelectedRole(null)}
+                            className="text-sm text-gray-500  hover:text-emerald-600 transition-colors"
+                        >
+                            ← Back to role selection
+                        </button>
                     </div>
                 </motion.div>
             </div>
@@ -892,6 +1028,23 @@ function AuthPage() {
                         <p className="text-gray-500 ">
                             {mode === 'login' ? 'Welcome back!' : selectedRole === 'collector' ? 'Become a Waste Collector' : 'Create your account'}
                         </p>
+                        {/* Collector Type Indicator */}
+                        {mode === 'signup' && selectedRole === 'collector' && selectedCollectorType && (
+                            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100  text-emerald-700  text-sm font-medium">
+                                {selectedCollectorType === 'individual' && <User className="w-4 h-4" />}
+                                {selectedCollectorType === 'agency_owner' && <Crown className="w-4 h-4" />}
+                                {selectedCollectorType === 'agency_driver' && <UserPlus className="w-4 h-4" />}
+                                {selectedCollectorType === 'individual' && 'Individual Collector'}
+                                {selectedCollectorType === 'agency_owner' && 'Creating Agency'}
+                                {selectedCollectorType === 'agency_driver' && 'Joining Agency'}
+                                <button
+                                    onClick={() => setSelectedCollectorType(null)}
+                                    className="ml-1 text-emerald-600 hover:text-emerald-800 transition-colors"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <Card variant="elevated" padding="lg">
@@ -1070,11 +1223,22 @@ function AuthPage() {
                             Complete Your Profile
                         </h1>
                         <p className="text-gray-500  mt-1">
-                            Step {onboardingStep} of 4
+                            Step {onboardingStep} of {getTotalOnboardingSteps()}
                         </p>
+                        {/* Collector Type Indicator */}
+                        {selectedCollectorType && (
+                            <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100  text-emerald-700  text-xs font-medium">
+                                {selectedCollectorType === 'individual' && <User className="w-3 h-3" />}
+                                {selectedCollectorType === 'agency_owner' && <Crown className="w-3 h-3" />}
+                                {selectedCollectorType === 'agency_driver' && <UserPlus className="w-3 h-3" />}
+                                {selectedCollectorType === 'individual' && 'Individual Collector'}
+                                {selectedCollectorType === 'agency_owner' && 'Creating Agency'}
+                                {selectedCollectorType === 'agency_driver' && 'Joining Agency'}
+                            </div>
+                        )}
                     </div>
 
-                    <OnboardingSteps currentStep={onboardingStep} totalSteps={4} />
+                    <OnboardingSteps currentStep={onboardingStep} totalSteps={getTotalOnboardingSteps()} />
 
                     <AnimatePresence mode="wait">
                         {/* Step 1: Name & Profile Picture */}
@@ -1278,6 +1442,105 @@ function AuthPage() {
                                 </div>
                             </motion.div>
                         )}
+
+                        {/* Step 5: Agency Info (only for agency_owner or agency_driver) */}
+                        {onboardingStep === 5 && (selectedCollectorType === 'agency_owner' || selectedCollectorType === 'agency_driver') && (
+                            <motion.div
+                                key="step5"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-6"
+                            >
+                                {selectedCollectorType === 'agency_owner' ? (
+                                    <>
+                                        <h2 className="text-lg font-semibold text-gray-900 ">
+                                            Create Your Agency
+                                        </h2>
+                                        <p className="text-sm text-gray-500">
+                                            Give your agency a name. You'll get a unique code to share with drivers.
+                                        </p>
+
+                                        <div className="space-y-1">
+                                            <label className="block text-sm font-medium text-gray-700 ">
+                                                Agency Name *
+                                            </label>
+                                            <div className="relative">
+                                                <Crown className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-500" />
+                                                <input
+                                                    type="text"
+                                                    value={agencyName}
+                                                    onChange={(e) => setAgencyName(e.target.value)}
+                                                    placeholder="My Waste Collection Agency"
+                                                    required
+                                                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-400">
+                                                Must be at least 4 characters
+                                            </p>
+                                        </div>
+
+                                        <div className="p-4 bg-amber-50  rounded-lg border border-amber-200 ">
+                                            <div className="flex items-start gap-3">
+                                                <Crown className="w-5 h-5 text-amber-600 mt-0.5" />
+                                                <div>
+                                                    <p className="font-medium text-amber-800 ">Agency Owner Benefits</p>
+                                                    <ul className="text-sm text-amber-700  mt-1 space-y-1">
+                                                        <li>• Hire and manage drivers</li>
+                                                        <li>• Track team earnings</li>
+                                                        <li>• Share unique agency code</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h2 className="text-lg font-semibold text-gray-900 ">
+                                            Join an Agency
+                                        </h2>
+                                        <p className="text-sm text-gray-500">
+                                            Enter the agency code given to you by the agency owner.
+                                        </p>
+
+                                        <div className="space-y-1">
+                                            <label className="block text-sm font-medium text-gray-700 ">
+                                                Agency Code *
+                                            </label>
+                                            <div className="relative">
+                                                <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500" />
+                                                <input
+                                                    type="text"
+                                                    value={agencyCode}
+                                                    onChange={(e) => setAgencyCode(e.target.value.toUpperCase())}
+                                                    placeholder="ABC123"
+                                                    required
+                                                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all uppercase"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-400">
+                                                Ask your agency owner for this code
+                                            </p>
+                                        </div>
+
+                                        <div className="p-4 bg-blue-50  rounded-lg border border-blue-200 ">
+                                            <div className="flex items-start gap-3">
+                                                <UserPlus className="w-5 h-5 text-blue-600 mt-0.5" />
+                                                <div>
+                                                    <p className="font-medium text-blue-800 ">Joining an Agency</p>
+                                                    <ul className="text-sm text-blue-700  mt-1 space-y-1">
+                                                        <li>• The agency owner will approve your request</li>
+                                                        <li>• You'll be notified once approved</li>
+                                                        <li>• Earnings go through the agency</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </motion.div>
+                        )}
                     </AnimatePresence>
 
                     {/* Error */}
@@ -1301,7 +1564,7 @@ function AuthPage() {
                             Back
                         </Button>
 
-                        {onboardingStep < 4 ? (
+                        {onboardingStep < getTotalOnboardingSteps() ? (
                             <Button
                                 variant="primary"
                                 disabled={!canProceedOnboarding()}

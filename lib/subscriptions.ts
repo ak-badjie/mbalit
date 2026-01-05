@@ -34,7 +34,7 @@ export async function createSubscription(
     preferredDay?: string,
     preferredTime?: string
 ): Promise<Subscription> {
-    const pricePerPickup = calculatePrice(bucketCount, largeBinCount).totalPrice;
+    const pricePerPickup = calculatePrice(bucketCount, 0, largeBinCount).totalPrice;
     const pickupsPerMonth = SUBSCRIPTION_PLANS[plan].pickupsPerMonth;
     const totalMonthlyPrice = pricePerPickup * pickupsPerMonth;
 
@@ -265,7 +265,7 @@ export async function updateSubscriptionPlan(
 
     const newBucketCount = bucketCount ?? sub.bucketCount;
     const newLargeBinCount = largeBinCount ?? sub.largeBinCount;
-    const pricePerPickup = calculatePrice(newBucketCount, newLargeBinCount).totalPrice;
+    const pricePerPickup = calculatePrice(newBucketCount, 0, newLargeBinCount).totalPrice;
     const pickupsPerMonth = SUBSCRIPTION_PLANS[plan].pickupsPerMonth;
     const totalMonthlyPrice = pricePerPickup * pickupsPerMonth;
     const nextPickupDate = calculateNextPickupDate(plan, sub.preferredDay);

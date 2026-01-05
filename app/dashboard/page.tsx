@@ -24,6 +24,8 @@ import {
     Sparkles,
     Plus,
     Recycle,
+    Truck,
+    Star,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -36,6 +38,7 @@ import { createJob } from '@/lib/realtime';
 import { PaymentModal } from '@/components/ui/payment-modal';
 import { WASTE_TYPES, CONTAINER_TYPES, calculatePrice, formatPrice } from '@/lib/waste-config';
 import { WasteType, GeoLocation, AccountType } from '@/types';
+import { getUserPreferredAgencies, getAgenciesByIds, AgencyListing } from '@/lib/user-agencies';
 
 // Credit Card Pattern SVG
 const CardPattern = () => (
@@ -165,7 +168,7 @@ function DashboardContent() {
 
     // Booking flow state
     const [step, setStep] = useState(shouldStartBooking ? 1 : 0);
-    const [selectedWasteType, setSelectedWasteType] = useState<WasteType | null>(null);
+    const [selectedWasteTypes, setSelectedWasteTypes] = useState<WasteType[]>([]);
     const [bucketCount, setBucketCount] = useState(0);
     const [largeBinCount, setLargeBinCount] = useState(0);
     const [location, setLocation] = useState<GeoLocation | null>(null);
@@ -176,6 +179,10 @@ function DashboardContent() {
     const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Agency selection state
+    const [preferredAgencies, setPreferredAgencies] = useState<AgencyListing[]>([]);
+    const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null); // null = any collector
+
     // Payment modal state
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentUrl, setPaymentUrl] = useState<string>('');
@@ -183,6 +190,24 @@ function DashboardContent() {
 
     // User profile info
     const accountInfo = getAccountTypeDisplay((user as any)?.accountType);
+
+    // Load user's preferred agencies
+    useEffect(() => {
+        const loadPreferredAgencies = async () => {
+            if (user?.id) {
+                try {
+                    const agencyIds = await getUserPreferredAgencies(user.id);
+                    if (agencyIds.length > 0) {
+                        const agencies = await getAgenciesByIds(agencyIds);
+                        setPreferredAgencies(agencies);
+                    }
+                } catch (error) {
+                    console.error('Failed to load preferred agencies:', error);
+                }
+            }
+        };
+        loadPreferredAgencies();
+    }, [user?.id]);
 
     // Handle URL param for booking
     useEffect(() => {
@@ -194,7 +219,7 @@ function DashboardContent() {
     // Recalculate price when bucket/bin counts change
     useEffect(() => {
         if (bucketCount > 0 || largeBinCount > 0) {
-            const priceEstimate = calculatePrice(bucketCount, largeBinCount);
+            const priceEstimate = calculatePrice(bucketCount, 0, largeBinCount);
             setEstimatedPrice(priceEstimate.totalPrice);
         } else {
             setEstimatedPrice(null);
@@ -221,8 +246,9 @@ function DashboardContent() {
     }, [plusCode]);
 
     const handleNextStep = () => {
-        if (step === 1 && selectedWasteType) setStep(2);
+        if (step === 1 && selectedWasteTypes.length > 0) setStep(2);
         else if (step === 2 && (bucketCount > 0 || largeBinCount > 0)) setStep(3);
+        else if (step === 3 && location) setStep(4); // New: agency selection step
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -241,7 +267,7 @@ function DashboardContent() {
     };
 
     const handleSubmitRequest = async () => {
-        if (!selectedWasteType || (bucketCount === 0 && largeBinCount === 0) || !user) return;
+        if (selectedWasteTypes.length === 0 || (bucketCount === 0 && largeBinCount === 0) || !user) return;
         if (!estimatedPrice || !location) return;
 
         setIsSubmitting(true);
@@ -251,7 +277,7 @@ function DashboardContent() {
                 name: user.name || 'Customer',
                 email: user.email,
                 phone: user.phone,
-                wasteType: selectedWasteType,
+                wasteTypes: selectedWasteTypes,
                 bucketCount,
                 largeBinCount,
             });
@@ -261,7 +287,7 @@ function DashboardContent() {
                 customerId: user.id,
                 customerEmail: user.email,
                 customerPhone: user.phone,
-                wasteType: selectedWasteType,
+                wasteTypes: selectedWasteTypes,
                 bucketCount,
                 largeBinCount,
                 pickupLocation: location,
@@ -288,8 +314,9 @@ function DashboardContent() {
         }
     };
 
-    const selectedWasteInfo = selectedWasteType
-        ? WASTE_TYPES.find((t) => t.id === selectedWasteType)
+    // Get first selected waste type info for display
+    const selectedWasteInfo = selectedWasteTypes.length > 0
+        ? WASTE_TYPES.find((t) => t.id === selectedWasteTypes[0])
         : null;
 
     // Dashboard View (step 0)
@@ -360,7 +387,7 @@ function DashboardContent() {
                     </div>
                 </motion.div>
 
-                {/* Quick Actions */}
+                {/* Quick Actions Grid */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -370,7 +397,7 @@ function DashboardContent() {
                     <h3 className="text-sm font-semibold text-gray-500  uppercase tracking-wider mb-3">
                         Quick Actions
                     </h3>
-                    <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                    <div className="grid grid-cols-3 gap-3">
                         <QuickActionButton
                             icon={<Plus className="w-6 h-6" />}
                             label="New Pickup"
@@ -378,14 +405,24 @@ function DashboardContent() {
                             variant="primary"
                         />
                         <QuickActionButton
+                            icon={<Building2 className="w-6 h-6 text-gray-600 " />}
+                            label="Agencies"
+                            onClick={() => router.push('/dashboard/agencies')}
+                        />
+                        <QuickActionButton
                             icon={<History className="w-6 h-6 text-gray-600 " />}
                             label="History"
-                            onClick={() => { }}
+                            onClick={() => router.push('/dashboard/orders')}
                         />
                         <QuickActionButton
                             icon={<MapPin className="w-6 h-6 text-gray-600 " />}
                             label="Locations"
                             onClick={() => { }}
+                        />
+                        <QuickActionButton
+                            icon={<Recycle className="w-6 h-6 text-gray-600 " />}
+                            label="Tips"
+                            onClick={() => router.push('/dashboard/recycling-tips')}
                         />
                         <QuickActionButton
                             icon={<Settings className="w-6 h-6 text-gray-600 " />}
@@ -395,49 +432,56 @@ function DashboardContent() {
                     </div>
                 </motion.div>
 
-                {/* Menu Items */}
+                {/* Menu Items Grid */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="space-y-3"
                 >
                     <h3 className="text-sm font-semibold text-gray-500  uppercase tracking-wider mb-3">
                         Account
                     </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <MenuItem
+                            icon={<Package className="w-5 h-5" />}
+                            label="Schedule Pickup"
+                            description="Request a waste collection"
+                            onClick={() => setStep(1)}
+                        />
 
-                    <MenuItem
-                        icon={<Package className="w-5 h-5" />}
-                        label="Schedule Pickup"
-                        description="Request a waste collection"
-                        onClick={() => setStep(1)}
-                    />
+                        <MenuItem
+                            icon={<Building2 className="w-5 h-5" />}
+                            label="My Agencies"
+                            description="Manage preferred agencies"
+                            onClick={() => router.push('/dashboard/agencies')}
+                        />
 
-                    <MenuItem
-                        icon={<Clock className="w-5 h-5" />}
-                        label="Order History"
-                        description="View past pickups"
-                        onClick={() => window.location.href = '/dashboard/orders'}
-                    />
+                        <MenuItem
+                            icon={<Clock className="w-5 h-5" />}
+                            label="Order History"
+                            description="View past pickups"
+                            onClick={() => router.push('/dashboard/orders')}
+                        />
 
-                    <MenuItem
-                        icon={<Recycle className="w-5 h-5" />}
-                        label="Recycling Tips"
-                        description="Learn best practices"
-                        onClick={() => window.location.href = '/dashboard/recycling-tips'}
-                    />
+                        <MenuItem
+                            icon={<Recycle className="w-5 h-5" />}
+                            label="Recycling Tips"
+                            description="Learn best practices"
+                            onClick={() => router.push('/dashboard/recycling-tips')}
+                        />
 
-                    <MenuItem
-                        icon={<Mail className="w-5 h-5" />}
-                        label="Contact Info"
-                        description={user?.email || 'Not set'}
-                    />
+                        <MenuItem
+                            icon={<Mail className="w-5 h-5" />}
+                            label="Contact Info"
+                            description={user?.email || 'Not set'}
+                        />
 
-                    <MenuItem
-                        icon={<Phone className="w-5 h-5" />}
-                        label="Phone Number"
-                        description={user?.phone || 'Not set'}
-                    />
+                        <MenuItem
+                            icon={<Phone className="w-5 h-5" />}
+                            label="Phone Number"
+                            description={user?.phone || 'Not set'}
+                        />
+                    </div>
                 </motion.div>
 
                 {/* Payment Modal */}
@@ -473,40 +517,60 @@ function DashboardContent() {
                             What type of waste?
                         </h1>
                         <p className="text-gray-500 ">
-                            Select the type of waste for pickup
+                            Select all types of waste for pickup (you can select multiple)
                         </p>
                     </div>
 
                     <StepIndicator currentStep={1} totalSteps={3} />
 
-                    <div className="space-y-3">
-                        {WASTE_TYPES.map((type, index) => (
-                            <motion.button
-                                key={type.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => setSelectedWasteType(type.id)}
-                                className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${selectedWasteType === type.id
-                                    ? 'border-emerald-500 bg-emerald-50 '
-                                    : 'border-gray-100  bg-white '
-                                    }`}
-                            >
-                                <span className="text-3xl">{type.icon}</span>
-                                <div className="flex-1 text-left">
-                                    <h3 className="font-semibold text-gray-900 ">
+                    <div className="grid grid-cols-2 gap-3">
+                        {WASTE_TYPES.map((type, index) => {
+                            const isSelected = selectedWasteTypes.includes(type.id);
+                            return (
+                                <motion.button
+                                    key={type.id}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: index * 0.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => {
+                                        if (isSelected) {
+                                            setSelectedWasteTypes(prev => prev.filter(t => t !== type.id));
+                                        } else {
+                                            setSelectedWasteTypes(prev => [...prev, type.id]);
+                                        }
+                                    }}
+                                    className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${isSelected
+                                        ? 'border-emerald-500 bg-emerald-50 '
+                                        : 'border-gray-100  bg-white  hover:border-emerald-200'
+                                        }`}
+                                >
+                                    <span className="text-3xl">{type.icon}</span>
+                                    <h3 className="font-medium text-gray-900  text-sm text-center">
                                         {type.name}
                                     </h3>
-                                </div>
-                                {selectedWasteType === type.id && (
-                                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
-                                        <Check className="w-4 h-4 text-white" />
-                                    </div>
-                                )}
-                            </motion.button>
-                        ))}
+                                    {isSelected && (
+                                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                                            <Check className="w-3 h-3 text-white" />
+                                        </div>
+                                    )}
+                                </motion.button>
+                            );
+                        })}
                     </div>
+
+                    {/* Selected count */}
+                    {selectedWasteTypes.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-4 p-3 bg-emerald-50  rounded-xl border border-emerald-200 "
+                        >
+                            <p className="text-sm text-emerald-700  font-medium">
+                                {selectedWasteTypes.length} type{selectedWasteTypes.length > 1 ? 's' : ''} selected
+                            </p>
+                        </motion.div>
+                    )}
 
                     <div className="mt-6 flex gap-3">
                         <Button
@@ -520,7 +584,7 @@ function DashboardContent() {
                         <Button
                             variant="primary"
                             size="lg"
-                            disabled={!selectedWasteType}
+                            disabled={selectedWasteTypes.length === 0}
                             onClick={handleNextStep}
                             rightIcon={<ArrowRight size={18} />}
                             className="flex-1"
@@ -549,7 +613,7 @@ function DashboardContent() {
                         </p>
                     </div>
 
-                    <StepIndicator currentStep={2} totalSteps={3} />
+                    <StepIndicator currentStep={2} totalSteps={4} />
 
                     <div className="space-y-4">
                         {/* Small Bucket Selector */}
@@ -704,7 +768,7 @@ function DashboardContent() {
                         </p>
                     </div>
 
-                    <StepIndicator currentStep={3} totalSteps={3} />
+                    <StepIndicator currentStep={3} totalSteps={4} />
 
                     <div className="space-y-4">
                         {/* Plus Code Instructions */}
@@ -862,12 +926,179 @@ function DashboardContent() {
                         <Button
                             variant="primary"
                             size="lg"
-                            disabled={!isFormValid() || isSubmitting}
+                            disabled={!location}
+                            onClick={handleNextStep}
+                            rightIcon={<ArrowRight size={18} />}
+                            className="flex-1"
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </motion.div>
+            )}
+
+            {/* Step 4: Select Agency/Collector */}
+            {step === 4 && (
+                <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                >
+                    <div className="mb-6">
+                        <h1 className="text-2xl font-bold text-gray-900  mb-2">
+                            Choose Collector
+                        </h1>
+                        <p className="text-gray-500 ">
+                            Select who should handle your pickup
+                        </p>
+                    </div>
+
+                    <StepIndicator currentStep={4} totalSteps={4} />
+
+                    <div className="space-y-3">
+                        {/* Any Available Collector Option */}
+                        <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => setSelectedAgencyId(null)}
+                            className={`w-full p-4 rounded-2xl border-2 transition-all text-left ${selectedAgencyId === null
+                                ? 'border-emerald-500 bg-emerald-50 '
+                                : 'border-gray-200  bg-white  hover:border-gray-300'
+                                }`}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`p-3 rounded-xl ${selectedAgencyId === null ? 'bg-emerald-100' : 'bg-gray-100 '
+                                    }`}>
+                                    <Truck className={`w-6 h-6 ${selectedAgencyId === null ? 'text-emerald-600' : 'text-gray-500'
+                                        }`} />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="font-semibold text-gray-900 ">Any Available Collector</h3>
+                                    <p className="text-sm text-gray-500 ">Fastest option - nearest collector responds</p>
+                                </div>
+                                {selectedAgencyId === null && (
+                                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                                        <Check className="w-4 h-4 text-white" />
+                                    </div>
+                                )}
+                            </div>
+                        </motion.button>
+
+                        {/* Preferred Agencies */}
+                        {preferredAgencies.length > 0 && (
+                            <>
+                                <div className="pt-2">
+                                    <p className="text-sm font-medium text-gray-500  uppercase tracking-wider">
+                                        My Preferred Agencies
+                                    </p>
+                                </div>
+                                {preferredAgencies.map((agency) => (
+                                    <motion.button
+                                        key={agency.id}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setSelectedAgencyId(agency.id)}
+                                        className={`w-full p-4 rounded-2xl border-2 transition-all text-left ${selectedAgencyId === agency.id
+                                            ? 'border-emerald-500 bg-emerald-50 '
+                                            : 'border-gray-200  bg-white  hover:border-gray-300'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`p-3 rounded-xl ${selectedAgencyId === agency.id ? 'bg-emerald-100' : 'bg-gray-100 '
+                                                }`}>
+                                                <Building2 className={`w-6 h-6 ${selectedAgencyId === agency.id ? 'text-emerald-600' : 'text-gray-500'
+                                                    }`} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <h3 className="font-semibold text-gray-900 ">{agency.name}</h3>
+                                                <div className="flex items-center gap-3 text-sm text-gray-500 ">
+                                                    <span className="flex items-center gap-1">
+                                                        <Star className="w-3 h-3 text-amber-400" />
+                                                        {agency.rating.toFixed(1)}
+                                                    </span>
+                                                    <span>{agency.driversCount} drivers</span>
+                                                </div>
+                                            </div>
+                                            {selectedAgencyId === agency.id && (
+                                                <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                                                    <Check className="w-4 h-4 text-white" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.button>
+                                ))}
+                            </>
+                        )}
+
+                        {/* Browse More Agencies Link */}
+                        <button
+                            onClick={() => router.push('/dashboard/agencies')}
+                            className="w-full p-3 text-center text-emerald-600 font-medium hover:bg-emerald-50  rounded-xl transition-colors"
+                        >
+                            + Browse More Agencies
+                        </button>
+
+                        {/* Order Summary */}
+                        <div className="bg-gray-50  rounded-2xl p-4 mt-4">
+                            <h3 className="font-bold text-gray-900  mb-3">Order Summary</h3>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Waste Types</span>
+                                    <span className="font-medium text-gray-900 ">
+                                        {selectedWasteTypes.length} selected
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Containers</span>
+                                    <span className="font-medium text-gray-900 ">
+                                        {bucketCount > 0 ? `${bucketCount} buckets` : ''}
+                                        {bucketCount > 0 && largeBinCount > 0 ? ', ' : ''}
+                                        {largeBinCount > 0 ? `${largeBinCount} bins` : ''}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Location</span>
+                                    <span className="font-medium text-gray-900  truncate max-w-[180px]">
+                                        {location?.formattedAddress || 'Set'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Collector</span>
+                                    <span className="font-medium text-gray-900 ">
+                                        {selectedAgencyId
+                                            ? preferredAgencies.find(a => a.id === selectedAgencyId)?.name
+                                            : 'Any Available'}
+                                    </span>
+                                </div>
+                                <div className="border-t border-gray-200  pt-2 mt-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-bold text-gray-900 ">Total</span>
+                                        <span className="text-xl font-bold text-emerald-600">
+                                            {estimatedPrice ? formatPrice(estimatedPrice) : '---'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="mt-6 flex gap-3">
+                        <Button
+                            variant="ghost"
+                            size="lg"
+                            onClick={handlePrevStep}
+                            leftIcon={<ArrowLeft size={18} />}
+                            className="flex-1"
+                        >
+                            Back
+                        </Button>
+                        <Button
+                            variant="primary"
+                            size="lg"
+                            disabled={isSubmitting}
                             isLoading={isSubmitting}
                             onClick={handleSubmitRequest}
                             className="flex-1"
                         >
-                            {!location ? 'Set Location' : `Pay ${estimatedPrice ? formatPrice(estimatedPrice) : ''}`}
+                            Pay {estimatedPrice ? formatPrice(estimatedPrice) : ''}
                         </Button>
                     </div>
                 </motion.div>

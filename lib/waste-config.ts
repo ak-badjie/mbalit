@@ -6,8 +6,9 @@ import { WasteType, WasteTypeInfo, ContainerType, ContainerInfo, PriceEstimate }
 
 // Container pricing - NO distance factoring
 export const CONTAINER_PRICES = {
-    bucket: 25,      // D25 per small bucket (~10L)
-    large_bin: 500,  // D500 per large bin (~200L)
+    bucket: 25,       // D25 per small bucket (~10L)
+    trash_bag: 75,    // D75 per trash bag (~50L)
+    large_bin: 500,   // D500 per large bin (~200L)
 };
 
 export const CONTAINER_TYPES: ContainerInfo[] = [
@@ -20,12 +21,20 @@ export const CONTAINER_TYPES: ContainerInfo[] = [
         icon: '🪣',
     },
     {
+        id: 'trash_bag',
+        name: 'Trash Bag',
+        description: 'Large trash bag for bulk waste collection',
+        capacity: '50L',
+        pricePerUnit: CONTAINER_PRICES.trash_bag,
+        icon: 'trash_bag', // Will use SVG component
+    },
+    {
         id: 'large_bin',
         name: 'Large Trash Bin',
         description: 'Large wheelie bin or trash container',
         capacity: '200L',
         pricePerUnit: CONTAINER_PRICES.large_bin,
-        icon: '🗑️',
+        icon: 'large_bin', // Will use SVG component
     },
 ];
 
@@ -106,11 +115,13 @@ export const WASTE_TYPES: WasteTypeInfo[] = [
 
 export const PRICING = {
     bucketPrice: CONTAINER_PRICES.bucket,      // D25
+    trashBagPrice: CONTAINER_PRICES.trash_bag, // D75
     largeBinPrice: CONTAINER_PRICES.large_bin, // D500
     currency: 'GMD',
     currencySymbol: 'D',
     minPrice: 25,       // Minimum is 1 bucket
     maxBuckets: 50,     // Max buckets per request
+    maxTrashBags: 30,   // Max trash bags per request
     maxLargeBins: 20,   // Max large bins per request
     // Platform fee split
     platformFeePercentage: 0.30,  // 30% platform
@@ -134,15 +145,19 @@ export const getWasteType = (id: WasteType): WasteTypeInfo | undefined => {
 // Calculate price from container quantities (NEW - no distance)
 export const calculatePrice = (
     bucketCount: number,
+    trashBagCount: number,
     largeBinCount: number
 ): PriceEstimate => {
     const bucketCost = bucketCount * PRICING.bucketPrice;
+    const trashBagCost = trashBagCount * PRICING.trashBagPrice;
     const largeBinCost = largeBinCount * PRICING.largeBinPrice;
-    const totalPrice = bucketCost + largeBinCost;
+    const totalPrice = bucketCost + trashBagCost + largeBinCost;
 
     return {
         bucketCount,
         bucketCost,
+        trashBagCount,
+        trashBagCost,
         largeBinCount,
         largeBinCost,
         totalPrice: Math.max(PRICING.minPrice, totalPrice),
@@ -199,10 +214,11 @@ export const SUBSCRIPTION_PLANS = {
 // Calculate subscription price
 export const calculateSubscriptionPrice = (
     bucketCount: number,
+    trashBagCount: number,
     largeBinCount: number,
     plan: 'weekly' | 'biweekly' | 'monthly'
 ): { pricePerPickup: number; totalMonthlyPrice: number } => {
-    const pricePerPickup = calculatePrice(bucketCount, largeBinCount).totalPrice;
+    const pricePerPickup = calculatePrice(bucketCount, trashBagCount, largeBinCount).totalPrice;
     const pickupsPerMonth = SUBSCRIPTION_PLANS[plan].pickupsPerMonth;
     const totalMonthlyPrice = pricePerPickup * pickupsPerMonth;
 
@@ -276,5 +292,5 @@ export const calculateLegacyPrice = (
     };
 
     const bucketCount = bucketEquivalent[wasteSize] || 2;
-    return calculatePrice(bucketCount, 0).totalPrice;
+    return calculatePrice(bucketCount, 0, 0).totalPrice;
 };
