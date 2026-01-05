@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -288,7 +288,7 @@ const LiveTrackingDemo = () => {
               className="absolute top-1/2 lg:top-0 -translate-y-1/2 lg:translate-y-0 w-4 h-4 bg-white rounded-full shadow-lg"
             />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-800 px-3 py-1 rounded-full text-xs text-white whitespace-nowrap">
-              2.5 km • 8 min
+              2.5 km â€¢ 8 min
             </div>
           </div>
 
@@ -304,7 +304,7 @@ const LiveTrackingDemo = () => {
               <Truck className="w-10 h-10 text-white" />
             </motion.div>
             <h4 className="text-lg font-semibold text-white">Collector En Route</h4>
-            <p className="text-sm text-gray-400">Amadou B. • ⭐ 4.9</p>
+            <p className="text-sm text-gray-400">Amadou B. â€¢ â­ 4.9</p>
           </div>
         </div>
 
@@ -628,7 +628,8 @@ export default function HomePage() {
       <Header />
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* Hero Section - STRICT 100dvh */}
+      <section className="relative h-[100dvh] w-full flex items-center justify-center overflow-hidden">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
           <Image
@@ -640,28 +641,28 @@ export default function HomePage() {
             quality={100}
           />
           {/* Gradient Overlay for Readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70 backdrop-blur-[2px]" />
+          <div className="absolute inset-0 bg-black/40" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-20">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col items-center justify-center h-full">
           <div className="text-center max-w-4xl mx-auto">
             {/* Hero Badge */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.8 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-medium mb-8"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-medium mb-6"
             >
-              <Recycle className="w-4 h-4 text-emerald-400" />
-              <span className="tracking-wide uppercase text-xs">Making The Gambia cleaner</span>
+              <Recycle className="w-3 h-3 text-emerald-300" />
+              <span className="tracking-widest uppercase text-[10px] sm:text-xs">Making The Gambia cleaner</span>
             </motion.div>
 
-            {/* Hero Title */}
+            {/* Hero Title - Adjusted size for mobile fit */}
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.8 }}
-              className="text-5xl md:text-7xl lg:text-8xl font-bold text-white mb-8 tracking-tight leading-tight"
+              className="text-3xl sm:text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-tight"
             >
               Waste Collection
               <br />
@@ -675,53 +676,54 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.8 }}
-              className="text-lg md:text-xl text-gray-200 max-w-2xl mx-auto mb-12 leading-relaxed font-light"
+              className="text-sm sm:text-lg md:text-xl text-gray-100 max-w-xl md:max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed font-light drop-shadow-md px-2"
             >
               Connect with verified waste collectors in your area. Schedule pickups,
               track in real-time, and contribute to a cleaner environment.
             </motion.p>
 
-            {/* CTA Buttons */}
+            {/* CTA Buttons - PLAIN WHITE & SMALLER */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8, duration: 0.8 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
+              className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full px-4"
             >
               {/* Primary: Have Your Waste Collected */}
               <Link href="/auth?signup=true" className="w-full sm:w-auto">
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   size="lg"
-                  rightIcon={<ArrowRight size={20} />}
-                  className="w-full sm:w-auto px-8 py-6 text-lg rounded-2xl bg-emerald-500 hover:bg-emerald-600 border-none shadow-lg shadow-emerald-500/30 text-white font-semibold transition-all duration-300 transform hover:scale-105"
+                  rightIcon={<ArrowRight size={16} />}
+                  className="w-full sm:w-auto px-5 py-3 text-sm sm:text-base rounded-xl bg-white text-gray-900 border-none hover:bg-gray-100 font-semibold shadow-xl"
                 >
                   Have Your Waste Collected
                 </Button>
               </Link>
 
-              {/* Secondary: Become a Collector - IDENTICAL STYLE as requested */}
+              {/* Secondary: Become a Collector - IDENTICAL STYLE */}
               <Link href="/auth?signup=true&role=collector" className="w-full sm:w-auto">
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   size="lg"
-                  leftIcon={<Truck size={20} />} // Keep the icon difference to distinguish, but style is same
-                  className="w-full sm:w-auto px-8 py-6 text-lg rounded-2xl bg-emerald-500 hover:bg-emerald-600 border-none shadow-lg shadow-emerald-500/30 text-white font-semibold transition-all duration-300 transform hover:scale-105"
+                  leftIcon={<Truck size={16} />}
+                  className="w-full sm:w-auto px-5 py-3 text-sm sm:text-base rounded-xl bg-white text-gray-900 border-none hover:bg-gray-100 font-semibold shadow-xl"
                 >
                   Become a Collector
                 </Button>
               </Link>
             </motion.div>
 
-            {/* Login Link for existing users below buttons */}
+            {/* Login Link - BOLD & VISIBLE */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.2 }}
-              className="mt-8"
+              className="mt-8 sm:mt-12 bg-black/40 backdrop-blur-sm inline-block px-5 py-2 rounded-full border border-white/10"
             >
-              <Link href="/auth" className="text-white/60 hover:text-white transition-colors text-sm font-medium">
-                Already have an account? Login
+              <span className="text-gray-300 text-xs sm:text-sm mr-2">Already have an account?</span>
+              <Link href="/auth" className="text-white hover:text-emerald-300 transition-colors text-xs sm:text-sm font-bold uppercase tracking-wide">
+                Login Here
               </Link>
             </motion.div>
           </div>
@@ -732,272 +734,13 @@ export default function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1, y: [0, 10, 0] }}
           transition={{ delay: 1.5, duration: 2, repeat: Infinity }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 text-white/50"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/70"
         >
-          <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center p-1">
-            <div className="w-1 h-2 bg-white/50 rounded-full" />
+          <div className="w-5 h-9 border-2 border-white/40 rounded-full flex justify-center p-1">
+            <div className="w-1 h-2 bg-white rounded-full" />
           </div>
         </motion.div>
       </section>
-
-      {/* Account Types Section */}
-      <section className="py-16 bg-white/50 ">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl font-bold text-gray-900  mb-4">
-              For Everyone
-            </h2>
-            <p className="text-gray-600 ">
-              Whether you're an individual, business, or organization
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {ACCOUNT_TYPES.map((type, index) => (
-              <motion.div
-                key={type.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card
-                  variant="elevated"
-                  padding="lg"
-                  className="text-center hover:shadow-xl transition-shadow"
-                >
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-100  text-emerald-600  mb-4">
-                    {type.icon}
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900  mb-2">
-                    {type.title}
-                  </h3>
-                  <p className="text-gray-600 ">
-                    {type.description}
-                  </p>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl font-bold text-gray-900  mb-4">
-              Why Choose Mbalit?
-            </h2>
-            <p className="text-gray-600 ">
-              The smarter way to handle waste collection
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {FEATURES.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="p-6 rounded-2xl bg-white  border border-gray-100  hover:shadow-lg transition-shadow"
-              >
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-100  text-emerald-600  mb-4">
-                  {feature.icon}
-                </div>
-                <h3 className="text-lg font-bold text-gray-900  mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-gray-600 ">
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section - Detailed Steps */}
-      <section className="py-16 px-4">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <div className="inline-flex items-center gap-2 bg-emerald-100  text-emerald-700  px-4 py-2 rounded-full mb-4">
-              <Recycle className="w-5 h-5" />
-              <span className="font-semibold">For Waste Owners</span>
-            </div>
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900  mb-4">
-              Schedule a Pickup in 4 Easy Steps
-            </h2>
-            <p className="text-lg text-gray-600  max-w-2xl mx-auto">
-              From request to collection, we&apos;ve made the process seamless and transparent.
-            </p>
-          </motion.div>
-
-          {/* Steps */}
-          <div className="space-y-24">
-            {/* Step 1: Select Waste Type */}
-            <StepCard
-              number={1}
-              icon={Package}
-              title="Select Your Waste Type"
-              description="Tell us what kind of waste you need picked up. We handle everything from household garbage to recyclables."
-              details={[
-                'Household Waste – Regular garbage and trash',
-                'Recyclables – Plastic, paper, glass, and metal',
-                'Garden Waste – Leaves, branches, and yard debris',
-                'Bulk Items – Furniture, appliances, and large items',
-                'Construction Debris – Renovation and building waste',
-              ]}
-            />
-
-            {/* Step 2: Share Your Location */}
-            <StepCard
-              number={2}
-              icon={MapPin}
-              title="Share Your Precise Location"
-              description="Use Google Plus Code for pinpoint accuracy, ensuring our collectors find you without any confusion."
-              details={[
-                'Get your Plus Code from Google Maps instantly',
-                'Works even in areas without street addresses',
-                'More accurate than traditional addresses',
-                'Collectors know exactly where to go',
-              ]}
-              image="/google_plus_code_sample.webp"
-              imageAlt="Google Plus Code example showing how to find your location code"
-              reverse
-            />
-
-            {/* Step 3: Live Tracking */}
-            <AnimatedSection>
-              <div className="flex flex-col gap-8">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-bold text-xl shadow-lg">
-                    3
-                  </div>
-                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 ">
-                    <Navigation className="w-6 h-6 text-emerald-600 " />
-                  </div>
-                </div>
-                <motion.div variants={fadeInUp}>
-                  <h3 className="text-2xl lg:text-3xl font-bold text-gray-900  mb-3">
-                    Track Your Collector in Real-Time
-                  </h3>
-                  <p className="text-lg text-gray-600  mb-8 max-w-2xl">
-                    Watch as your assigned collector makes their way to you. Know exactly when they&apos;ll arrive with live GPS tracking.
-                  </p>
-                </motion.div>
-                <LiveTrackingDemo />
-                <motion.ul variants={staggerContainer} className="grid md:grid-cols-2 gap-4 mt-6">
-                  {[
-                    'See collector location in real-time',
-                    'Get accurate ETA updates',
-                    'Contact your collector directly',
-                    'Rate and review after pickup',
-                  ].map((feature, index) => (
-                    <motion.li
-                      key={index}
-                      variants={fadeInUp}
-                      className="flex items-center gap-3 bg-white  rounded-xl p-4 shadow-sm"
-                    >
-                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                      <span className="text-gray-700 ">{feature}</span>
-                    </motion.li>
-                  ))}
-                </motion.ul>
-              </div>
-            </AnimatedSection>
-
-            {/* Step 4: Payment */}
-            <AnimatedSection>
-              <div className="flex flex-col gap-8">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-bold text-xl shadow-lg">
-                    4
-                  </div>
-                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 ">
-                    <CreditCard className="w-6 h-6 text-emerald-600 " />
-                  </div>
-                </div>
-                <motion.div variants={fadeInUp}>
-                  <h3 className="text-2xl lg:text-3xl font-bold text-gray-900  mb-3">
-                    Pay Securely with Wave
-                  </h3>
-                  <p className="text-lg text-gray-600  mb-8 max-w-2xl">
-                    No cash needed. Pay instantly through Wave mobile money – the most trusted payment method in The Gambia.
-                  </p>
-                </motion.div>
-                <PaymentSection />
-              </div>
-            </AnimatedSection>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="p-8 md:p-12 rounded-3xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Ready to Get Started?
-            </h2>
-            <p className="text-lg text-emerald-50 mb-8 max-w-xl mx-auto">
-              Join thousands of users who are making their communities cleaner
-              with Mbalit.
-            </p>
-            <Link href="/auth?signup=true">
-              <Button
-                variant="secondary"
-                size="lg"
-                rightIcon={<ArrowRight size={20} />}
-                className="bg-white text-emerald-600 hover:bg-emerald-50 px-8 py-4 text-lg"
-              >
-                Create Your Account
-              </Button>
-            </Link>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-8 border-t border-gray-200 ">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-500 ">
-              © {new Date().getFullYear()} Mbalit. All rights reserved.
-            </p>
-            <div className="flex items-center gap-6 text-sm text-gray-500 ">
-              <Link href="/auth" className="hover:text-emerald-500 transition-colors">
-                Login
-              </Link>
-              <Link href="/auth?signup=true" className="hover:text-emerald-500 transition-colors">
-                Sign Up
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

@@ -1,63 +1,56 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowUpRight, Home, LayoutDashboard, LogIn, UserPlus, HelpCircle, Truck } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Fixed import path
-import { useAuth } from '@/lib/auth-context'; // Import auth context
+import { X, LogOut, LayoutDashboard, Truck, ArrowRight, User, HelpCircle, LogIn, Trash2, Home } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
-export interface CapsuleNavProps {
-    logoSrc?: string;
-    logoAlt?: string;
-    companyName?: string;
-    tagline?: string;
-    position?: 'top-left' | 'top-right';
-    className?: string;
-    zIndex?: number;
+/* -------------------------------------------------------------------------------------------------
+ * Types
+ * -----------------------------------------------------------------------------------------------*/
+interface LinkItem {
+    label: string;
+    href?: string;
+    onClick?: () => void;
+    icon?: React.ElementType;
 }
 
-const cardColors = ['rgba(16, 185, 129, 0.9)', 'rgba(5, 150, 105, 0.9)']; // Emerald colors for Mbalit
+interface NavSection {
+    title: string;
+    size: 'small' | 'medium' | 'large';
+    links: LinkItem[];
+}
 
-const CapsuleNav: React.FC<CapsuleNavProps> = ({
-    logoSrc = '/davelabslogo.png', // We'll rely on the passed prop or default. note: Mbalit uses TruckLogo usually
-    logoAlt = 'Mbalit Logo',
-    companyName = 'Mbalit',
-    tagline = 'WASTE MADE EASY',
-    position = 'top-right',
-    className,
-    zIndex = 9999,
-}) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+interface CapsuleNavProps {
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+/* -------------------------------------------------------------------------------------------------
+ * Configuration
+ * -----------------------------------------------------------------------------------------------*/
+
+const cardColors = [
+    'rgba(16, 185, 129, 0.95)', // Emerald 500 (Less transparent for legibility)
+    'rgba(13, 148, 136, 0.95)', // Teal 600
+];
+
+/* -------------------------------------------------------------------------------------------------
+ * Component
+ * -----------------------------------------------------------------------------------------------*/
+
+const CapsuleNav: React.FC<CapsuleNavProps> = ({ isOpen, onClose }) => {
+    const { user, isAuthenticated, logout } = useAuth();
     const overlayRef = useRef<HTMLDivElement>(null);
-    const { user, isAuthenticated, logout } = useAuth(); // Use auth hook
+    const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
 
-    // Update navigation sections based on auth state
-    const navigationSections = [
-        {
-            title: 'Account',
-            size: 'large',
-            links: isAuthenticated ? [
-                { label: user?.name || 'Dashboard', href: user?.role === 'collector' ? '/collector/dashboard' : '/dashboard', icon: LayoutDashboard },
-                { label: 'Logout', onClick: () => { logout(); setIsOpen(false); }, icon: LogIn }, // Handle logout
-            ] : [
-                { label: 'Login', href: '/auth', icon: LogIn },
-                { label: 'Sign Up', href: '/auth?signup=true', icon: UserPlus },
-                { label: 'Become a Collector', href: '/auth?signup=true&role=collector', icon: Truck },
-            ],
-        },
-        {
-            title: 'Explore',
-            size: 'medium',
-            links: [
-                { label: 'Home', href: '/', icon: Home },
-                { label: 'How It Works', href: '/how-it-works', icon: HelpCircle },
-            ],
-        },
-    ];
+    const toggleMenu = () => {
+        onClose();
+    };
 
-
-    // Track window dimensions
+    // Update dimensions on mount and resize
     useEffect(() => {
         const updateDimensions = () => {
             setDimensions({
@@ -65,24 +58,19 @@ const CapsuleNav: React.FC<CapsuleNavProps> = ({
                 height: window.innerHeight,
             });
         };
-
         updateDimensions();
+        // Fallback for initial render if window is available
+        if (typeof window !== 'undefined') {
+            setDimensions({
+                width: window.innerWidth,
+                height: window.innerHeight,
+            });
+        }
         window.addEventListener('resize', updateDimensions);
         return () => window.removeEventListener('resize', updateDimensions);
     }, []);
 
-    // Close on escape key
-    useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && isOpen) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('keydown', handleEscape);
-        return () => document.removeEventListener('keydown', handleEscape);
-    }, [isOpen]);
-
-    // Prevent body scroll when open
+    // Lock body scroll when menu is open
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -94,177 +82,167 @@ const CapsuleNav: React.FC<CapsuleNavProps> = ({
         };
     }, [isOpen]);
 
-    const toggleMenu = () => setIsOpen(!isOpen);
+    // Define navigation sections based on Auth state
+    const navigationSections: NavSection[] = isAuthenticated
+        ? [
+            {
+                title: 'Account',
+                size: 'large',
+                links: [
+                    { label: 'Dashboard', href: user?.role === 'collector' ? '/collector/dashboard' : '/dashboard', icon: LayoutDashboard },
+                    { label: 'Logout', onClick: () => { logout(); onClose(); }, icon: LogOut },
+                ],
+            },
+        ]
+        : [
+            {
+                title: 'Services', // Grouping CTA's
+                size: 'large',
+                links: [
+                    { label: 'Have Your Waste Collected', href: '/auth?signup=true', icon: Trash2 }, // Specific waste icon
+                    { label: 'Become a Collector', href: '/auth?signup=true&role=collector', icon: Truck },
+                    { label: 'Login', href: '/auth', icon: LogIn }, // Moved Login here
+                ],
+            },
+            {
+                title: 'Explore', // Grouping Navs
+                size: 'medium',
+                links: [
+                    { label: 'Home', href: '/', icon: Home }, // Moved Home here
+                    { label: 'How It Works', href: '/how-it-works', icon: HelpCircle },
+                ],
+            },
+        ];
 
-    // Calculate card dimensions based on window size
+    // Helper to calculate card style
     const getCardStyle = (size: string, index: number) => {
-        const baseWidth = Math.min(dimensions.width * 0.4, 320); // Slightly wider for better mobile content
-        const basePadding = Math.max(dimensions.width * 0.02, 24);
-        const baseHeight = Math.max(dimensions.height * 0.2, 180);
+        // Simplified responsive sizing logic for mobile focus
+        const isMobile = dimensions.width < 768;
 
-        let width: number;
-        let height: number;
-
-        switch (size) {
-            case 'large':
-                width = baseWidth * 1.1;
-                height = baseHeight * 1.2;
-                break;
-            case 'medium':
-            default:
-                width = baseWidth;
-                height = baseHeight;
-                break;
-        }
-
-        // Adjust for mobile - make them full width mostly
-        if (dimensions.width < 768) {
-            width = dimensions.width * 0.85;
-        }
+        const width = isMobile ? '100%' : '45%'; // Cards take full width on mobile
+        const height = 'auto';
 
         return {
-            width: `${width}px`,
-            minHeight: `${height}px`,
-            padding: `${basePadding}px`,
-            backgroundColor: cardColors[index % 2],
-            backdropFilter: 'blur(10px)',
+            width: width,
+            minHeight: '120px',
+            padding: '24px',
+            backgroundColor: cardColors[index % cardColors.length],
         };
     };
 
-    const positionClasses = position === 'top-right'
-        ? 'right-4 top-5 md:right-6 md:top-6' // Adjusted top to center in standard header (approx h-20/80px or h-16/64px)
-        : 'left-4 top-5 md:left-6 md:top-6';
-
-    // Calculate positions for smooth animation
-    const clipPathOrigin = position === 'top-right'
-        ? `calc(100% - 60px) 40px` // Adjusted for where the button likely sits
-        : `60px 40px`;
+    // Animation Config
+    // Standard circular reveal animation
+    const clipPathOrigin = `calc(100% - 40px) 40px`;
 
     return (
-        <>
-            {/* Capsule Trigger Button - Only visible when needed (handled by parent or media queries typically, but here we just show/hide) */}
-            <AnimatePresence>
-                {!isOpen && (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    ref={overlayRef}
+                    className="fixed inset-0 flex flex-col z-[60]" // Higher z-index than header
+                    initial={{ clipPath: `circle(0% at ${clipPathOrigin})` }}
+                    animate={{ clipPath: `circle(150% at ${clipPathOrigin})` }}
+                    exit={{ clipPath: `circle(0% at ${clipPathOrigin})` }}
+                    transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+                >
+                    {/* Background Image Layer - NO BLUR, NO TINT */}
+                    <div
+                        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                        style={{
+                            backgroundImage: 'url(/hero.jpeg)',
+                        }}
+                    />
+
+                    {/* Close Button */}
                     <motion.button
+                        className="absolute top-5 right-4 md:top-6 md:right-6 z-20 w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors border border-white/30"
                         onClick={toggleMenu}
-                        className={cn('fixed z-50 md:hidden', positionClasses, className)} // Only show on mobile by default if used alongside desktop nav
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        whileTap={{ scale: 0.95 }}
+                        initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
+                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                        exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
+                        transition={{ delay: 0.1, duration: 0.3 }}
                     >
-                        <div className="flex items-center gap-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-white/20 pl-4 pr-2 py-2">
-                            <span className="text-sm font-semibold text-gray-800">Menu</span>
-                            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-                                <div className="flex flex-col gap-1">
-                                    <span className="w-4 h-0.5 bg-white rounded-full" />
-                                    <span className="w-4 h-0.5 bg-white rounded-full" />
-                                    <span className="w-4 h-0.5 bg-white rounded-full" />
-                                </div>
-                            </div>
-                        </div>
+                        <X size={24} strokeWidth={2.5} />
                     </motion.button>
-                )}
-            </AnimatePresence>
 
-            {/* Fullscreen Overlay */}
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        ref={overlayRef}
-                        className="fixed inset-0 flex flex-col"
-                        style={{ zIndex }}
-                        initial={{ clipPath: `circle(0% at ${clipPathOrigin})` }}
-                        animate={{ clipPath: `circle(150% at ${clipPathOrigin})` }}
-                        exit={{ clipPath: `circle(0% at ${clipPathOrigin})` }}
-                        transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    >
-                        {/* Background Image Layer - NO BLUR, NO TINT as requested */}
-                        <div
-                            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                            style={{
-                                backgroundImage: 'url(/hero.jpeg)',
-                            }}
-                        />
-                        {/* Removed dark overlay div */}
-
-                        {/* Close Button */}
-                        <motion.button
-                            onClick={toggleMenu}
-                            className={cn(
-                                'absolute flex items-center justify-center w-12 h-12 bg-white/20 backdrop-blur-md rounded-full border border-white/30 text-white',
-                                'hover:bg-white/30 transition-colors z-20',
-                                position === 'top-right' ? 'right-6 top-6' : 'left-6 top-6'
-                            )}
-                            initial={{ scale: 0, rotate: -180 }}
-                            animate={{ scale: 1, rotate: 0 }}
-                            exit={{ scale: 0, rotate: 180 }}
-                            transition={{ delay: 0.3 }}
-                            aria-label="Close menu"
+                    {/* Navigation Container */}
+                    <div className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden p-6 pt-24 pb-12 flex flex-col justify-center items-center">
+                        {/* Header Elements: Logo/Title */}
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="text-center mb-10"
                         >
-                            <X className="w-6 h-6" />
-                        </motion.button>
+                            <h2 className="text-4xl font-bold text-white tracking-tight leading-none mb-1">Mbalit</h2>
+                            <p className="text-emerald-100 text-sm tracking-widest font-medium uppercase">Waste Made Easy</p>
+                        </motion.div>
 
-                        {/* Content */}
-                        <div className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden">
-                            <div className="min-h-full flex flex-col items-center py-20 px-6">
-
+                        <div className="w-full max-w-lg flex flex-col gap-4">
+                            {navigationSections.map((section, sectionIndex) => (
                                 <motion.div
-                                    className="mb-12 text-center"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.2 }}
+                                    key={section.title}
+                                    style={getCardStyle(section.size, sectionIndex)}
+                                    className="rounded-[32px] flex flex-col justify-between shadow-lg relative overflow-hidden backdrop-blur-md border border-white/20 hover:scale-[1.02] transition-transform duration-300 group mx-auto"
+                                    initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                                    animate={{
+                                        opacity: 1,
+                                        y: 0,
+                                        scale: 1,
+                                        transition: {
+                                            delay: 0.1 + sectionIndex * 0.1,
+                                            type: 'spring',
+                                            stiffness: 100,
+                                            damping: 15
+                                        }
+                                    }}
+                                    exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
                                 >
-                                    <h1 className="text-4xl font-bold text-white tracking-tight mb-2">{companyName}</h1>
-                                    <p className="text-emerald-100 tracking-widest text-sm font-medium">{tagline}</p>
-                                </motion.div>
+                                    {/* Glass reflection effect */}
+                                    <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-white/20 to-transparent pointer-events-none" />
 
-                                <div className="flex flex-wrap justify-center gap-6 w-full max-w-4xl">
-                                    {navigationSections.map((section, index) => (
-                                        <motion.div
-                                            key={section.title}
-                                            className="rounded-3xl border border-white/10 overflow-hidden flex flex-col"
-                                            style={getCardStyle(section.size, index)}
-                                            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            transition={{ delay: 0.3 + index * 0.1 }}
-                                        >
-                                            <h2 className="text-xl font-bold text-white mb-6 p-2 border-b border-white/10">
-                                                {section.title}
-                                            </h2>
-
-                                            <div className="flex flex-col gap-4 flex-1">
-                                                {section.links.map((link) => {
-                                                    const LinkIcon = link.icon;
-                                                    const Wrapper = link.onClick ? 'button' : 'a';
-                                                    return (
-                                                        <Wrapper
-                                                            key={link.label}
-                                                            href={link.href}
+                                    <div className="relative z-10">
+                                        <h3 className="text-white/90 text-xs font-bold uppercase tracking-widest mb-6 ml-1 flex items-center gap-3">
+                                            {section.title}
+                                            <div className="h-[1px] flex-1 bg-white/40" />
+                                        </h3>
+                                        <div className="flex flex-col gap-4">
+                                            {section.links.map((link, linkIndex) => (
+                                                <div key={linkIndex}>
+                                                    {link.onClick ? (
+                                                        <button
                                                             onClick={link.onClick}
-                                                            className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/10 transition-colors text-left group"
+                                                            className="text-2xl sm:text-3xl font-bold text-white hover:text-white/80 transition-colors text-left flex items-center gap-4 w-full group/link"
                                                         >
-                                                            <div className="p-2 bg-white/20 rounded-lg group-hover:bg-emerald-400 group-hover:text-white transition-colors text-emerald-50">
-                                                                {LinkIcon ? <LinkIcon size={20} /> : <ArrowUpRight size={20} />}
-                                                            </div>
-                                                            <div className="flex flex-col">
-                                                                <span className="text-lg font-medium text-white leading-none">
-                                                                    {link.label}
-                                                                </span>
-                                                            </div>
-                                                        </Wrapper>
-                                                    );
-                                                })}
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            </div>
+                                                            {link.icon && <link.icon className="w-6 h-6 sm:w-8 sm:h-8 opacity-70 group-hover/link:opacity-100 transition-opacity" />}
+                                                            <span>{link.label}</span>
+                                                        </button>
+                                                    ) : (
+                                                        <Link
+                                                            href={link.href || '#'}
+                                                            onClick={toggleMenu}
+                                                            className="text-2xl sm:text-3xl font-bold text-white hover:text-white/80 transition-colors flex items-center gap-4 w-full group/link"
+                                                        >
+                                                            {link.icon && <link.icon className="w-6 h-6 sm:w-8 sm:h-8 opacity-70 group-hover/link:opacity-100 transition-opacity" />}
+                                                            <span>{link.label}</span>
+                                                        </Link>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Decorative bottom icon */}
+                                    <div className="absolute bottom-4 right-4 opacity-10">
+                                        <Truck size={60} />
+                                    </div>
+                                </motion.div>
+                            ))}
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 };
 

@@ -53,6 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
     const { user, isAuthenticated, logout } = useAuth();
     const userName = user?.name;
     const [isScrolled, setIsScrolled] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Handle scroll for transparency
     useEffect(() => {
@@ -181,13 +182,31 @@ export const Header: React.FC<HeaderProps> = ({
                                     </div>
                                 )}
                             </div>
+                            {/* Spacer to push menu button to right if needed, but flex-between handles it */}
+
+                            {/* Mobile Menu Button - Capsule Style Trigger (Visible on mobile only) */}
+                            <motion.button
+                                onClick={() => setIsMobileMenuOpen(true)}
+                                className="md:hidden relative z-50 flex items-center gap-2 bg-white/90 backdrop-blur-md rounded-full shadow-sm border border-emerald-100/50 pl-3 pr-1 py-1.5 ml-auto"
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                <span className="text-xs font-semibold text-gray-700 ml-1">Menu</span>
+                                <div className="w-7 h-7 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm">
+                                    <div className="flex flex-col gap-[3px]">
+                                        <span className="w-3.5 h-[2px] bg-white rounded-full" />
+                                        <span className="w-3.5 h-[2px] bg-white rounded-full" />
+                                        <span className="w-3.5 h-[2px] bg-white rounded-full" />
+                                    </div>
+                                </div>
+                            </motion.button>
+
                         </div>
                     </div>
                 </div>
             </motion.header>
 
-            {/* Mobile Capsule Navigation - Fixed overlay independent of Header flow */}
-            <CapsuleNav />
+            {/* Mobile Capsule Navigation - Controlled by Header state */}
+            <CapsuleNav isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
         </>
     );
 };
