@@ -132,8 +132,8 @@ const CapsuleNav: React.FC<CapsuleNavProps> = ({
     };
 
     const positionClasses = position === 'top-right'
-        ? 'right-4 top-4 md:right-6 md:top-6'
-        : 'left-4 top-4 md:left-6 md:top-6';
+        ? 'right-4 top-5 md:right-6 md:top-6' // Adjusted top to center in standard header (approx h-20/80px or h-16/64px)
+        : 'left-4 top-5 md:left-6 md:top-6';
 
     // Calculate positions for smooth animation
     const clipPathOrigin = position === 'top-right'
@@ -179,15 +179,14 @@ const CapsuleNav: React.FC<CapsuleNavProps> = ({
                         exit={{ clipPath: `circle(0% at ${clipPathOrigin})` }}
                         transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
                     >
-                        {/* Background Image Layer */}
+                        {/* Background Image Layer - NO BLUR, NO TINT as requested */}
                         <div
                             className="absolute inset-0 bg-cover bg-center bg-no-repeat"
                             style={{
                                 backgroundImage: 'url(/hero.jpeg)',
                             }}
                         />
-                        {/* Overlay to ensure readability */}
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                        {/* Removed dark overlay div */}
 
                         {/* Close Button */}
                         <motion.button

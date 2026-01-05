@@ -114,14 +114,14 @@ export const Header: React.FC<HeaderProps> = ({
                             {/* Spacer for mobile to prevent overlap with hamburger */}
                             {/* We don't need a spacer as CapsuleNav is fixed position */}
 
-                            {/* Desktop Navigation - Beautified */}
-                            <nav className="hidden md:flex items-center gap-2">
+                            {/* Desktop Navigation - Beautified & ABSOLUTELY CENTERED on screen */}
+                            <nav className="hidden md:flex items-center gap-2 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                                 <NavLink href="/" icon={Home}>Home</NavLink>
                                 <NavLink href="/how-it-works" icon={HelpCircle}>How It Works</NavLink>
                             </nav>
 
                             {/* Auth Buttons with Avatar -- Only visible on DESKTOP now, mobile handled by CapsuleNav */}
-                            <div className="hidden md:flex items-center gap-3">
+                            <div className="hidden md:flex items-center gap-3 ml-auto">
                                 {isAuthenticated ? (
                                     <div className="flex items-center gap-2">
                                         {/* User Avatar/Dashboard */}
