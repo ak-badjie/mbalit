@@ -145,12 +145,22 @@ const CapsuleNav: React.FC<CapsuleNavProps> = ({ isOpen, onClose }) => {
                     transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
                 >
                     {/* Background Image Layer - NO BLUR, NO TINT */}
-                    <div
-                        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                        style={{
-                            backgroundImage: 'url(/hero.jpeg)',
-                        }}
-                    />
+                    <div className="absolute inset-0 z-0">
+                        {/* Desktop Image */}
+                        <div
+                            className="hidden md:block absolute inset-0 bg-cover bg-center bg-no-repeat"
+                            style={{
+                                backgroundImage: 'url(/hero.jpeg)',
+                            }}
+                        />
+                        {/* Mobile Image */}
+                        <div
+                            className="block md:hidden absolute inset-0 bg-cover bg-center bg-no-repeat"
+                            style={{
+                                backgroundImage: 'url(/hero-mobile.jpeg)',
+                            }}
+                        />
+                    </div>
 
                     {/* Close Button */}
                     <motion.button
