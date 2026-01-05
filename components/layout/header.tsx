@@ -1,13 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { Menu, X, User, LogIn, LogOut, Home, HelpCircle, UserPlus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TruckLogo } from '@/components/ui/truck-logo';
-import { HamburgerMenuOverlay } from '@/components/ui/hamburger-menu';
+import CapsuleNav from '@/components/ui/CapsuleNav';
 import { useAuth } from '@/lib/auth-context';
+import { cn } from '@/lib/utils';
 
 interface HeaderProps {
     onMenuClick?: () => void;
@@ -22,17 +23,17 @@ const NavLink = ({ href, icon: Icon, children, onClick }: {
 }) => (
     <Link href={href} onClick={onClick}>
         <motion.div
-            className="group relative flex items-center gap-2 px-4 py-2 rounded-xl text-gray-600  hover:text-emerald-600  transition-colors"
+            className="group relative flex items-center gap-2 px-4 py-2 rounded-xl text-gray-700 hover:text-emerald-700 transition-colors font-medium"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
         >
             {/* Animated background on hover */}
             <motion.div
-                className="absolute inset-0 bg-emerald-50  rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute inset-0 bg-white/50 backdrop-blur-sm rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
                 layoutId="navBackground"
             />
-            <Icon className="w-4 h-4 relative z-10 group-hover:text-emerald-500 transition-colors" />
-            <span className="text-sm font-medium relative z-10">{children}</span>
+            <Icon className="w-4 h-4 relative z-10 group-hover:text-emerald-600 transition-colors" />
+            <span className="text-sm relative z-10">{children}</span>
             {/* Sparkle effect */}
             <motion.div
                 className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100"
@@ -51,38 +52,52 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
     const { user, isAuthenticated, logout } = useAuth();
     const userName = user?.name;
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
+
+    // Handle scroll for transparency
+    useEffect(() => {
+        const handleScroll = () => {
+            const scrollPosition = window.scrollY;
+            setIsScrolled(scrollPosition > 10);
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     const handleLogout = async () => {
         try {
             await logout();
-            setIsMobileMenuOpen(false);
         } catch (error) {
             console.error('Logout failed:', error);
         }
     };
 
     return (
-        <motion.header
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-            className="fixed top-0 left-0 right-0 z-40"
-        >
-            {/* Frosted Glass Effect Container */}
-            <div className="relative">
-                {/* Animated gradient accent line at top */}
-                <motion.div
-                    className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-400"
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ duration: 0.8, ease: 'easeOut' }}
-                />
+        <>
+            <motion.header
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                className={cn(
+                    "fixed top-0 left-0 right-0 z-40 transition-all duration-300",
+                    isScrolled
+                        ? "py-0 bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-lg shadow-black/5"
+                        : "py-4 bg-transparent border-transparent shadow-none"
+                )}
+            >
+                {/* Frosted Glass Effect Container */}
+                <div className="relative">
+                    {/* Animated gradient accent line at top - only visible when scrolled */}
+                    <motion.div
+                        className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-400"
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: isScrolled ? 1 : 0 }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
+                    />
 
-                {/* Main header with enhanced frosted glass */}
-                <div className="bg-white/60  backdrop-blur-2xl backdrop-saturate-200 border-b border-white/30  shadow-xl shadow-black/5">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16">
+                        <div className={cn("flex items-center justify-between transition-all duration-300", isScrolled ? "h-16" : "h-20")}>
                             {/* Logo with hover animation */}
                             <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
                                 <motion.div
@@ -91,12 +106,13 @@ export const Header: React.FC<HeaderProps> = ({
                                     transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                                     className="flex items-center"
                                 >
+                                    {/* Pass text color based on scroll state if needed, assuming TruckLogo adapts or is fine */}
                                     <TruckLogo size="sm" showText={true} />
                                 </motion.div>
                             </Link>
 
                             {/* Spacer for mobile to prevent overlap with hamburger */}
-                            <div className="md:hidden w-14" />
+                            {/* We don't need a spacer as CapsuleNav is fixed position */}
 
                             {/* Desktop Navigation - Beautified */}
                             <nav className="hidden md:flex items-center gap-2">
@@ -104,18 +120,18 @@ export const Header: React.FC<HeaderProps> = ({
                                 <NavLink href="/how-it-works" icon={HelpCircle}>How It Works</NavLink>
                             </nav>
 
-                            {/* Auth Buttons with Avatar */}
+                            {/* Auth Buttons with Avatar -- Only visible on DESKTOP now, mobile handled by CapsuleNav */}
                             <div className="hidden md:flex items-center gap-3">
                                 {isAuthenticated ? (
                                     <div className="flex items-center gap-2">
                                         {/* User Avatar/Dashboard */}
-                                        <Link href="/collector/dashboard">
+                                        <Link href={user?.role === 'collector' ? '/collector/dashboard' : '/dashboard'}>
                                             <motion.div
-                                                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-200  rounded-full hover:from-emerald-500/20 hover:to-teal-500/20 transition-all"
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-200/50 rounded-full hover:from-emerald-500/20 hover:to-teal-500/20 transition-all font-medium text-gray-700"
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
-                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden ring-2 ring-white ">
+                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden ring-2 ring-white/50 shadow-sm">
                                                     {user?.profileImage ? (
                                                         <img
                                                             src={user.profileImage}
@@ -126,7 +142,7 @@ export const Header: React.FC<HeaderProps> = ({
                                                         userName?.charAt(0).toUpperCase() || 'U'
                                                     )}
                                                 </div>
-                                                <span className="text-sm font-medium text-gray-700 ">
+                                                <span className="text-sm">
                                                     {userName || 'Dashboard'}
                                                 </span>
                                             </motion.div>
@@ -135,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({
                                         {/* Logout Button */}
                                         <motion.button
                                             onClick={handleLogout}
-                                            className="p-2 rounded-xl text-gray-500 hover:text-red-500 hover:bg-red-50  transition-colors"
+                                            className="p-2 rounded-xl text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors"
                                             whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.9 }}
                                             title="Logout"
@@ -147,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({
                                     <div className="flex items-center gap-2">
                                         <Link href="/auth">
                                             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                                                <Button variant="ghost" leftIcon={<LogIn size={18} />}>
+                                                <Button variant="ghost" leftIcon={<LogIn size={18} />} className="text-gray-700 hover:bg-white/50">
                                                     Login
                                                 </Button>
                                             </motion.div>
@@ -165,31 +181,14 @@ export const Header: React.FC<HeaderProps> = ({
                                     </div>
                                 )}
                             </div>
-
-                            {/* Mobile Menu Button - Hidden, using HamburgerMenuOverlay instead */}
                         </div>
                     </div>
                 </div>
-            </div>
+            </motion.header>
 
-            {/* Mobile Hamburger Menu Overlay */}
-            <HamburgerMenuOverlay
-                items={[
-                    { label: 'Home', href: '/', icon: <Home className="w-5 h-5" /> },
-                    ...(isAuthenticated
-                        ? [
-                            { label: userName || 'Dashboard', href: user?.role === 'collector' ? '/collector/dashboard' : '/dashboard', icon: <User className="w-5 h-5" /> },
-                            { label: 'Logout', onClick: handleLogout, icon: <LogOut className="w-5 h-5" /> },
-                        ]
-                        : [
-                            { label: 'Login', href: '/auth', icon: <LogIn className="w-5 h-5" /> },
-                            { label: 'Sign Up', href: '/auth?signup=true', icon: <UserPlus className="w-5 h-5" /> },
-                        ]
-                    ),
-                ]}
-                menuItemClassName="text-left"
-            />
-        </motion.header>
+            {/* Mobile Capsule Navigation - Fixed overlay independent of Header flow */}
+            <CapsuleNav />
+        </>
     );
 };
 

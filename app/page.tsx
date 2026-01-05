@@ -628,40 +628,54 @@ export default function HomePage() {
       <Header />
 
       {/* Hero Section */}
-      <section className="pt-24 pb-16 md:pt-32 md:pb-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/hero.jpeg"
+            alt="Mbalit Hero Background"
+            fill
+            className="object-cover object-center"
+            priority
+            quality={100}
+          />
+          {/* Gradient Overlay for Readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70 backdrop-blur-[2px]" />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-20">
+          <div className="text-center max-w-4xl mx-auto">
             {/* Hero Badge */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100  text-emerald-700  text-sm font-medium mb-6"
+              transition={{ delay: 0.2, duration: 0.8 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-medium mb-8"
             >
-              <Recycle className="w-4 h-4" />
-              <span>Making The Gambia cleaner, one pickup at a time</span>
+              <Recycle className="w-4 h-4 text-emerald-400" />
+              <span className="tracking-wide uppercase text-xs">Making The Gambia cleaner</span>
             </motion.div>
 
             {/* Hero Title */}
             <motion.h1
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-4xl md:text-6xl font-bold text-gray-900  mb-6"
+              transition={{ delay: 0.4, duration: 0.8 }}
+              className="text-5xl md:text-7xl lg:text-8xl font-bold text-white mb-8 tracking-tight leading-tight"
             >
               Waste Collection
               <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
                 Made Easy
               </span>
             </motion.h1>
 
             {/* Hero Subtitle */}
             <motion.p
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-lg md:text-xl text-gray-600  max-w-2xl mx-auto mb-10"
+              transition={{ delay: 0.6, duration: 0.8 }}
+              className="text-lg md:text-xl text-gray-200 max-w-2xl mx-auto mb-12 leading-relaxed font-light"
             >
               Connect with verified waste collectors in your area. Schedule pickups,
               track in real-time, and contribute to a cleaner environment.
@@ -669,49 +683,61 @@ export default function HomePage() {
 
             {/* CTA Buttons */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.8, duration: 0.8 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
               {/* Primary: Have Your Waste Collected */}
-              <Link href="/auth?signup=true">
+              <Link href="/auth?signup=true" className="w-full sm:w-auto">
                 <Button
                   variant="primary"
                   size="lg"
                   rightIcon={<ArrowRight size={20} />}
-                  className="px-8 py-4 text-lg shadow-lg shadow-emerald-500/30"
+                  className="w-full sm:w-auto px-8 py-6 text-lg rounded-2xl bg-emerald-500 hover:bg-emerald-600 border-none shadow-lg shadow-emerald-500/30 text-white font-semibold transition-all duration-300 transform hover:scale-105"
                 >
                   Have Your Waste Collected
                 </Button>
               </Link>
 
-              {/* Secondary: Become a Collector */}
-              <Link href="/auth?signup=true&role=collector">
+              {/* Secondary: Become a Collector - IDENTICAL STYLE as requested */}
+              <Link href="/auth?signup=true&role=collector" className="w-full sm:w-auto">
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   size="lg"
-                  leftIcon={<Truck size={20} />}
-                  className="px-8 py-4 text-lg"
+                  leftIcon={<Truck size={20} />} // Keep the icon difference to distinguish, but style is same
+                  className="w-full sm:w-auto px-8 py-6 text-lg rounded-2xl bg-emerald-500 hover:bg-emerald-600 border-none shadow-lg shadow-emerald-500/30 text-white font-semibold transition-all duration-300 transform hover:scale-105"
                 >
                   Become a Collector
                 </Button>
               </Link>
+            </motion.div>
 
-              {/* Login Link */}
-              <Link href="/auth">
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  leftIcon={<User size={20} />}
-                  className="px-6 py-4 text-lg"
-                >
-                  Login
-                </Button>
+            {/* Login Link for existing users below buttons */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.2 }}
+              className="mt-8"
+            >
+              <Link href="/auth" className="text-white/60 hover:text-white transition-colors text-sm font-medium">
+                Already have an account? Login
               </Link>
             </motion.div>
           </div>
         </div>
+
+        {/* Scroll Indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, y: [0, 10, 0] }}
+          transition={{ delay: 1.5, duration: 2, repeat: Infinity }}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 text-white/50"
+        >
+          <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center p-1">
+            <div className="w-1 h-2 bg-white/50 rounded-full" />
+          </div>
+        </motion.div>
       </section>
 
       {/* Account Types Section */}

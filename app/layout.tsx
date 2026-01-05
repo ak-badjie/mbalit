@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
@@ -24,6 +24,13 @@ export const metadata: Metadata = {
   title: "Mbalit - Garbage Collection Made Easy",
   description: "Request garbage pickup in The Gambia. Fast, simple, and eco-friendly. The nearest collector comes to you.",
   keywords: ["garbage collection", "waste management", "Gambia", "eco-friendly", "pickup service"],
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
