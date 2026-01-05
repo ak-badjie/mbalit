@@ -57,11 +57,15 @@ export interface Collector extends User {
 }
 
 // Agency (collection business with multiple drivers)
+// Agency types - Companies are private businesses, Municipalities are government bodies
+export type AgencyType = 'company' | 'municipality';
+
 export interface Agency {
   id: string;
   name: string;
   ownerId: string;
   agencyCode: string; // 6-char code for joining
+  agencyType: AgencyType; // Company or municipality
   drivers: string[]; // Approved driver IDs
   pendingDrivers: string[]; // Awaiting approval
   totalEarnings: number;

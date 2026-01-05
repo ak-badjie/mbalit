@@ -11,6 +11,7 @@ import {
   Sparkles,
   Truck,
   Users,
+  User,
   Building2,
   Recycle,
   CheckCircle,
@@ -673,16 +674,19 @@ export default function HomePage() {
               transition={{ delay: 0.4 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
+              {/* Primary: Have Your Waste Collected */}
               <Link href="/auth?signup=true">
                 <Button
                   variant="primary"
                   size="lg"
                   rightIcon={<ArrowRight size={20} />}
-                  className="px-8 py-4 text-lg"
+                  className="px-8 py-4 text-lg shadow-lg shadow-emerald-500/30"
                 >
-                  Get Started
+                  Have Your Waste Collected
                 </Button>
               </Link>
+
+              {/* Secondary: Become a Collector */}
               <Link href="/auth?signup=true&role=collector">
                 <Button
                   variant="secondary"
@@ -691,6 +695,18 @@ export default function HomePage() {
                   className="px-8 py-4 text-lg"
                 >
                   Become a Collector
+                </Button>
+              </Link>
+
+              {/* Login Link */}
+              <Link href="/auth">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  leftIcon={<User size={20} />}
+                  className="px-6 py-4 text-lg"
+                >
+                  Login
                 </Button>
               </Link>
             </motion.div>

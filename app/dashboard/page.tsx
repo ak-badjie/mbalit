@@ -170,6 +170,7 @@ function DashboardContent() {
     const [step, setStep] = useState(shouldStartBooking ? 1 : 0);
     const [selectedWasteTypes, setSelectedWasteTypes] = useState<WasteType[]>([]);
     const [bucketCount, setBucketCount] = useState(0);
+    const [trashBagCount, setTrashBagCount] = useState(0);
     const [largeBinCount, setLargeBinCount] = useState(0);
     const [location, setLocation] = useState<GeoLocation | null>(null);
     const [plusCode, setPlusCode] = useState('');
@@ -216,15 +217,15 @@ function DashboardContent() {
         }
     }, [shouldStartBooking, step]);
 
-    // Recalculate price when bucket/bin counts change
+    // Recalculate price when container counts change
     useEffect(() => {
-        if (bucketCount > 0 || largeBinCount > 0) {
-            const priceEstimate = calculatePrice(bucketCount, 0, largeBinCount);
+        if (bucketCount > 0 || trashBagCount > 0 || largeBinCount > 0) {
+            const priceEstimate = calculatePrice(bucketCount, trashBagCount, largeBinCount);
             setEstimatedPrice(priceEstimate.totalPrice);
         } else {
             setEstimatedPrice(null);
         }
-    }, [bucketCount, largeBinCount]);
+    }, [bucketCount, trashBagCount, largeBinCount]);
 
     // Geocode Plus Code when entered
     const handlePlusCodeBlur = useCallback(async () => {
@@ -247,7 +248,7 @@ function DashboardContent() {
 
     const handleNextStep = () => {
         if (step === 1 && selectedWasteTypes.length > 0) setStep(2);
-        else if (step === 2 && (bucketCount > 0 || largeBinCount > 0)) setStep(3);
+        else if (step === 2 && (bucketCount > 0 || trashBagCount > 0 || largeBinCount > 0)) setStep(3);
         else if (step === 3 && location) setStep(4); // New: agency selection step
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -661,11 +662,77 @@ function DashboardContent() {
                             )}
                         </div>
 
+                        {/* Trash Bag Selector */}
+                        <div className="bg-white  rounded-2xl p-5 border-2 border-gray-100 ">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    {/* Custom Sack/Bag Icon */}
+                                    <svg className="w-10 h-10" viewBox="0 0 390.33 390.33" fill="currentColor">
+                                        <path className="text-gray-700" d="M340.157,202.992c-13.912-23.443-33.248-47.698-57.471-72.09c-12.744-12.833-25.424-24.293-36.9-34.034c14.727-1.369,26.295-13.791,26.295-28.87c0-15.991-13.01-29-29-29c-4.84,0-11.945,2.41-19.377,5.69l24.994-31.738c1.895-2.408,2.25-5.686,0.912-8.443C248.272,1.751,245.476,0,242.413,0h-94.497c-3.064,0-5.859,1.75-7.197,4.507c-1.338,2.757-0.983,6.035,0.912,8.443l24.994,31.738c-7.432-3.281-14.537-5.69-19.378-5.69c-15.991,0-29,13.009-29,29c0,14.311,10.422,26.226,24.074,28.573c-10.865,8.886-22.705,19.258-34.6,30.913c-24.269,23.778-43.641,47.934-57.578,71.798c-17.696,30.301-26.668,60.261-26.668,89.048c0,23.358,11.106,49.089,29.709,68.831c20.156,21.39,45.829,33.169,72.291,33.169h139.379c26.873,0,52.516-11.148,72.203-31.391c18.938-19.47,29.797-45.205,29.797-70.609C366.854,261.555,357.872,232.843,340.157,202.992z M256.081,67.999c0,7.168-5.83,13-13,13c-4.385,0-17.26-5.955-30.047-13.001c12.783-7.046,25.654-12.999,30.047-12.999C250.251,54.999,256.081,60.831,256.081,67.999z M225.931,16.002l-30.766,39.066l-30.765-39.066H225.931z M134.248,67.999c0-7.168,5.832-13,13-13c4.386,0,17.26,5.955,30.048,13.001c-12.784,7.046-25.656,12.999-30.048,12.999C140.08,80.999,134.248,75.167,134.248,67.999z M264.854,374.33H125.476c-47.639,0-86-47.047-86-86c0-59.073,43.08-113.74,79.22-149.198c23.553-23.108,47.312-41.287,62.884-52.34l-19.199,68.375c-1.194,4.254,1.285,8.67,5.54,9.865c0.723,0.203,1.451,0.3,2.167,0.3c3.495,0,6.707-2.309,7.698-5.839l17.381-61.9l17.381,61.9c0.99,3.531,4.203,5.839,7.697,5.839c0.717,0,1.443-0.097,2.168-0.3c4.254-1.194,6.732-5.611,5.539-9.865L209.093,88c42.07,32.022,141.764,116.732,141.764,200.329C350.854,334.144,310.667,374.33,264.854,374.33z" />
+                                    </svg>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 ">
+                                            Trash Bag
+                                        </h3>
+                                        <p className="text-sm text-gray-500 ">
+                                            50 liters capacity
+                                        </p>
+                                    </div>
+                                </div>
+                                <Badge className="bg-emerald-100 text-emerald-700  ">
+                                    D75 each
+                                </Badge>
+                            </div>
+                            <div className="flex items-center justify-center gap-4">
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => setTrashBagCount(Math.max(0, trashBagCount - 1))}
+                                    disabled={trashBagCount === 0}
+                                    className="w-12 h-12 rounded-full bg-gray-100  flex items-center justify-center text-xl font-bold text-gray-600  disabled:opacity-40"
+                                >
+                                    −
+                                </motion.button>
+                                <span className="text-3xl font-bold text-gray-900  w-16 text-center">
+                                    {trashBagCount}
+                                </span>
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => setTrashBagCount(Math.min(100, trashBagCount + 1))}
+                                    className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-xl font-bold text-white"
+                                >
+                                    +
+                                </motion.button>
+                            </div>
+                            {trashBagCount > 0 && (
+                                <p className="text-center text-sm text-gray-500 mt-2">
+                                    = {formatPrice(trashBagCount * 75)}
+                                </p>
+                            )}
+                        </div>
+
                         {/* Large Trash Bin Selector */}
                         <div className="bg-white  rounded-2xl p-5 border-2 border-gray-100 ">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                    <span className="text-3xl">🗑️</span>
+                                    {/* Custom Garbage Bin Icon */}
+                                    <svg className="w-10 h-10" viewBox="0 0 73 73" fill="none">
+                                        <g transform="translate(20, 12)">
+                                            <path d="M32.2071538,12.7803077 L0.366384615,8.305 L0.771692308,5.41961538 C0.938384615,4.23669231 2.03161538,3.41169231 3.21538462,3.57838462 L30.7712308,7.45123077 C31.9541538,7.61792308 32.7791538,8.71115385 32.6124615,9.89492308 L32.2071538,12.7803077 Z" fill="#556080" />
+                                            <path d="M11.9654615,4.80869231 L12.4367692,1.45707692 C12.5662308,0.535615385 13.4267692,-0.112538462 14.3482308,0.0169230769 L21.0514615,0.958692308 C21.9729231,1.08815385 22.6210769,1.94869231 22.4916154,2.87015385 L22.0203077,6.22176923 L11.9654615,4.80869231 Z" stroke="#7383BF" strokeWidth="2" fill="#FFFFFF" strokeLinecap="round" />
+                                            <path d="M2.19746154,16.0769231 L11.1895385,16.0769231 L11.4797692,15.7866923 L6.69307692,11 L2.123,15.5700769 C2.00369231,15.6893846 2.00369231,15.8831538 2.123,16.0024615 L2.19746154,16.0769231 Z" fill="#EBBA16" />
+                                            <rect fill="#DD352E" x="12.3259231" y="13.5384615" width="6.76923077" height="2.53846154" />
+                                            <rect fill="#694F87" x="21.6336154" y="13.5384615" width="4.23076923" height="2.53846154" />
+                                            <path d="M27.786,49.0769231 L3.63592308,49.0769231 C2.36076923,49.0769231 1.32676923,48.0429231 1.32676923,46.7677692 L1.32676923,16.0769231 L30.096,16.0769231 L30.096,46.7677692 C30.0951538,48.0429231 29.0611538,49.0769231 27.786,49.0769231 Z" fill="#556080" />
+                                            <g transform="translate(4.230769, 19.461538)" fill="#7383BF">
+                                                <circle cx="6.40284615" cy="3.38461538" r="1.5" />
+                                                <circle cx="16.5566923" cy="3.38461538" r="1.5" />
+                                                <circle cx="6.40284615" cy="13.5384615" r="1.5" />
+                                                <circle cx="16.5566923" cy="13.5384615" r="1.5" />
+                                                <circle cx="6.40284615" cy="23.6923077" r="1.5" />
+                                                <circle cx="16.5566923" cy="23.6923077" r="1.5" />
+                                            </g>
+                                        </g>
+                                    </svg>
                                     <div>
                                         <h3 className="font-bold text-gray-900 ">
                                             Large Trash Bin
@@ -707,7 +774,7 @@ function DashboardContent() {
                         </div>
 
                         {/* Live Price Total */}
-                        {(bucketCount > 0 || largeBinCount > 0) && (
+                        {(bucketCount > 0 || trashBagCount > 0 || largeBinCount > 0) && (
                             <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -722,6 +789,7 @@ function DashboardContent() {
                                     </div>
                                     <div className="text-right text-sm text-emerald-100">
                                         {bucketCount > 0 && <p>{bucketCount} bucket{bucketCount > 1 ? 's' : ''}</p>}
+                                        {trashBagCount > 0 && <p>{trashBagCount} bag{trashBagCount > 1 ? 's' : ''}</p>}
                                         {largeBinCount > 0 && <p>{largeBinCount} large bin{largeBinCount > 1 ? 's' : ''}</p>}
                                     </div>
                                 </div>
@@ -742,7 +810,7 @@ function DashboardContent() {
                         <Button
                             variant="primary"
                             size="lg"
-                            disabled={bucketCount === 0 && largeBinCount === 0}
+                            disabled={bucketCount === 0 && trashBagCount === 0 && largeBinCount === 0}
                             onClick={handleNextStep}
                             rightIcon={<ArrowRight size={18} />}
                             className="flex-1"
@@ -889,6 +957,14 @@ function DashboardContent() {
                                         <span className="text-gray-500">Buckets</span>
                                         <span className="font-medium text-gray-900 ">
                                             {bucketCount} × D25 = {formatPrice(bucketCount * 25)}
+                                        </span>
+                                    </div>
+                                )}
+                                {trashBagCount > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Trash Bags</span>
+                                        <span className="font-medium text-gray-900 ">
+                                            {trashBagCount} × D75 = {formatPrice(trashBagCount * 75)}
                                         </span>
                                     </div>
                                 )}
@@ -1048,9 +1124,11 @@ function DashboardContent() {
                                 <div className="flex justify-between">
                                     <span className="text-gray-500">Containers</span>
                                     <span className="font-medium text-gray-900 ">
-                                        {bucketCount > 0 ? `${bucketCount} buckets` : ''}
-                                        {bucketCount > 0 && largeBinCount > 0 ? ', ' : ''}
-                                        {largeBinCount > 0 ? `${largeBinCount} bins` : ''}
+                                        {[
+                                            bucketCount > 0 && `${bucketCount} bucket${bucketCount > 1 ? 's' : ''}`,
+                                            trashBagCount > 0 && `${trashBagCount} bag${trashBagCount > 1 ? 's' : ''}`,
+                                            largeBinCount > 0 && `${largeBinCount} bin${largeBinCount > 1 ? 's' : ''}`
+                                        ].filter(Boolean).join(', ')}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">

@@ -167,19 +167,19 @@ export const HamburgerMenuOverlay: React.FC<HamburgerMenuOverlayProps> = ({
             align-items: center;
             background: ${overlayBackground};
             z-index: ${zIndex};
-            clip-path: circle(0px at calc(100% - 32px) 32px);
+            clip-path: circle(0px at calc(100% - 40px) 32px);
             transition: clip-path ${animationDuration}s cubic-bezier(0.22, 0.61, 0.36, 1);
             ${enableBlur ? "backdrop-filter: blur(20px);" : ""}
           }
           
           .hamburger-overlay-${zIndex}.open {
-            clip-path: circle(150% at calc(100% - 32px) 32px);
+            clip-path: circle(150% at calc(100% - 40px) 32px);
           }
           
           .hamburger-button-${zIndex} {
             position: fixed;
             right: 16px;
-            top: 14px;
+            top: 8px;
             border-radius: 14px;
             z-index: ${zIndex + 1};
             background: ${buttonColor};

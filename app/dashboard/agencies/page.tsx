@@ -77,13 +77,19 @@ export default function AgenciesPage() {
         setActionLoading(null);
     };
 
-    const filteredAgencies = agencies.filter(agency =>
-        agency.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        agency.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Filter state for agency type
+    const [activeTab, setActiveTab] = useState<'all' | 'company' | 'municipality'>('all');
+
+    const filteredAgencies = agencies.filter(agency => {
+        const matchesSearch = agency.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            agency.description?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesType = activeTab === 'all' || agency.agencyType === activeTab;
+        return matchesSearch && matchesType;
+    });
 
     const myAgencies = filteredAgencies.filter(a => preferredAgencyIds.includes(a.id));
-    const otherAgencies = filteredAgencies.filter(a => !preferredAgencyIds.includes(a.id));
+    const companies = filteredAgencies.filter(a => a.agencyType === 'company' && !preferredAgencyIds.includes(a.id));
+    const municipalities = filteredAgencies.filter(a => a.agencyType === 'municipality' && !preferredAgencyIds.includes(a.id));
 
     if (isLoading) {
         return (
@@ -131,6 +137,26 @@ export default function AgenciesPage() {
             </div>
 
             <div className="max-w-2xl mx-auto px-4 py-6">
+                {/* Type Filter Tabs */}
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+                    {[
+                        { id: 'all', label: 'All' },
+                        { id: 'municipality', label: '🏛️ Municipalities' },
+                        { id: 'company', label: '🏢 Companies' },
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as 'all' | 'company' | 'municipality')}
+                            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeTab === tab.id
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-gray-100  text-gray-600  hover:bg-gray-200'
+                                }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
                 {/* My Agencies Section */}
                 {myAgencies.length > 0 && (
                     <motion.div
@@ -139,7 +165,7 @@ export default function AgenciesPage() {
                         className="mb-8"
                     >
                         <h2 className="text-sm font-semibold text-gray-500  uppercase tracking-wider mb-3">
-                            My Agencies ({myAgencies.length})
+                            ⭐ My Agencies ({myAgencies.length})
                         </h2>
                         <div className="grid gap-3">
                             {myAgencies.map((agency, index) => (
@@ -157,29 +183,22 @@ export default function AgenciesPage() {
                     </motion.div>
                 )}
 
-                {/* All Agencies Section */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                >
-                    <h2 className="text-sm font-semibold text-gray-500  uppercase tracking-wider mb-3">
-                        {myAgencies.length > 0 ? 'Other Agencies' : 'All Agencies'} ({otherAgencies.length})
-                    </h2>
-
-                    {otherAgencies.length === 0 && agencies.length === 0 ? (
-                        <Card variant="elevated" padding="lg" className="text-center">
-                            <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                            <h3 className="font-semibold text-gray-900  mb-2">
-                                No agencies yet
-                            </h3>
-                            <p className="text-gray-500  text-sm">
-                                Agencies will appear here once they register
-                            </p>
-                        </Card>
-                    ) : (
+                {/* Municipalities Section */}
+                {(activeTab === 'all' || activeTab === 'municipality') && municipalities.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="mb-8"
+                    >
+                        <h2 className="text-sm font-semibold text-gray-500  uppercase tracking-wider mb-3">
+                            🏛️ Municipalities ({municipalities.length})
+                        </h2>
+                        <p className="text-xs text-gray-400 mb-3">
+                            Government bodies & registered waste management authorities
+                        </p>
                         <div className="grid gap-3">
-                            {otherAgencies.map((agency, index) => (
+                            {municipalities.map((agency, index) => (
                                 <AgencyCard
                                     key={agency.id}
                                     agency={agency}
@@ -191,8 +210,51 @@ export default function AgenciesPage() {
                                 />
                             ))}
                         </div>
-                    )}
-                </motion.div>
+                    </motion.div>
+                )}
+
+                {/* Companies Section */}
+                {(activeTab === 'all' || activeTab === 'company') && companies.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                        className="mb-8"
+                    >
+                        <h2 className="text-sm font-semibold text-gray-500  uppercase tracking-wider mb-3">
+                            🏢 Companies ({companies.length})
+                        </h2>
+                        <p className="text-xs text-gray-400 mb-3">
+                            Private waste collection businesses
+                        </p>
+                        <div className="grid gap-3">
+                            {companies.map((agency, index) => (
+                                <AgencyCard
+                                    key={agency.id}
+                                    agency={agency}
+                                    isPreferred={false}
+                                    isLoading={actionLoading === agency.id}
+                                    onToggle={() => handleToggleAgency(agency.id)}
+                                    onViewDetails={() => router.push(`/dashboard/agencies/${agency.id}`)}
+                                    delay={index * 0.05}
+                                />
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Empty State */}
+                {filteredAgencies.length === 0 && (
+                    <Card variant="elevated" padding="lg" className="text-center">
+                        <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <h3 className="font-semibold text-gray-900  mb-2">
+                            No agencies found
+                        </h3>
+                        <p className="text-gray-500  text-sm">
+                            {searchQuery ? 'Try a different search term' : 'Agencies will appear here once they register'}
+                        </p>
+                    </Card>
+                )}
             </div>
         </div>
     );

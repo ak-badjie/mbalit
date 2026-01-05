@@ -17,11 +17,13 @@ import {
     arrayRemove
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { AgencyType } from '@/types';
 
 export interface AgencyListing {
     id: string;
     name: string;
     ownerId: string;
+    agencyType: AgencyType; // 'company' or 'municipality'
     rating: number;
     totalPickups: number;
     driversCount: number;
@@ -46,6 +48,7 @@ export async function getAllAgencies(): Promise<AgencyListing[]> {
             id: doc.id,
             name: data.name,
             ownerId: data.ownerId,
+            agencyType: data.agencyType || 'company',
             rating: data.rating || 0,
             totalPickups: data.totalPickups || 0,
             driversCount: data.drivers?.length || 0,
@@ -105,6 +108,7 @@ export async function getAgencyById(agencyId: string): Promise<AgencyListing | n
         id: agencyDoc.id,
         name: data.name,
         ownerId: data.ownerId,
+        agencyType: data.agencyType || 'company',
         rating: data.rating || 0,
         totalPickups: data.totalPickups || 0,
         driversCount: data.drivers?.length || 0,
