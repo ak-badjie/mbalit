@@ -292,187 +292,184 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-} finally {
-    setIsLoading(false);
-}
+
+
+    // Change PIN function
+    const changePin = async (oldPin: string, newPin: string) => {
+        if (!user) throw new Error('No user logged in');
+
+        setIsLoading(true);
+        try {
+            // Re-verify old PIN
+            // In a real app, you might want to force a fresh login-like check
+            // or just check against the loaded profile if you trust it.
+            // For security, checking against Firestore is better.
+
+            const userRef = doc(db, 'users', user.id);
+            const userDoc = await getDoc(userRef);
+
+            if (!userDoc.exists()) throw new Error('User not found');
+
+            const userData = userDoc.data();
+            const currentPin = userData.pin;
+
+            if (currentPin && currentPin !== oldPin) {
+                throw new Error('old-pin-incorrect');
+            }
+
+            // Update to new PIN
+            await setDoc(userRef, {
+                pin: newPin,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+
+            // Update local state
+            setUser(prev => prev ? { ...prev, pin: newPin } : null);
+
+        } catch (error) {
+            console.error('Change PIN error:', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-// Change PIN function
-const changePin = async (oldPin: string, newPin: string) => {
-    if (!user) throw new Error('No user logged in');
+    // Google Sign In function
+    const signInWithGoogle = async (role: UserRole = 'collector', accountType?: AccountType): Promise<{ isNewUser: boolean; displayName: string | null; photoURL: string | null }> => {
+        setIsLoading(true);
+        try {
+            const provider = new GoogleAuthProvider();
+            const result = await signInWithPopup(auth, provider);
+            const firebaseUser = result.user;
 
-    setIsLoading(true);
-    try {
-        // Re-verify old PIN
-        // In a real app, you might want to force a fresh login-like check
-        // or just check against the loaded profile if you trust it.
-        // For security, checking against Firestore is better.
+            // Check if user already exists
+            const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+            const isNewUser = !userDoc.exists();
 
-        const userRef = doc(db, 'users', user.id);
-        const userDoc = await getDoc(userRef);
+            if (isNewUser) {
+                // Create MINIMAL user profile - onboarding will fill in the rest
+                const userData = role === 'collector'
+                    ? {
+                        email: firebaseUser.email,
+                        name: firebaseUser.displayName || '',
+                        phone: '',
+                        role,
+                        profileImage: firebaseUser.photoURL || '',
+                        onboardingComplete: false, // MUST complete onboarding before accessing dashboard
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp(),
+                    }
+                    : {
+                        email: firebaseUser.email,
+                        name: firebaseUser.displayName || '',
+                        phone: '',
+                        role: 'user',
+                        accountType: accountType || 'individual',
+                        profileImage: firebaseUser.photoURL || '',
+                        contactPerson: firebaseUser.displayName || '',
+                        activeOrders: [],
+                        completedOrders: 0,
+                        onboardingComplete: false, // Will complete after phone number entry
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp(),
+                    };
 
-        if (!userDoc.exists()) throw new Error('User not found');
+                await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+            }
 
-        const userData = userDoc.data();
-        const currentPin = userData.pin;
+            // Fetch and set user profile
+            const profile = await fetchUserProfile(firebaseUser);
+            setUser(profile);
 
-        if (currentPin && currentPin !== oldPin) {
-            throw new Error('old-pin-incorrect');
+            // Return Google profile data for immediate use in onboarding
+            return {
+                isNewUser,
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL
+            };
+        } catch (error) {
+            console.error('Google Sign In error:', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
         }
+    };
 
-        // Update to new PIN
-        await setDoc(userRef, {
-            pin: newPin,
-            updatedAt: serverTimestamp()
-        }, { merge: true });
-
-        // Update local state
-        setUser(prev => prev ? { ...prev, pin: newPin } : null);
-
-    } catch (error) {
-        console.error('Change PIN error:', error);
-        throw error;
-    } finally {
-        setIsLoading(false);
-    }
-};
-
-// Google Sign In function
-const signInWithGoogle = async (role: UserRole = 'collector', accountType?: AccountType): Promise<{ isNewUser: boolean; displayName: string | null; photoURL: string | null }> => {
-    setIsLoading(true);
-    try {
-        const provider = new GoogleAuthProvider();
-        const result = await signInWithPopup(auth, provider);
-        const firebaseUser = result.user;
-
-        // Check if user already exists
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        const isNewUser = !userDoc.exists();
-
-        if (isNewUser) {
-            // Create MINIMAL user profile - onboarding will fill in the rest
-            const userData = role === 'collector'
-                ? {
-                    email: firebaseUser.email,
-                    name: firebaseUser.displayName || '',
-                    phone: '',
-                    role,
-                    profileImage: firebaseUser.photoURL || '',
-                    onboardingComplete: false, // MUST complete onboarding before accessing dashboard
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                }
-                : {
-                    email: firebaseUser.email,
-                    name: firebaseUser.displayName || '',
-                    phone: '',
-                    role: 'user',
-                    accountType: accountType || 'individual',
-                    profileImage: firebaseUser.photoURL || '',
-                    contactPerson: firebaseUser.displayName || '',
-                    activeOrders: [],
-                    completedOrders: 0,
-                    onboardingComplete: false, // Will complete after phone number entry
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                };
-
-            await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+    // Logout function
+    const logout = async () => {
+        try {
+            await signOut(auth);
+            setUser(null);
+        } catch (error) {
+            console.error('Logout error:', error);
+            throw error;
         }
+    };
 
-        // Fetch and set user profile
-        const profile = await fetchUserProfile(firebaseUser);
-        setUser(profile);
+    // Update collector waste types (during onboarding)
+    const updateCollectorWasteTypes = async (wasteTypes: WasteType[]) => {
+        if (!firebaseUser || !user) return;
 
-        // Return Google profile data for immediate use in onboarding
-        return {
-            isNewUser,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL
-        };
-    } catch (error) {
-        console.error('Google Sign In error:', error);
-        throw error;
-    } finally {
-        setIsLoading(false);
-    }
-};
+        try {
+            await setDoc(
+                doc(db, 'users', firebaseUser.uid),
+                {
+                    wasteTypesHandled: wasteTypes,
+                    updatedAt: serverTimestamp(),
+                },
+                { merge: true }
+            );
 
-// Logout function
-const logout = async () => {
-    try {
-        await signOut(auth);
-        setUser(null);
-    } catch (error) {
-        console.error('Logout error:', error);
-        throw error;
-    }
-};
+            setUser((prev) => prev ? { ...prev, wasteTypesHandled: wasteTypes } as Collector : null);
+        } catch (error) {
+            console.error('Error updating waste types:', error);
+            throw error;
+        }
+    };
 
-// Update collector waste types (during onboarding)
-const updateCollectorWasteTypes = async (wasteTypes: WasteType[]) => {
-    if (!firebaseUser || !user) return;
+    // Set collector availability
+    const setCollectorAvailability = async (available: boolean) => {
+        if (!firebaseUser || !user) return;
 
-    try {
-        await setDoc(
-            doc(db, 'users', firebaseUser.uid),
-            {
-                wasteTypesHandled: wasteTypes,
-                updatedAt: serverTimestamp(),
-            },
-            { merge: true }
-        );
+        try {
+            await setDoc(
+                doc(db, 'users', firebaseUser.uid),
+                {
+                    isAvailable: available,
+                    updatedAt: serverTimestamp(),
+                },
+                { merge: true }
+            );
 
-        setUser((prev) => prev ? { ...prev, wasteTypesHandled: wasteTypes } as Collector : null);
-    } catch (error) {
-        console.error('Error updating waste types:', error);
-        throw error;
-    }
-};
+            setUser((prev) => prev ? { ...prev, isAvailable: available } as Collector : null);
+        } catch (error) {
+            console.error('Error updating availability:', error);
+            throw error;
+        }
+    };
 
-// Set collector availability
-const setCollectorAvailability = async (available: boolean) => {
-    if (!firebaseUser || !user) return;
+    const value: AuthContextType = {
+        user,
+        firebaseUser,
+        isLoading,
+        isAuthenticated: !!user,
+        signUp,
+        signUpUser,
+        createUserAccountOnly,
+        signInWithGoogle,
+        login,
+        loginWithPhoneAndPin,
+        changePin,
+        logout,
+        updateCollectorWasteTypes,
+        setCollectorAvailability,
+    };
 
-    try {
-        await setDoc(
-            doc(db, 'users', firebaseUser.uid),
-            {
-                isAvailable: available,
-                updatedAt: serverTimestamp(),
-            },
-            { merge: true }
-        );
-
-        setUser((prev) => prev ? { ...prev, isAvailable: available } as Collector : null);
-    } catch (error) {
-        console.error('Error updating availability:', error);
-        throw error;
-    }
-};
-
-const value: AuthContextType = {
-    user,
-    firebaseUser,
-    isLoading,
-    isAuthenticated: !!user,
-    signUp,
-    signUpUser,
-    createUserAccountOnly,
-    signInWithGoogle,
-    login,
-    loginWithPhoneAndPin,
-    changePin,
-    logout,
-    updateCollectorWasteTypes,
-    setCollectorAvailability,
-};
-
-return (
-    <AuthContext.Provider value={value}>
-        {children}
-    </AuthContext.Provider>
-);
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+        </AuthContext.Provider>
+    );
 }
 
 // Hook to use auth context

@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Card } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth-context';
 import { ChangePinDialog } from '@/components/auth/change-pin-dialog';
 
@@ -95,7 +94,6 @@ const ToggleSwitch: React.FC<{
 
 export default function SettingsPage() {
     const { user, logout } = useAuth();
-    const [notifications, setNotifications] = useState(true);
     const [notifications, setNotifications] = useState(true);
     const [emailNotifications, setEmailNotifications] = useState(true);
     const [isChangePinOpen, setIsChangePinOpen] = useState(false);
@@ -196,8 +194,6 @@ export default function SettingsPage() {
                             onClick={() => { }}
                         />
                         <div className="border-t border-gray-100" />
-                        <SettingItem
-                            icon={<Lock className="w-5 h-5" />}
                         <SettingItem
                             icon={<Lock className="w-5 h-5" />}
                             label="Change PIN"
