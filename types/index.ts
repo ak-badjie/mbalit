@@ -21,6 +21,7 @@ export interface User {
   profileImage?: string;
   onboardingComplete?: boolean;
   preferredAgencies?: string[]; // User's preferred agency IDs
+  pin?: string; // App-specific PIN for phone number login
 }
 
 // User profile (individual, business, or corporate account)

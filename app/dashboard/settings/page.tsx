@@ -21,7 +21,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth-context';
+import { ChangePinDialog } from '@/components/auth/change-pin-dialog';
 
 // Setting Item Component
 const SettingItem: React.FC<{
@@ -94,7 +96,9 @@ const ToggleSwitch: React.FC<{
 export default function SettingsPage() {
     const { user, logout } = useAuth();
     const [notifications, setNotifications] = useState(true);
+    const [notifications, setNotifications] = useState(true);
     const [emailNotifications, setEmailNotifications] = useState(true);
+    const [isChangePinOpen, setIsChangePinOpen] = useState(false);
 
     const handleLogout = async () => {
         try {
@@ -194,8 +198,11 @@ export default function SettingsPage() {
                         <div className="border-t border-gray-100" />
                         <SettingItem
                             icon={<Lock className="w-5 h-5" />}
-                            label="Change Password"
-                            onClick={() => { }}
+                        <SettingItem
+                            icon={<Lock className="w-5 h-5" />}
+                            label="Change PIN"
+                            description="Update your login PIN"
+                            onClick={() => setIsChangePinOpen(true)}
                         />
                     </Card>
                 </div>
@@ -262,6 +269,11 @@ export default function SettingsPage() {
                     MBALit v1.0.0
                 </p>
             </main>
+
+            <ChangePinDialog
+                isOpen={isChangePinOpen}
+                onClose={() => setIsChangePinOpen(false)}
+            />
         </div>
     );
 }

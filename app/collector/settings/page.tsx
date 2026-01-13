@@ -25,7 +25,10 @@ import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/lib/theme-context';
 import { getCollectorSettings, updateCollectorSettings } from '@/lib/firestore';
 import { CollectorSettings, WasteType } from '@/types';
+import { CollectorSettings, WasteType } from '@/types';
 import { WASTE_TYPES } from '@/lib/waste-config';
+import { ChangePinDialog } from '@/components/auth/change-pin-dialog';
+import { Lock } from 'lucide-react';
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -45,6 +48,7 @@ export default function SettingsPage() {
     });
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isChangePinOpen, setIsChangePinOpen] = useState(false);
 
     // Load settings
     useEffect(() => {
@@ -304,37 +308,59 @@ export default function SettingsPage() {
                         <h3 className="font-semibold text-gray-900 ">Account</h3>
                     </div>
                     <div className="px-4">
-                        <Link href="/collector/profile">
-                            <div className="flex items-center justify-between py-4 border-b border-gray-100  cursor-pointer hover:bg-gray-50  -mx-4 px-4 transition-colors">
+                        <div className="px-4">
+                            <button
+                                onClick={() => setIsChangePinOpen(true)}
+                                className="w-full flex items-center justify-between py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 -mx-4 px-4 transition-colors text-left"
+                            >
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-emerald-100  flex items-center justify-center">
-                                        <MapPin className="w-5 h-5 text-emerald-600" />
+                                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                                        <Lock className="w-5 h-5 text-gray-600" />
                                     </div>
                                     <div>
-                                        <h4 className="font-medium text-gray-900 ">Edit Profile</h4>
-                                        <p className="text-xs text-gray-500">Update your location and details</p>
+                                        <h4 className="font-medium text-gray-900">Change PIN</h4>
+                                        <p className="text-xs text-gray-500">Update your login PIN</p>
                                     </div>
                                 </div>
                                 <ChevronRight className="w-5 h-5 text-gray-400" />
-                            </div>
-                        </Link>
-                        <button
-                            onClick={handleSignOut}
-                            className="w-full flex items-center justify-between py-4 text-left hover:bg-red-50  -mx-4 px-4 transition-colors"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-red-100  flex items-center justify-center">
-                                    <LogOut className="w-5 h-5 text-red-600" />
+                            </button>
+
+                            <Link href="/collector/profile">
+                                <div className="flex items-center justify-between py-4 border-b border-gray-100  cursor-pointer hover:bg-gray-50  -mx-4 px-4 transition-colors">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-100  flex items-center justify-center">
+                                            <MapPin className="w-5 h-5 text-emerald-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium text-gray-900 ">Edit Profile</h4>
+                                            <p className="text-xs text-gray-500">Update your location and details</p>
+                                        </div>
+                                    </div>
+                                    <ChevronRight className="w-5 h-5 text-gray-400" />
                                 </div>
-                                <div>
-                                    <h4 className="font-medium text-red-600">Sign Out</h4>
-                                    <p className="text-xs text-gray-500">Log out of your account</p>
+                            </Link>
+                            <button
+                                onClick={handleSignOut}
+                                className="w-full flex items-center justify-between py-4 text-left hover:bg-red-50  -mx-4 px-4 transition-colors"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-red-100  flex items-center justify-center">
+                                        <LogOut className="w-5 h-5 text-red-600" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-medium text-red-600">Sign Out</h4>
+                                        <p className="text-xs text-gray-500">Log out of your account</p>
+                                    </div>
                                 </div>
-                            </div>
-                        </button>
-                    </div>
+                            </button>
+                        </div>
                 </Card>
             </main>
+
+            <ChangePinDialog
+                isOpen={isChangePinOpen}
+                onClose={() => setIsChangePinOpen(false)}
+            />
         </div>
     );
 }

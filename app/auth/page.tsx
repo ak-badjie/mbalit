@@ -129,10 +129,14 @@ function AuthPage() {
     const [mode, setMode] = useState<'login' | 'signup'>(isSignupMode ? 'signup' : 'login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [pin, setPin] = useState(''); // For login
+    const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('phone'); // Default to phone
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // User signup state
+    const [createPin, setCreatePin] = useState(''); // For onboarding
+    const [confirmPin, setConfirmPin] = useState(''); // For onboarding
     const [selectedAccountType, setSelectedAccountType] = useState<AccountType | null>(null);
     const [organizationName, setOrganizationName] = useState('');
     const [userOnboardingStep, setUserOnboardingStep] = useState(0);
@@ -143,6 +147,7 @@ function AuthPage() {
     const [fullName, setFullName] = useState('');
     const [profileImage, setProfileImage] = useState<string | null>(null);
     const [phoneNumber, setPhoneNumber] = useState('');
+    const [collectorCreatePin, setCollectorCreatePin] = useState(''); // Creator PIN for collectors
     const [carSize, setCarSize] = useState<string | null>(null);
     const [selectedWasteTypes, setSelectedWasteTypes] = useState<WasteType[]>([]);
     const [maxCapacity, setMaxCapacity] = useState<number>(100);
@@ -199,14 +204,18 @@ function AuthPage() {
         setError(null);
 
         try {
-            await login(email, password);
+            if (loginMethod === 'email') {
+                await login(email, password);
+            } else {
+                await loginWithPhoneAndPin(phoneNumber, pin);
+            }
             // The auth context will redirect based on role
             // Users go to /dashboard, collectors go to /collector/dashboard
             window.location.href = '/dashboard';
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Login failed';
             if (msg.includes('user-not-found') || msg.includes('wrong-password')) {
-                setError('Invalid email or password');
+                setError('Invalid credentials');
             } else {
                 setError(msg);
             }
@@ -264,6 +273,7 @@ function AuthPage() {
                 accountType: selectedAccountType,
                 organizationName: selectedAccountType !== 'individual' ? organizationName : null,
                 role: 'user',
+                pin: createPin, // Save the PIN
                 onboardingComplete: true, // Mark onboarding as complete
                 updatedAt: serverTimestamp(),
             };
@@ -317,6 +327,7 @@ function AuthPage() {
                     totalPickups: 0,
                     earnings: 0,
                     collectorType,
+                    pin: collectorCreatePin, // Save PIN
                     onboardingComplete: true,
                     updatedAt: serverTimestamp(),
                 };
@@ -374,6 +385,7 @@ function AuthPage() {
                         totalPickups: 0,
                         earnings: 0,
                         collectorType,
+                        pin: collectorCreatePin, // Save PIN
                         onboardingComplete: true,
                         updatedAt: serverTimestamp(),
                     };
@@ -442,7 +454,7 @@ function AuthPage() {
     const canProceedOnboarding = () => {
         switch (onboardingStep) {
             case 1: return fullName.trim().length > 0;
-            case 2: return phoneNumber.trim().length > 0 && carSize !== null;
+            case 2: return phoneNumber.trim().length > 0 && collectorCreatePin.length >= 4 && carSize !== null;
             case 3: return selectedWasteTypes.length > 0;
             case 4: return maxCapacity > 0;
             case 5:
@@ -467,7 +479,7 @@ function AuthPage() {
 
     const canProceedUserOnboarding = () => {
         switch (userOnboardingStep) {
-            case 1: return fullName.trim().length > 0 && phoneNumber.trim().length > 0;
+            case 1: return fullName.trim().length > 0 && phoneNumber.trim().length > 0 && createPin.length >= 4 && createPin === confirmPin;
             default: return false;
         }
     };
@@ -817,6 +829,52 @@ function AuthPage() {
                                     </div>
                                 </div>
 
+                                {/* PIN Creation */}
+                                <div className="space-y-1">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Create a PIN (4+ digits) *
+                                    </label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                        <input
+                                            type="password"
+                                            value={createPin}
+                                            onChange={(e) => setCreatePin(e.target.value.replace(/\D/g, ''))} // Only numbers
+                                            placeholder="Enter PIN (e.g. 1990)"
+                                            required
+                                            minLength={4}
+                                            maxLength={6}
+                                            inputMode="numeric"
+                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Confirm PIN */}
+                                <div className="space-y-1">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Confirm PIN *
+                                    </label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                        <input
+                                            type="password"
+                                            value={confirmPin}
+                                            onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                                            placeholder="Confirm PIN"
+                                            required
+                                            minLength={4}
+                                            maxLength={6}
+                                            inputMode="numeric"
+                                            className={`w-full pl-10 pr-4 py-3 rounded-lg border bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all ${createPin && confirmPin && createPin !== confirmPin ? 'border-red-300' : 'border-gray-200'
+                                                }`}
+                                        />
+                                    </div>
+                                    {createPin && confirmPin && createPin !== confirmPin && (
+                                        <p className="text-xs text-red-500">PINs do not match</p>
+                                    )}
+                                </div>
+
                                 {/* Error Message */}
                                 {error && (
                                     <motion.div
@@ -1070,49 +1128,117 @@ function AuthPage() {
                         </div>
 
                         <form onSubmit={mode === 'login' ? handleLogin : handleSignupStart} className="space-y-4">
-                            {/* Email */}
-                            <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-700 ">
-                                    Email
-                                </label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                    <input
-                                        type="email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="you@example.com"
-                                        required
-                                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Password */}
-                            <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-700 ">
-                                    Password
-                                </label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                    <input
-                                        type={showPassword ? 'text' : 'password'}
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        placeholder="••••••••"
-                                        required
-                                        minLength={6}
-                                        className="w-full pl-10 pr-12 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                                    />
+                            {/* Login Method Toggle (Only for Login mode) */}
+                            {mode === 'login' && (
+                                <div className="flex bg-gray-100 p-1 rounded-lg mb-2">
                                     <button
                                         type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        onClick={() => setLoginMethod('phone')}
+                                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${loginMethod === 'phone' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}
                                     >
-                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        Phone Number
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setLoginMethod('email')}
+                                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${loginMethod === 'email' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        Email Address
                                     </button>
                                 </div>
-                            </div>
+                            )}
+
+                            {mode === 'login' && loginMethod === 'phone' ? (
+                                // PHONE LOGIN FIELDS
+                                <>
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Phone Number
+                                        </label>
+                                        <div className="relative">
+                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="tel"
+                                                value={phoneNumber}
+                                                onChange={(e) => setPhoneNumber(e.target.value)}
+                                                placeholder="+220 123 4567"
+                                                required
+                                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            PIN
+                                        </label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type={showPassword ? 'text' : 'password'}
+                                                value={pin}
+                                                onChange={(e) => setPin(e.target.value)}
+                                                placeholder="Enter 4-digit PIN"
+                                                required
+                                                className="w-full pl-10 pr-12 py-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                            >
+                                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                // EMAIL LOGIN / SIGNUP FIELDS
+                                <>
+                                    {/* Email */}
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-gray-700 ">
+                                            Email
+                                        </label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="email"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                placeholder="you@example.com"
+                                                required
+                                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Password */}
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-gray-700 ">
+                                            Password
+                                        </label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type={showPassword ? 'text' : 'password'}
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                placeholder="••••••••"
+                                                required
+                                                minLength={6}
+                                                className="w-full pl-10 pr-12 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                            >
+                                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
                             {/* Error Message */}
                             {error && (
@@ -1329,264 +1455,290 @@ function AuthPage() {
                                     </div>
                                 </div>
 
-                                {/* Car Size */}
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700 ">
-                                        Vehicle Type *
-                                    </label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {CAR_SIZES.map((size) => (
-                                            <motion.button
-                                                key={size.id}
-                                                type="button"
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => setCarSize(size.id)}
-                                                className={`p-4 rounded-xl border-2 text-left transition-all ${carSize === size.id
-                                                    ? 'border-emerald-500 bg-emerald-50 '
-                                                    : 'border-gray-200  hover:border-gray-300'
-                                                    }`}
-                                            >
-                                                <span className="text-2xl">{size.icon}</span>
-                                                <h3 className="font-semibold text-sm text-gray-900  mt-1">
-                                                    {size.name}
-                                                </h3>
-                                                <Badge variant="secondary" className="mt-1">{size.capacity}</Badge>
-                                            </motion.button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </motion.div>
+                            </div>
+
+                                {/* PIN Creation for Collectors */}
+                        <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-700">
+                                Create a Login PIN *
+                            </label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                <input
+                                    type="password"
+                                    value={collectorCreatePin}
+                                    onChange={(e) => setCollectorCreatePin(e.target.value.replace(/\D/g, ''))} // Only numbers
+                                    placeholder="Enter 4-digit PIN"
+                                    required
+                                    minLength={4}
+                                    maxLength={6}
+                                    inputMode="numeric"
+                                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                You can use this with your phone number to log in
+                            </p>
+                        </div>
+
+                        {/* Car Size */}
+                        <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700 ">
+                                Vehicle Type *
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {CAR_SIZES.map((size) => (
+                                    <motion.button
+                                        key={size.id}
+                                        type="button"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setCarSize(size.id)}
+                                        className={`p-4 rounded-xl border-2 text-left transition-all ${carSize === size.id
+                                            ? 'border-emerald-500 bg-emerald-50 '
+                                            : 'border-gray-200  hover:border-gray-300'
+                                            }`}
+                                    >
+                                        <span className="text-2xl">{size.icon}</span>
+                                        <h3 className="font-semibold text-sm text-gray-900  mt-1">
+                                            {size.name}
+                                        </h3>
+                                        <Badge variant="secondary" className="mt-1">{size.capacity}</Badge>
+                                    </motion.button>
+                                ))}
+                            </div>
+                        </div>
+                    </motion.div>
                         )}
 
-                        {/* Step 3: Waste Types */}
-                        {onboardingStep === 3 && (
-                            <motion.div
-                                key="step3"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                className="space-y-6"
-                            >
-                                <h2 className="text-lg font-semibold text-gray-900 ">
-                                    Waste Types You'll Collect
-                                </h2>
-                                <p className="text-sm text-gray-500">
-                                    Select all types of waste you're willing to collect
-                                </p>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    {WASTE_TYPES.map((type) => (
-                                        <motion.button
-                                            key={type.id}
-                                            type="button"
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
-                                            onClick={() => toggleWasteType(type.id)}
-                                            className={`p-4 rounded-xl border-2 text-center transition-all ${selectedWasteTypes.includes(type.id)
-                                                ? 'border-emerald-500 bg-emerald-50 '
-                                                : 'border-gray-200  hover:border-gray-300'
-                                                }`}
-                                        >
-                                            <span className="text-2xl">{type.icon}</span>
-                                            <h3 className="font-semibold text-sm text-gray-900  mt-1">
-                                                {type.name}
-                                            </h3>
-                                        </motion.button>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* Step 4: Max Capacity */}
-                        {onboardingStep === 4 && (
-                            <motion.div
-                                key="step4"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                className="space-y-6"
-                            >
-                                <h2 className="text-lg font-semibold text-gray-900 ">
-                                    Maximum Capacity
-                                </h2>
-                                <p className="text-sm text-gray-500">
-                                    What's the maximum weight you can carry per trip?
-                                </p>
-
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-center gap-4">
-                                        <Scale className="w-8 h-8 text-emerald-500" />
-                                        <div className="text-center">
-                                            <span className="text-4xl font-bold text-gray-900 ">
-                                                {maxCapacity}
-                                            </span>
-                                            <span className="text-xl text-gray-500 ml-1">kg</span>
-                                        </div>
-                                    </div>
-
-                                    <input
-                                        type="range"
-                                        min="10"
-                                        max="2000"
-                                        step="10"
-                                        value={maxCapacity}
-                                        onChange={(e) => setMaxCapacity(parseInt(e.target.value))}
-                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                                    />
-
-                                    <div className="flex justify-between text-sm text-gray-500">
-                                        <span>10 kg</span>
-                                        <span>2000 kg</span>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* Step 5: Agency Info (only for agency_owner or agency_driver) */}
-                        {onboardingStep === 5 && (selectedCollectorType === 'agency_owner' || selectedCollectorType === 'agency_driver') && (
-                            <motion.div
-                                key="step5"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                className="space-y-6"
-                            >
-                                {selectedCollectorType === 'agency_owner' ? (
-                                    <>
-                                        <h2 className="text-lg font-semibold text-gray-900 ">
-                                            Create Your Agency
-                                        </h2>
-                                        <p className="text-sm text-gray-500">
-                                            Give your agency a name. You'll get a unique code to share with drivers.
-                                        </p>
-
-                                        <div className="space-y-1">
-                                            <label className="block text-sm font-medium text-gray-700 ">
-                                                Agency Name *
-                                            </label>
-                                            <div className="relative">
-                                                <Crown className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-500" />
-                                                <input
-                                                    type="text"
-                                                    value={agencyName}
-                                                    onChange={(e) => setAgencyName(e.target.value)}
-                                                    placeholder="My Waste Collection Agency"
-                                                    required
-                                                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                                                />
-                                            </div>
-                                            <p className="text-xs text-gray-400">
-                                                Must be at least 4 characters
-                                            </p>
-                                        </div>
-
-                                        <div className="p-4 bg-amber-50  rounded-lg border border-amber-200 ">
-                                            <div className="flex items-start gap-3">
-                                                <Crown className="w-5 h-5 text-amber-600 mt-0.5" />
-                                                <div>
-                                                    <p className="font-medium text-amber-800 ">Agency Owner Benefits</p>
-                                                    <ul className="text-sm text-amber-700  mt-1 space-y-1">
-                                                        <li>• Hire and manage drivers</li>
-                                                        <li>• Track team earnings</li>
-                                                        <li>• Share unique agency code</li>
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <h2 className="text-lg font-semibold text-gray-900 ">
-                                            Join an Agency
-                                        </h2>
-                                        <p className="text-sm text-gray-500">
-                                            Enter the agency code given to you by the agency owner.
-                                        </p>
-
-                                        <div className="space-y-1">
-                                            <label className="block text-sm font-medium text-gray-700 ">
-                                                Agency Code *
-                                            </label>
-                                            <div className="relative">
-                                                <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500" />
-                                                <input
-                                                    type="text"
-                                                    value={agencyCode}
-                                                    onChange={(e) => setAgencyCode(e.target.value.toUpperCase())}
-                                                    placeholder="ABC123"
-                                                    required
-                                                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all uppercase"
-                                                />
-                                            </div>
-                                            <p className="text-xs text-gray-400">
-                                                Ask your agency owner for this code
-                                            </p>
-                                        </div>
-
-                                        <div className="p-4 bg-blue-50  rounded-lg border border-blue-200 ">
-                                            <div className="flex items-start gap-3">
-                                                <UserPlus className="w-5 h-5 text-blue-600 mt-0.5" />
-                                                <div>
-                                                    <p className="font-medium text-blue-800 ">Joining an Agency</p>
-                                                    <ul className="text-sm text-blue-700  mt-1 space-y-1">
-                                                        <li>• The agency owner will approve your request</li>
-                                                        <li>• You'll be notified once approved</li>
-                                                        <li>• Earnings go through the agency</li>
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Error */}
-                    {error && (
+                    {/* Step 3: Waste Types */}
+                    {onboardingStep === 3 && (
                         <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="mt-4 p-3 rounded-lg bg-red-50  border border-red-200  text-red-600  text-sm"
+                            key="step3"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="space-y-6"
                         >
-                            {error}
+                            <h2 className="text-lg font-semibold text-gray-900 ">
+                                Waste Types You'll Collect
+                            </h2>
+                            <p className="text-sm text-gray-500">
+                                Select all types of waste you're willing to collect
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                {WASTE_TYPES.map((type) => (
+                                    <motion.button
+                                        key={type.id}
+                                        type="button"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => toggleWasteType(type.id)}
+                                        className={`p-4 rounded-xl border-2 text-center transition-all ${selectedWasteTypes.includes(type.id)
+                                            ? 'border-emerald-500 bg-emerald-50 '
+                                            : 'border-gray-200  hover:border-gray-300'
+                                            }`}
+                                    >
+                                        <span className="text-2xl">{type.icon}</span>
+                                        <h3 className="font-semibold text-sm text-gray-900  mt-1">
+                                            {type.name}
+                                        </h3>
+                                    </motion.button>
+                                ))}
+                            </div>
                         </motion.div>
                     )}
 
-                    {/* Navigation Buttons */}
-                    <div className="mt-8 flex justify-between gap-4">
-                        <Button
-                            variant="ghost"
-                            onClick={() => setOnboardingStep(prev => prev - 1)}
-                            leftIcon={<ArrowLeft size={18} />}
+                    {/* Step 4: Max Capacity */}
+                    {onboardingStep === 4 && (
+                        <motion.div
+                            key="step4"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="space-y-6"
                         >
-                            Back
-                        </Button>
+                            <h2 className="text-lg font-semibold text-gray-900 ">
+                                Maximum Capacity
+                            </h2>
+                            <p className="text-sm text-gray-500">
+                                What's the maximum weight you can carry per trip?
+                            </p>
 
-                        {onboardingStep < getTotalOnboardingSteps() ? (
-                            <Button
-                                variant="primary"
-                                disabled={!canProceedOnboarding()}
-                                onClick={() => setOnboardingStep(prev => prev + 1)}
-                                rightIcon={<ArrowRight size={18} />}
-                            >
-                                Continue
-                            </Button>
-                        ) : (
-                            <Button
-                                variant="primary"
-                                disabled={!canProceedOnboarding() || isLoading}
-                                isLoading={isLoading}
-                                onClick={handleOnboardingComplete}
-                                rightIcon={<Check size={18} />}
-                            >
-                                Complete Setup
-                            </Button>
-                        )}
-                    </div>
-                </Card>
-            </motion.div>
-        </div>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-center gap-4">
+                                    <Scale className="w-8 h-8 text-emerald-500" />
+                                    <div className="text-center">
+                                        <span className="text-4xl font-bold text-gray-900 ">
+                                            {maxCapacity}
+                                        </span>
+                                        <span className="text-xl text-gray-500 ml-1">kg</span>
+                                    </div>
+                                </div>
+
+                                <input
+                                    type="range"
+                                    min="10"
+                                    max="2000"
+                                    step="10"
+                                    value={maxCapacity}
+                                    onChange={(e) => setMaxCapacity(parseInt(e.target.value))}
+                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                />
+
+                                <div className="flex justify-between text-sm text-gray-500">
+                                    <span>10 kg</span>
+                                    <span>2000 kg</span>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* Step 5: Agency Info (only for agency_owner or agency_driver) */}
+                    {onboardingStep === 5 && (selectedCollectorType === 'agency_owner' || selectedCollectorType === 'agency_driver') && (
+                        <motion.div
+                            key="step5"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="space-y-6"
+                        >
+                            {selectedCollectorType === 'agency_owner' ? (
+                                <>
+                                    <h2 className="text-lg font-semibold text-gray-900 ">
+                                        Create Your Agency
+                                    </h2>
+                                    <p className="text-sm text-gray-500">
+                                        Give your agency a name. You'll get a unique code to share with drivers.
+                                    </p>
+
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-gray-700 ">
+                                            Agency Name *
+                                        </label>
+                                        <div className="relative">
+                                            <Crown className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-500" />
+                                            <input
+                                                type="text"
+                                                value={agencyName}
+                                                onChange={(e) => setAgencyName(e.target.value)}
+                                                placeholder="My Waste Collection Agency"
+                                                required
+                                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-gray-400">
+                                            Must be at least 4 characters
+                                        </p>
+                                    </div>
+
+                                    <div className="p-4 bg-amber-50  rounded-lg border border-amber-200 ">
+                                        <div className="flex items-start gap-3">
+                                            <Crown className="w-5 h-5 text-amber-600 mt-0.5" />
+                                            <div>
+                                                <p className="font-medium text-amber-800 ">Agency Owner Benefits</p>
+                                                <ul className="text-sm text-amber-700  mt-1 space-y-1">
+                                                    <li>• Hire and manage drivers</li>
+                                                    <li>• Track team earnings</li>
+                                                    <li>• Share unique agency code</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <h2 className="text-lg font-semibold text-gray-900 ">
+                                        Join an Agency
+                                    </h2>
+                                    <p className="text-sm text-gray-500">
+                                        Enter the agency code given to you by the agency owner.
+                                    </p>
+
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-gray-700 ">
+                                            Agency Code *
+                                        </label>
+                                        <div className="relative">
+                                            <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500" />
+                                            <input
+                                                type="text"
+                                                value={agencyCode}
+                                                onChange={(e) => setAgencyCode(e.target.value.toUpperCase())}
+                                                placeholder="ABC123"
+                                                required
+                                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200  bg-white  text-gray-900  placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all uppercase"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-gray-400">
+                                            Ask your agency owner for this code
+                                        </p>
+                                    </div>
+
+                                    <div className="p-4 bg-blue-50  rounded-lg border border-blue-200 ">
+                                        <div className="flex items-start gap-3">
+                                            <UserPlus className="w-5 h-5 text-blue-600 mt-0.5" />
+                                            <div>
+                                                <p className="font-medium text-blue-800 ">Joining an Agency</p>
+                                                <ul className="text-sm text-blue-700  mt-1 space-y-1">
+                                                    <li>• The agency owner will approve your request</li>
+                                                    <li>• You'll be notified once approved</li>
+                                                    <li>• Earnings go through the agency</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Error */}
+                {error && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-4 p-3 rounded-lg bg-red-50  border border-red-200  text-red-600  text-sm"
+                    >
+                        {error}
+                    </motion.div>
+                )}
+
+                {/* Navigation Buttons */}
+                <div className="mt-8 flex justify-between gap-4">
+                    <Button
+                        variant="ghost"
+                        onClick={() => setOnboardingStep(prev => prev - 1)}
+                        leftIcon={<ArrowLeft size={18} />}
+                    >
+                        Back
+                    </Button>
+
+                    {onboardingStep < getTotalOnboardingSteps() ? (
+                        <Button
+                            variant="primary"
+                            disabled={!canProceedOnboarding()}
+                            onClick={() => setOnboardingStep(prev => prev + 1)}
+                            rightIcon={<ArrowRight size={18} />}
+                        >
+                            Continue
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="primary"
+                            disabled={!canProceedOnboarding() || isLoading}
+                            isLoading={isLoading}
+                            onClick={handleOnboardingComplete}
+                            rightIcon={<Check size={18} />}
+                        >
+                            Complete Setup
+                        </Button>
+                    )}
+                </div>
+            </Card>
+        </motion.div>
+        </div >
     );
 }
