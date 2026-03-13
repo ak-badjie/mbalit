@@ -20,6 +20,7 @@ import { Card } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth-context';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { compressImage } from '@/lib/image-utils';
 
 export default function ProfilePage() {
     const { user } = useAuth();
@@ -37,8 +38,10 @@ export default function ProfilePage() {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setProfileImage(reader.result as string);
+            reader.onloadend = async () => {
+                const base64 = reader.result as string;
+                const compressed = await compressImage(base64);
+                setProfileImage(compressed);
             };
             reader.readAsDataURL(file);
         }

@@ -25,6 +25,7 @@ import type { Country } from '@/components/ui/country-selector';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { WASTE_TYPES } from '@/lib/waste-config';
 import { WasteType, CollectorType } from '@/types';
+import { compressImage } from '@/lib/image-utils';
 
 // Vehicle sizes (Lucide icons, no emojis)
 const VEHICLE_TYPES = [
@@ -268,7 +269,11 @@ function AuthPage() {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => setProfileImage(reader.result as string);
+            reader.onloadend = async () => {
+                const base64 = reader.result as string;
+                const compressed = await compressImage(base64);
+                setProfileImage(compressed);
+            };
             reader.readAsDataURL(file);
         }
     };
