@@ -88,9 +88,9 @@ export const AIChatbot: React.FC = () => {
 
         try {
             // Use Gemini API key (falls back to Google Maps key for backwards compatibility)
-            const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+            const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
             if (!apiKey) {
-                throw new Error('Gemini API key not configured. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your .env.local');
+                throw new Error('Gemini API key not configured. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local');
             }
 
             const genAI = new GoogleGenerativeAI(apiKey);

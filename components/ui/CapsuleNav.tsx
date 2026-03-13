@@ -150,14 +150,14 @@ const CapsuleNav: React.FC<CapsuleNavProps> = ({ isOpen, onClose }) => {
                         <div
                             className="hidden md:block absolute inset-0 bg-cover bg-center bg-no-repeat"
                             style={{
-                                backgroundImage: 'url(/hero.jpeg)',
+                                backgroundImage: 'url(/hero.png)',
                             }}
                         />
                         {/* Mobile Image */}
                         <div
                             className="block md:hidden absolute inset-0 bg-cover bg-center bg-no-repeat"
                             style={{
-                                backgroundImage: 'url(/hero-mobile.jpeg)',
+                                backgroundImage: 'url(/hero-mobile.png)',
                             }}
                         />
                     </div>

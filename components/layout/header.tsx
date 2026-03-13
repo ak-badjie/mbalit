@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { Menu, X, User, LogIn, LogOut, Home, HelpCircle, UserPlus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { TruckLogo } from '@/components/ui/truck-logo';
+import TruckLogo from '@/components/ui/truck-logo';
 import CapsuleNav from '@/components/ui/CapsuleNav';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';

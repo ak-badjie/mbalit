@@ -3,11 +3,8 @@
 // User Types
 export type UserRole = 'user' | 'collector';
 
-// Account types for users (not collectors)
-export type AccountType = 'individual' | 'business' | 'corporate';
-
-// Collector types
-export type CollectorType = 'individual' | 'agency_owner' | 'agency_driver';
+// Collector types (simplified)
+export type CollectorType = 'individual' | 'organization' | 'organization_member';
 
 export interface User {
   id: string;
@@ -20,19 +17,14 @@ export interface User {
   location?: GeoLocation;
   profileImage?: string;
   onboardingComplete?: boolean;
-  preferredAgencies?: string[]; // User's preferred agency IDs
   pin?: string; // App-specific PIN for phone number login
 }
 
-// User profile (individual, business, or corporate account)
+// User profile
 export interface UserProfile extends User {
   role: 'user';
-  accountType: AccountType;
-  organizationName?: string;
-  contactPerson?: string;
   activeOrders: string[];
   completedOrders: number;
-  // Subscription
   activeSubscriptionId?: string;
 }
 
@@ -45,10 +37,10 @@ export interface Customer extends User {
 export interface Collector extends User {
   role: 'collector';
   collectorType: CollectorType;
-  agencyId?: string; // If part of agency
+  organizationId?: string; // If part of an organization
   wasteTypesHandled: WasteType[];
   isAvailable: boolean;
-  isApproved: boolean; // For agency drivers
+  isApproved: boolean; // For organization members
   currentLocation?: GeoLocation;
   rating: number;
   totalPickups: number;
@@ -57,18 +49,14 @@ export interface Collector extends User {
   maxCapacity?: number;
 }
 
-// Agency (collection business with multiple drivers)
-// Agency types - Companies are private businesses, Municipalities are government bodies
-export type AgencyType = 'company' | 'municipality';
-
-export interface Agency {
+// Organization (waste collection company)
+export interface Organization {
   id: string;
   name: string;
   ownerId: string;
-  agencyCode: string; // 6-char code for joining
-  agencyType: AgencyType; // Company or municipality
-  drivers: string[]; // Approved driver IDs
-  pendingDrivers: string[]; // Awaiting approval
+  orgCode: string; // Unique code for joining (like a username)
+  members: string[]; // Approved member IDs
+  pendingMembers: string[]; // Awaiting approval
   totalEarnings: number;
   walletBalance: number;
   isActive: boolean;
@@ -78,40 +66,6 @@ export interface Agency {
   totalPickups?: number;
   createdAt: Date;
   updatedAt: Date;
-}
-
-// Agency subscription plan (created by agency owners)
-export interface AgencySubscriptionPlan {
-  id: string;
-  agencyId: string;
-  name: string; // e.g., "Weekly Standard", "Monthly Premium"
-  description?: string;
-  frequency: 'weekly' | 'biweekly' | 'monthly';
-  bucketCount: number;
-  trashBagCount: number;
-  largeBinCount: number;
-  price: number; // Total price set by agency
-  platformFee: number; // 30% of price
-  agencyEarnings: number; // 70% of price
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// User subscription to an agency plan
-export interface UserAgencySubscription {
-  id: string;
-  userId: string;
-  agencyId: string;
-  planId: string;
-  planName: string;
-  status: 'active' | 'paused' | 'cancelled';
-  nextPickupDate: Date;
-  pickupsCompleted: number;
-  totalPaid: number;
-  startedAt: Date;
-  pausedAt?: Date;
-  cancelledAt?: Date;
 }
 
 // Waste Types
@@ -141,12 +95,12 @@ export interface ContainerInfo {
   id: ContainerType;
   name: string;
   description: string;
-  capacity: string; // e.g., "10L", "200L"
-  pricePerUnit: number; // D25 or D500
+  capacity: string;
+  pricePerUnit: number;
   icon: string;
 }
 
-// Legacy support - keeping WasteSize for backwards compatibility
+// Legacy support
 export type WasteSize = 'small' | 'medium' | 'large' | 'extra-large';
 
 export interface WasteSizeInfo {
@@ -167,43 +121,43 @@ export interface GeoLocation {
 
 // Pickup Request Status
 export type RequestStatus =
-  | 'pending'         // Just created, looking for collector
-  | 'assigned'        // Collector assigned
-  | 'in_progress'     // Collector on the way
-  | 'arrived'         // Collector arrived at location
-  | 'awaiting_payment'// Trash handed over, waiting for payment
-  | 'completed'       // Payment done, request complete
-  | 'cancelled';      // Request cancelled
+  | 'pending'
+  | 'assigned'
+  | 'in_progress'
+  | 'arrived'
+  | 'awaiting_payment'
+  | 'completed'
+  | 'cancelled';
 
 // Pickup Request
 export interface PickupRequest {
   id: string;
   customerId: string;
   collectorId?: string;
-  agencyId?: string; // If handled by agency driver
+  organizationId?: string;
 
   // Waste details
   wasteType: WasteType;
   description?: string;
   images?: string[];
 
-  // Container quantities (new system)
-  bucketCount: number;      // Number of small buckets (D25 each)
-  largeBinCount: number;    // Number of large bins (D500 each)
+  // Container quantities
+  bucketCount: number;
+  largeBinCount: number;
 
-  // Legacy field for backwards compatibility
+  // Legacy
   wasteSize?: WasteSize;
 
   // Location
   pickupLocation: GeoLocation;
 
   // Pricing
-  estimatedPrice: number;   // Calculated from containers
-  tipAmount: number;        // Customer tip
-  adjustedPrice?: number;   // If price was negotiated
-  finalPrice?: number;      // Final paid amount
-  platformFee?: number;     // 30% platform cut
-  collectorEarnings?: number; // 70% collector share
+  estimatedPrice: number;
+  tipAmount: number;
+  adjustedPrice?: number;
+  finalPrice?: number;
+  platformFee?: number;
+  collectorEarnings?: number;
 
   // Status
   status: RequestStatus;
@@ -244,12 +198,12 @@ export interface Payment {
   requestId: string;
   customerId: string;
   collectorId: string;
-  agencyId?: string;
+  organizationId?: string;
 
   amount: number;
   tipAmount: number;
-  platformFee: number;      // 30%
-  collectorAmount: number;  // 70%
+  platformFee: number;
+  collectorAmount: number;
   currency: string;
 
   status: PaymentStatus;
@@ -268,20 +222,18 @@ export type SubscriptionStatus = 'active' | 'paused' | 'cancelled' | 'expired';
 export interface Subscription {
   id: string;
   customerId: string;
-  collectorId?: string;  // Assigned collector
-  agencyId?: string;     // Or assigned agency
+  collectorId?: string;
+  organizationId?: string;
 
-  // Plan details
   plan: SubscriptionPlan;
   bucketCount: number;
   largeBinCount: number;
   pricePerPickup: number;
-  pickupsPerMonth: number; // 4 for weekly, 2 for biweekly, 1 for monthly
+  pickupsPerMonth: number;
   totalMonthlyPrice: number;
 
-  // Collection schedule
-  preferredDay?: string; // 'monday', 'tuesday', etc.
-  preferredTime?: string; // 'morning', 'afternoon', 'evening'
+  preferredDay?: string;
+  preferredTime?: string;
 
   status: SubscriptionStatus;
   nextPickupDate?: Date;
@@ -304,14 +256,14 @@ export interface Notification {
   data?: Record<string, unknown>;
 }
 
-// API Response types
+// API Response
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
 }
 
-// Pricing calculation
+// Pricing
 export interface PriceEstimate {
   bucketCount: number;
   bucketCost: number;
@@ -365,13 +317,12 @@ export interface CollectorProfile {
   isVerified: boolean;
   documentsSubmitted: boolean;
   joinedAt: Date;
-  // Agency info
   collectorType: CollectorType;
-  agencyId?: string;
-  agencyName?: string;
+  organizationId?: string;
+  organizationName?: string;
 }
 
-// Review (bidirectional)
+// Review
 export interface Review {
   id: string;
   jobId: string;
@@ -391,4 +342,3 @@ export interface Review {
 // Platform Fee Constants
 export const PLATFORM_FEE_PERCENTAGE = 0.30; // 30%
 export const COLLECTOR_SHARE_PERCENTAGE = 0.70; // 70%
-

@@ -19,7 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TruckLogo } from '@/components/ui/truck-logo';
+import TruckLogo from '@/components/ui/truck-logo';
 import { MapView } from '@/components/maps/map-view';
 import { subscribeToJob, subscribeToCollectorLocation, RealtimeJob } from '@/lib/realtime';
 import { formatPrice, WASTE_TYPES } from '@/lib/waste-config';

@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { TruckLogo } from '@/components/ui/truck-logo';
+import TruckLogo from '@/components/ui/truck-logo';
 import { Badge } from '@/components/ui/badge';
 import { MapView } from '@/components/maps/map-view';
 import { ProfileLocationMap } from '@/components/maps/profile-location-map';
@@ -34,7 +34,7 @@ import { NotificationDropdown } from '@/components/ui/notification-dropdown';
 import { formatPrice, WASTE_TYPES } from '@/lib/waste-config';
 import { GeoLocation, CollectorStats, Notification, CollectorType } from '@/types';
 import { useAuth } from '@/lib/auth-context';
-import { AgencyOwnerDashboard, DriverDashboard } from './agency-dashboards';
+
 import {
     updateCollectorLocation,
     setCollectorOnlineStatus,
@@ -320,8 +320,8 @@ function DashboardContent() {
     };
 
     // Helper to get waste type info
-    const getWasteTypeInfo = (wasteTypeId: string) => {
-        return WASTE_TYPES.find(t => t.id === wasteTypeId) || { name: wasteTypeId, icon: '📦' };
+    const getWasteTypeInfo = (wasteTypeId?: string) => {
+        return WASTE_TYPES.find(t => t.id === wasteTypeId) || { name: wasteTypeId || 'Unknown', icon: '📦' };
     };
 
     return (
@@ -487,22 +487,9 @@ function DashboardContent() {
             </AnimatePresence>
 
             <main className="pt-6 md:pt-20 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-                {/* Role-based dashboard rendering */}
-                {(user as any)?.collectorType === 'agency_owner' ? (
-                    <AgencyOwnerDashboard
-                        userId={user?.id || ''}
-                        userName={user?.name || 'Agency Owner'}
-                    />
-                ) : (user as any)?.collectorType === 'agency_driver' ? (
-                    <DriverDashboard
-                        userId={user?.id || ''}
-                        userName={user?.name || 'Driver'}
-                        agencyId={(user as any)?.agencyId}
-                        isApproved={(user as any)?.isApproved}
-                    />
-                ) : (
-                    <>
-                        {/* Credit Card Style Wallet - Only for individual collectors */}
+                {/* Single unified collector dashboard rendering */}
+                <>
+                    {/* Credit Card Style Wallet - Only for individual collectors */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -880,7 +867,6 @@ function DashboardContent() {
                             </Card>
                         )}
                     </>
-                )}
             </main>
 
             {/* Withdraw Modal */}
@@ -972,8 +958,8 @@ function DashboardContent() {
                         customerPhone: (activeJob as any).customerPhone || '',
                         pickupLocation: activeJob.pickupLocation,
                         wasteType: getWasteTypeInfo(activeJob.wasteType).name,
-                        wasteSize: activeJob.wasteSize,
-                        amount: activeJob.amount,
+                        wasteSize: activeJob.wasteSize || 'Unknown',
+                        amount: activeJob.amount || 0,
                         estimatedDistance: '1.2 km',
                         estimatedTime: '5 min',
                         notes: (activeJob as any).notes,

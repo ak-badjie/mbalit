@@ -22,7 +22,7 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default function ProfilePage() {
-    const { user, firebaseUser } = useAuth();
+    const { user } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,11 +46,11 @@ export default function ProfilePage() {
 
     // Save profile
     const handleSave = async () => {
-        if (!firebaseUser) return;
+        if (!user) return;
 
         setIsSaving(true);
         try {
-            await updateDoc(doc(db, 'users', firebaseUser.uid), {
+            await updateDoc(doc(db, 'users', user.id), {
                 name,
                 phone,
                 profileImage,
