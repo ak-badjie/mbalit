@@ -44,7 +44,7 @@ export const DialPad: React.FC<DialPadProps> = ({
         <div className="grid grid-cols-3 gap-3 w-full max-w-[320px] mx-auto">
             {KEYS.map((key, index) => {
                 if (key.num === '') {
-                    return <div key={index} />;
+                    return <div key="empty" />;
                 }
 
                 if (key.num === 'delete') {

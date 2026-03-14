@@ -9,6 +9,7 @@ import {
     Phone,
     Mail,
     Truck,
+    Building2,
     Star,
     Edit3,
     Check,
@@ -197,7 +198,7 @@ export default function ProfilePage() {
                                         className="w-full h-full rounded-full object-cover"
                                     />
                                 ) : (
-                                    (profile?.displayName || 'U').charAt(0).toUpperCase()
+                                    profile?.collectorType === 'organization' ? <Building2 className="w-10 h-10 text-white opacity-80" /> : (profile?.displayName || 'U').charAt(0).toUpperCase()
                                 )}
                             </div>
                             <button className="absolute bottom-0 right-0 w-8 h-8 bg-white  rounded-full shadow-lg flex items-center justify-center border border-gray-200  hover:bg-gray-50  transition-colors">

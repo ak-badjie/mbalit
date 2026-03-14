@@ -23,6 +23,7 @@ import {
     Calendar,
     LogOut,
     Settings,
+    Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -43,6 +44,7 @@ import {
     assignCollectorToJob,
     updateJobStatus,
     clearCollectorActiveJob,
+    createPaymentRequest,
     RealtimeJob,
 } from '@/lib/realtime';
 import {
@@ -53,6 +55,7 @@ import {
     getWalletBalance,
     withdrawFromWallet,
 } from '@/lib/firestore';
+import { createNotification } from '@/lib/firestore';
 import {
     DynamicIslandProvider,
     DynamicIsland,
@@ -62,6 +65,36 @@ import {
     useDynamicIslandSize,
 } from '@/components/ui/dynamic-island';
 import { FullScreenNavigation } from '@/components/ui/full-screen-navigation';
+
+// Haversine distance calculation (km)
+function haversineDistance(
+    lat1: number, lon1: number,
+    lat2: number, lon2: number
+): number {
+    const R = 6371; // Earth's radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+// Estimate travel time based on distance (avg 25 km/h in urban)
+function estimateTravelTime(distanceKm: number): string {
+    const minutes = Math.round((distanceKm / 25) * 60);
+    if (minutes < 1) return '< 1 min';
+    if (minutes >= 60) return `${Math.round(minutes / 60)}h ${minutes % 60}m`;
+    return `${minutes} min`;
+}
+
+function formatDistance(distanceKm: number): string {
+    if (distanceKm < 1) return `${Math.round(distanceKm * 1000)} m`;
+    return `${distanceKm.toFixed(1)} km`;
+}
 
 // Credit Card Pattern SVG
 const CardPattern = () => (
@@ -102,6 +135,13 @@ function DashboardContent() {
     const [withdrawPhone, setWithdrawPhone] = useState('');
     const [isWithdrawing, setIsWithdrawing] = useState(false);
     const [showFullScreenNav, setShowFullScreenNav] = useState(false);
+    const [declinedJobIds, setDeclinedJobIds] = useState<Set<string>>(new Set());
+    const [showDynamicIslandNotif, setShowDynamicIslandNotif] = useState(false);
+    const [showPaymentRequestModal, setShowPaymentRequestModal] = useState(false);
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentAdjustmentReason, setPaymentAdjustmentReason] = useState('');
+    const [isRequestingPayment, setIsRequestingPayment] = useState(false);
+    const [paymentRequestSent, setPaymentRequestSent] = useState(false);
 
     // PROTECT DASHBOARD: Redirect if onboarding not complete
     useEffect(() => {
@@ -230,20 +270,34 @@ function DashboardContent() {
     useEffect(() => {
         if (isOnline && !activeJob) {
             const unsubscribe = subscribeToPendingJobs((jobs) => {
-                // Filter jobs not yet assigned to another collector
-                const availableJobs = jobs.filter(j => !j.collectorId || j.collectorId === collectorId);
+                // Filter jobs not yet assigned to another collector AND not declined
+                const availableJobs = jobs.filter(j => 
+                    (!j.collectorId || j.collectorId === collectorId) &&
+                    !declinedJobIds.has(j.id)
+                );
                 setPendingJobs(availableJobs);
 
                 // Show first available job as incoming
                 if (availableJobs.length > 0 && !incomingJob) {
                     setTimeout(() => setSize('large'), 0);
                     setIncomingJob(availableJobs[0]);
+                    setShowDynamicIslandNotif(true);
+                    
+                    // Save notification to Firestore for notifications page
+                    const jobInfo = availableJobs[0];
+                    createNotification(
+                        collectorId,
+                        'New Job Nearby',
+                        `${jobInfo.wasteTypes?.join(', ') || jobInfo.wasteType || 'Waste'} pickup available near you. Earn ${formatPrice(jobInfo.amount)}`,
+                        'info',
+                        { jobId: jobInfo.id }
+                    ).catch(err => console.error('Failed to save notification:', err));
                 }
             });
 
             return () => unsubscribe();
         }
-    }, [isOnline, activeJob, incomingJob, collectorId, setSize]);
+    }, [isOnline, activeJob, incomingJob, collectorId, setSize, declinedJobIds]);
 
     // Subscribe to collector's active job
     useEffect(() => {
@@ -258,6 +312,16 @@ function DashboardContent() {
         return () => unsubscribe();
     }, [collectorId]);
 
+    // Auto-dismiss Dynamic Island notification after 3 seconds
+    useEffect(() => {
+        if (showDynamicIslandNotif && incomingJob) {
+            const timer = setTimeout(() => {
+                setShowDynamicIslandNotif(false);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [showDynamicIslandNotif, incomingJob]);
+
     const handleToggleOnline = async () => {
         const newOnlineStatus = !isOnline;
         setIsOnline(newOnlineStatus);
@@ -267,15 +331,17 @@ function DashboardContent() {
         } else {
             setIncomingJob(null);
             setPendingJobs([]);
+            setDeclinedJobIds(new Set());
         }
     };
 
-    const handleAcceptJob = async () => {
-        if (incomingJob) {
+    const handleAcceptJob = async (jobOverride?: RealtimeJob) => {
+        const job = jobOverride || incomingJob;
+        if (job) {
             try {
-                await assignCollectorToJob(incomingJob.id, collectorId);
-                await updateJobStatus(incomingJob.id, 'accepted');
-                setActiveJob({ ...incomingJob, collectorId, status: 'accepted' });
+                await assignCollectorToJob(job.id, collectorId);
+                await updateJobStatus(job.id, 'accepted');
+                setActiveJob({ ...job, collectorId, status: 'accepted' });
                 setIncomingJob(null);
                 setTimeout(() => setSize('long'), 0);
 
@@ -290,11 +356,19 @@ function DashboardContent() {
     };
 
     const handleDeclineJob = () => {
+        if (incomingJob) {
+            // Track declined job to prevent cycling
+            setDeclinedJobIds(prev => new Set(prev).add(incomingJob.id));
+        }
         setIncomingJob(null);
-        // Show next pending job if available
-        const nextJob = pendingJobs.find(j => j.id !== incomingJob?.id);
+        setShowDynamicIslandNotif(false);
+        // Show next pending job if available (excluding declined ones)
+        const nextJob = pendingJobs.find(j => 
+            j.id !== incomingJob?.id && !declinedJobIds.has(j.id)
+        );
         if (nextJob) {
             setIncomingJob(nextJob);
+            setShowDynamicIslandNotif(true);
         } else {
             setTimeout(() => setSize('compact'), 0);
         }
@@ -319,9 +393,34 @@ function DashboardContent() {
         setRemainingCapacity(newCapacity);
     };
 
-    // Helper to get waste type info
-    const getWasteTypeInfo = (wasteTypeId?: string) => {
-        return WASTE_TYPES.find(t => t.id === wasteTypeId) || { name: wasteTypeId || 'Unknown', icon: '📦' };
+    // Helper to get waste type info - supports both single wasteType and wasteTypes array
+    const getWasteTypeInfo = (wasteTypeId?: string, wasteTypes?: string[]) => {
+        // If wasteTypes array exists, use it
+        if (wasteTypes && wasteTypes.length > 0) {
+            const types = wasteTypes.map(id => WASTE_TYPES.find(t => t.id === id)).filter(Boolean);
+            if (types.length > 0) {
+                return { 
+                    name: types.map(t => t!.name).join(', '), 
+                    icon: types[0]!.icon 
+                };
+            }
+        }
+        // Fallback to single wasteType
+        return WASTE_TYPES.find(t => t.id === wasteTypeId) || { name: wasteTypeId || 'General Waste', icon: '📦' };
+    };
+
+    // Helper to format container size from bucket/bin counts
+    const getContainerSummary = (job: RealtimeJob) => {
+        const parts: string[] = [];
+        if (job.bucketCount && job.bucketCount > 0) {
+            parts.push(`${job.bucketCount} Bucket${job.bucketCount > 1 ? 's' : ''}`);
+        }
+        if (job.largeBinCount && job.largeBinCount > 0) {
+            parts.push(`${job.largeBinCount} Large Bin${job.largeBinCount > 1 ? 's' : ''}`);
+        }
+        if (parts.length > 0) return parts.join(', ');
+        // Fallback to legacy wasteSize if available
+        return job.wasteSize || 'Standard';
     };
 
     return (
@@ -341,7 +440,7 @@ function DashboardContent() {
                                         {user?.profileImage ? (
                                             <img src={user.profileImage} alt={user.name} className="w-full h-full object-cover" />
                                         ) : (
-                                            user?.name?.charAt(0).toUpperCase() || 'C'
+                                            (user as any)?.collectorType === 'organization' ? <Building2 className="w-5 h-5 text-white opacity-80" /> : user?.name?.charAt(0).toUpperCase() || 'C'
                                         )}
                                     </div>
                                     <div>
@@ -424,19 +523,20 @@ function DashboardContent() {
                 </div>
             </header>
 
-            {/* Dynamic Island for job notifications */}
+            {/* Dynamic Island for job notifications - auto-dismisses after 3s */}
             <AnimatePresence>
-                {(incomingJob || activeJob) && (
+                {((showDynamicIslandNotif && incomingJob) || activeJob) && (
                     <motion.div
                         initial={{ opacity: 0, y: -50, scale: 0.8 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -50, scale: 0.8 }}
                         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                        className="fixed top-20 left-1/2 -translate-x-1/2 z-50"
+                        className="fixed top-20 left-1/2 -translate-x-1/2 z-50 cursor-pointer"
+                        onClick={() => setShowDynamicIslandNotif(false)}
                     >
                         <DynamicIsland>
                             <DynamicContainer className="flex items-center justify-between h-full w-full px-4">
-                                {incomingJob ? (
+                                {showDynamicIslandNotif && incomingJob ? (
                                     <>
                                         <div className="flex items-center gap-3">
                                             <motion.div
@@ -451,7 +551,7 @@ function DashboardContent() {
                                                     New Job Nearby!
                                                 </DynamicTitle>
                                                 <DynamicDescription className="text-xs text-gray-400">
-                                                    {getWasteTypeInfo(incomingJob.wasteType).icon} {getWasteTypeInfo(incomingJob.wasteType).name} • {incomingJob.wasteSize}
+                                                    {getWasteTypeInfo(incomingJob.wasteType, incomingJob.wasteTypes).icon} {getWasteTypeInfo(incomingJob.wasteType, incomingJob.wasteTypes).name} • {getContainerSummary(incomingJob)}
                                                 </DynamicDescription>
                                             </div>
                                         </div>
@@ -574,80 +674,7 @@ function DashboardContent() {
                             </div>
                         </Card>
 
-                        {/* Incoming Job or Active Job View */}
-                        {incomingJob && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                            >
-                                <Card variant="elevated" padding="lg" className="mb-6 border-2 border-emerald-500">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <Package className="w-6 h-6 text-emerald-500" />
-                                        <h2 className="text-xl font-bold text-gray-900 ">
-                                            Incoming Job Request
-                                        </h2>
-                                    </div>
-
-                                    <div className="grid md:grid-cols-2 gap-6">
-                                        <div className="space-y-4">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-3xl">{getWasteTypeInfo(incomingJob.wasteType).icon}</span>
-                                                <div>
-                                                    <p className="font-semibold text-gray-900 ">
-                                                        {getWasteTypeInfo(incomingJob.wasteType).name}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500">
-                                                        Size: {incomingJob.wasteSize}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-3 text-gray-600 ">
-                                                <MapPin className="w-5 h-5" />
-                                                <span>{incomingJob.pickupLocation.formattedAddress}</span>
-                                            </div>
-
-                                            <div className="p-4 bg-emerald-50  rounded-xl">
-                                                <p className="text-sm text-gray-600 ">
-                                                    Estimated Earnings
-                                                </p>
-                                                <p className="text-2xl font-bold text-emerald-600">
-                                                    {formatPrice(incomingJob.amount)}
-                                                </p>
-                                            </div>
-
-                                            <div className="flex gap-3">
-                                                <Button
-                                                    variant="secondary"
-                                                    fullWidth
-                                                    onClick={handleDeclineJob}
-                                                    leftIcon={<XCircle size={18} />}
-                                                >
-                                                    Decline
-                                                </Button>
-                                                <Button
-                                                    variant="primary"
-                                                    fullWidth
-                                                    onClick={handleAcceptJob}
-                                                    leftIcon={<CheckCircle size={18} />}
-                                                >
-                                                    Accept Job
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <Card variant="default" padding="none" className="overflow-hidden h-[300px]">
-                                            <MapView
-                                                center={incomingJob.pickupLocation}
-                                                customerLocation={incomingJob.pickupLocation}
-                                                collectorLocation={currentLocation || undefined}
-                                                height="100%"
-                                            />
-                                        </Card>
-                                    </div>
-                                </Card>
-                            </motion.div>
-                        )}
+                        {/* Active Job View (incoming job popup removed - jobs shown in list below) */}
 
                         {activeJob && (
                             <motion.div
@@ -676,7 +703,7 @@ function DashboardContent() {
                                                         {activeJob.customerEmail}
                                                     </p>
                                                     <p className="text-sm text-gray-500">
-                                                        {getWasteTypeInfo(activeJob.wasteType).icon} {getWasteTypeInfo(activeJob.wasteType).name}
+                                                        {getWasteTypeInfo(activeJob.wasteType, activeJob.wasteTypes).icon} {getWasteTypeInfo(activeJob.wasteType, activeJob.wasteTypes).name} • {getContainerSummary(activeJob)}
                                                     </p>
                                                 </div>
                                                 <a href={`tel:${activeJob.customerPhone}`}>
@@ -705,15 +732,31 @@ function DashboardContent() {
                                                 </p>
                                             </div>
 
-                                            <Button
-                                                variant="primary"
-                                                fullWidth
-                                                onClick={handleCompleteJob}
-                                                leftIcon={<CheckCircle size={18} />}
-                                                className="bg-blue-600 hover:bg-blue-700"
-                                            >
-                                                Mark as Completed
-                                            </Button>
+                                            <div className="flex gap-3">
+                                                <Button
+                                                    variant="secondary"
+                                                    fullWidth
+                                                    onClick={() => {
+                                                        setPaymentAmount(activeJob.amount.toString());
+                                                        setPaymentAdjustmentReason('');
+                                                        setShowPaymentRequestModal(true);
+                                                    }}
+                                                    leftIcon={<DollarSign size={18} />}
+                                                    disabled={paymentRequestSent}
+                                                    className={paymentRequestSent ? 'bg-green-50 text-green-600 border-green-200' : ''}
+                                                >
+                                                    {paymentRequestSent ? 'Payment Requested ✓' : 'Request Payment'}
+                                                </Button>
+                                                <Button
+                                                    variant="primary"
+                                                    fullWidth
+                                                    onClick={handleCompleteJob}
+                                                    leftIcon={<CheckCircle size={18} />}
+                                                    className="bg-blue-600 hover:bg-blue-700"
+                                                >
+                                                    Complete
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         <Card variant="default" padding="none" className="overflow-hidden h-[300px]">
@@ -848,6 +891,104 @@ function DashboardContent() {
                                         height="350px"
                                     />
                                 </Card>
+
+                                {/* Nearby Orders - Accept only with distance/time */}
+                                {pendingJobs.length > 0 && (
+                                    <div className="mt-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-2">
+                                                <Package className="w-5 h-5 text-emerald-500" />
+                                                <h3 className="font-semibold text-gray-900 ">Nearby Orders</h3>
+                                            </div>
+                                            <Badge variant="default" className="bg-emerald-100 text-emerald-700">
+                                                {pendingJobs.length} available
+                                            </Badge>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {pendingJobs.map((job) => {
+                                                const dist = currentLocation
+                                                    ? haversineDistance(
+                                                        currentLocation.lat, currentLocation.lng,
+                                                        job.pickupLocation.lat, job.pickupLocation.lng
+                                                    )
+                                                    : null;
+                                                const time = dist !== null ? estimateTravelTime(dist) : null;
+
+                                                return (
+                                                    <motion.div
+                                                        key={job.id}
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                    >
+                                                        <Card
+                                                            variant="default"
+                                                            padding="md"
+                                                            className="border border-gray-100 hover:shadow-md transition-all"
+                                                        >
+                                                            <div className="flex items-center gap-4">
+                                                                {/* Profile picture */}
+                                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden">
+                                                                    {job.customerProfileImage ? (
+                                                                        <img
+                                                                            src={job.customerProfileImage}
+                                                                            alt="Customer"
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                    ) : (
+                                                                        (job.customerName?.charAt(0) || job.customerEmail?.charAt(0) || '?').toUpperCase()
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                                        <span className="text-lg">{getWasteTypeInfo(job.wasteType, job.wasteTypes).icon}</span>
+                                                                        <p className="font-semibold text-gray-900  text-sm truncate">
+                                                                            {getWasteTypeInfo(job.wasteType, job.wasteTypes).name}
+                                                                        </p>
+                                                                    </div>
+                                                                    <p className="text-xs text-gray-500 truncate">
+                                                                        {getContainerSummary(job)}
+                                                                    </p>
+                                                                    <div className="flex items-center gap-2 mt-1">
+                                                                        {dist !== null && (
+                                                                            <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                                                                                <Navigation className="w-3 h-3" />
+                                                                                {formatDistance(dist)}
+                                                                            </span>
+                                                                        )}
+                                                                        {time !== null && (
+                                                                            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                                                                                <Clock className="w-3 h-3" />
+                                                                                {time}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                                                    <p className="text-lg font-bold text-emerald-600">{formatPrice(job.amount)}</p>
+                                                                    <Button
+                                                                        variant="primary"
+                                                                        size="sm"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleAcceptJob(job);
+                                                                        }}
+                                                                        leftIcon={<CheckCircle size={14} />}
+                                                                        className="bg-emerald-600 hover:bg-emerald-700 text-xs px-3"
+                                                                    >
+                                                                        Accept
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </Card>
+                                                    </motion.div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </>
                         )}
 
@@ -947,6 +1088,119 @@ function DashboardContent() {
                 )}
             </AnimatePresence>
 
+
+            {/* Payment Request Modal */}
+            <AnimatePresence>
+                {showPaymentRequestModal && activeJob && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end"
+                        onClick={() => !isRequestingPayment && setShowPaymentRequestModal(false)}
+                    >
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="w-full bg-white rounded-t-3xl p-6"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-6" />
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Request Payment</h2>
+                            <p className="text-sm text-gray-500 mb-6">
+                                The customer will receive a notification to confirm payment.
+                            </p>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 mb-1 block">Amount (GMD)</label>
+                                    <input
+                                        type="number"
+                                        value={paymentAmount}
+                                        onChange={(e) => setPaymentAmount(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-lg font-bold text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    />
+                                    {parseFloat(paymentAmount) !== activeJob.amount && (
+                                        <p className="text-xs text-amber-600 mt-1">
+                                            Original: {formatPrice(activeJob.amount)} → Adjusted: {formatPrice(parseFloat(paymentAmount) || 0)}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {parseFloat(paymentAmount) !== activeJob.amount && (
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">Adjustment Reason (optional)</label>
+                                        <input
+                                            type="text"
+                                            value={paymentAdjustmentReason}
+                                            onChange={(e) => setPaymentAdjustmentReason(e.target.value)}
+                                            placeholder="e.g. More waste than expected"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="bg-gray-50 rounded-xl p-4">
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span className="text-gray-500">Customer pays</span>
+                                        <span className="font-bold text-gray-900">{formatPrice(parseFloat(paymentAmount) || 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span className="text-gray-500">You receive (70%)</span>
+                                        <span className="font-bold text-emerald-600">{formatPrice(Math.round((parseFloat(paymentAmount) || 0) * 0.7 * 100) / 100)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-500">Platform fee (30%)</span>
+                                        <span className="text-gray-400">{formatPrice(Math.round((parseFloat(paymentAmount) || 0) * 0.3 * 100) / 100)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => setShowPaymentRequestModal(false)}
+                                        className="flex-1"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        variant="primary"
+                                        onClick={async () => {
+                                            setIsRequestingPayment(true);
+                                            try {
+                                                await createPaymentRequest(
+                                                    collectorId,
+                                                    user?.name || 'Collector',
+                                                    activeJob.customerId,
+                                                    activeJob.amount,
+                                                    parseFloat(paymentAmount) || activeJob.amount,
+                                                    paymentAdjustmentReason || undefined,
+                                                    undefined,
+                                                    activeJob.id
+                                                );
+                                                setPaymentRequestSent(true);
+                                                setShowPaymentRequestModal(false);
+                                            } catch (err) {
+                                                console.error('Payment request failed:', err);
+                                                alert('Failed to send payment request');
+                                            } finally {
+                                                setIsRequestingPayment(false);
+                                            }
+                                        }}
+                                        disabled={isRequestingPayment || !paymentAmount}
+                                        className="flex-1"
+                                    >
+                                        {isRequestingPayment ? 'Sending...' : 'Send Request'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Full Screen Navigation for Mobile */}
             {activeJob && (
                 <FullScreenNavigation
@@ -954,11 +1208,11 @@ function DashboardContent() {
                     onClose={() => setShowFullScreenNav(false)}
                     pickup={{
                         id: activeJob.id,
-                        customerName: (activeJob as any).customerName || 'Customer',
-                        customerPhone: (activeJob as any).customerPhone || '',
+                        customerName: activeJob.customerName || 'Customer',
+                        customerPhone: activeJob.customerPhone || '',
                         pickupLocation: activeJob.pickupLocation,
-                        wasteType: getWasteTypeInfo(activeJob.wasteType).name,
-                        wasteSize: activeJob.wasteSize || 'Unknown',
+                        wasteType: getWasteTypeInfo(activeJob.wasteType, activeJob.wasteTypes).name,
+                        wasteSize: getContainerSummary(activeJob),
                         amount: activeJob.amount || 0,
                         estimatedDistance: '1.2 km',
                         estimatedTime: '5 min',
@@ -969,8 +1223,8 @@ function DashboardContent() {
                         handleCompleteJob();
                         setShowFullScreenNav(false);
                     }}
-                    onCall={() => window.open(`tel:${(activeJob as any).customerPhone}`, '_self')}
-                    onMessage={() => window.open(`sms:${(activeJob as any).customerPhone}`, '_self')}
+                    onCall={() => window.open(`tel:${activeJob.customerPhone}`, '_self')}
+                    onMessage={() => window.open(`sms:${activeJob.customerPhone}`, '_self')}
                 />
             )}
         </div>

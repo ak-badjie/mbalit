@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Recycle, Truck } from 'lucide-react';
@@ -14,6 +14,9 @@ import Footer from '@/components/layout/Footer';
 import { JigsawBlock } from '@/components/ui/jigsaw-block';
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   return (
     <div className="min-h-screen bg-emerald-950 overflow-hidden font-sans selection:bg-emerald-500/30">
         <Header />
@@ -53,21 +56,23 @@ export default function Home() {
             {/* Grain/Noise Overlay */}
             <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-overlay z-0 pointer-events-none" />
 
-            {/* Binary Data Overlay */}
-            <div className="absolute inset-0 overflow-hidden opacity-[0.03] select-none z-0 mt-20">
-              {Array.from({ length: 30 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute text-emerald-100 font-mono text-[10px] sm:text-xs tracking-widest whitespace-nowrap"
-                  style={{
-                    top: `${Math.random() * 100}%`,
-                    left: `${(i % 10) * 10}%`,
-                  }}
-                >
-                  {[...Array(12)].map(() => (Math.random() > 0.5 ? '1' : '0')).join(' ')}
-                </div>
-              ))}
-            </div>
+            {/* Binary Data Overlay - Only render on client to avoid hydration mismatch */}
+            {mounted && (
+              <div className="absolute inset-0 overflow-hidden opacity-[0.03] select-none z-0 mt-20">
+                {Array.from({ length: 30 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute text-emerald-100 font-mono text-[10px] sm:text-xs tracking-widest whitespace-nowrap"
+                    style={{
+                      top: `${Math.random() * 100}%`,
+                      left: `${(i % 10) * 10}%`,
+                    }}
+                  >
+                    {[...Array(12)].map(() => (Math.random() > 0.5 ? '1' : '0')).join(' ')}
+                  </div>
+                ))}
+              </div>
+            )}
         </div>
 
         <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col items-center justify-center -mt-8 sm:mt-0">

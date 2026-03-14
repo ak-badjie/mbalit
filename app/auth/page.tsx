@@ -15,7 +15,7 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import TruckLogo from '@/components/ui/truck-logo';
 import { DialPad } from '@/components/ui/dial-pad';
@@ -107,7 +107,14 @@ function AuthPage() {
     useEffect(() => {
         if (continueOnboarding && user && user.onboardingComplete === false) {
             if (user.role === 'collector') {
-                setRegistrationType('collector');
+                if ('collectorType' in user && user.collectorType === 'organization') {
+                    setRegistrationType('organization');
+                    if ('organizationName' in user && typeof user.organizationName === 'string') {
+                        setOrgName(user.organizationName);
+                    }
+                } else {
+                    setRegistrationType('collector');
+                }
                 setStep(1);
             } else {
                 setRegistrationType('waste_owner');
@@ -128,8 +135,11 @@ function AuthPage() {
     // Handle role selection
     const handleRoleSelect = (type: RegistrationType) => {
         setRegistrationType(type);
-        if (type === 'organization') {
+        // Only show Step 1A (Join details) if they are joining a team
+        if (type === 'collector' && isJoiningOrg) {
             setShowOrgDetails(true);
+        } else {
+            setShowOrgDetails(false);
         }
         setStep(1);
     };
@@ -145,7 +155,22 @@ function AuthPage() {
             if (pinToUse.length !== 4) return;
             
             await login(fullPhone, pinToUse);
-            window.location.href = '/dashboard';
+            // Check user role and collector type for redirect
+            const usersRef = collection(db, 'users');
+            const loginQuery = query(usersRef, where('phone', '==', fullPhone));
+            const loginSnap = await getDocs(loginQuery);
+            if (!loginSnap.empty) {
+                const userData = loginSnap.docs[0].data();
+                if (userData.role === 'collector' && userData.collectorType === 'organization') {
+                    window.location.href = '/organization/dashboard';
+                } else if (userData.role === 'collector') {
+                    window.location.href = '/collector/dashboard';
+                } else {
+                    window.location.href = '/dashboard';
+                }
+            } else {
+                window.location.href = '/dashboard';
+            }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Login failed';
             if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential')) {
@@ -163,10 +188,25 @@ function AuthPage() {
         const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
 
         try {
-            // Step 1: Create the user account (phone + PIN in Firestore)
             let userId = user?.id;
             if (!userId) {
-                userId = await signup(fullPhone, pin);
+                try {
+                    userId = await signup(fullPhone, pin);
+                } catch (error: any) {
+                    if (error.message.includes('already registered')) {
+                        // The user might have completed the phone step but never finished onboarding
+                        const usersRef = collection(db, 'users');
+                        const q = query(usersRef, where('phone', '==', fullPhone));
+                        const snapshot = await getDocs(q);
+                        if (!snapshot.empty) {
+                            userId = snapshot.docs[0].id;
+                        } else {
+                            throw error;
+                        }
+                    } else {
+                        throw error;
+                    }
+                }
             }
 
             if (!userId) {
@@ -190,7 +230,7 @@ function AuthPage() {
                 }, 3500);
             } else if (registrationType === 'collector' || registrationType === 'organization') {
                 const collectorData: Record<string, unknown> = {
-                    name: fullName,
+                    name: registrationType === 'organization' ? orgName : fullName,
                     phone: fullPhone,
                     profileImage: profileImage || '',
                     role: 'collector',
@@ -239,9 +279,8 @@ function AuthPage() {
 
                 await setDoc(doc(db, 'users', userId), collectorData, { merge: true });
 
-                // Create collector profile
                 await setDoc(doc(db, 'collectorProfiles', userId), {
-                    displayName: fullName,
+                    displayName: registrationType === 'organization' ? orgName : fullName,
                     bio: '',
                     profileImage: profileImage || '',
                     phone: fullPhone,
@@ -257,7 +296,11 @@ function AuthPage() {
 
                 setIsSignupSuccess(true);
                 setTimeout(() => {
-                    window.location.href = '/collector/dashboard';
+                    if (registrationType === 'organization') {
+                        window.location.href = '/organization/dashboard';
+                    } else {
+                        window.location.href = '/collector/dashboard';
+                    }
                 }, 3500);
             }
         } catch (err: unknown) {
@@ -287,7 +330,7 @@ function AuthPage() {
                 return;
             }
             if (step === 1) {
-                 if (!showOrgDetails && (registrationType === 'organization' || isJoiningOrg)) {
+                 if (!showOrgDetails && isJoiningOrg) {
                       setShowOrgDetails(true);
                       return;
                  } else {
@@ -561,7 +604,7 @@ function AuthPage() {
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="font-semibold text-emerald-900 text-[17px]">Join a team</h3>
-                                        <p className="text-sm text-emerald-700/70 mt-0.5">Have an organization Code</p>
+                                        <p className="text-sm text-emerald-700/70 mt-0.5">Have an organization code</p>
                                     </div>
                                     <ChevronRight className="w-5 h-5 text-emerald-300 transition-transform group-hover:translate-x-1" />
                                 </JigsawBlock>
@@ -660,19 +703,7 @@ function AuthPage() {
                         transition={{ type: 'tween', duration: 0.25 }}
                         className="flex-1 flex flex-col px-6 pb-6"
                     >
-                        {registrationType === 'organization' && (
-                            <div className="mb-6 flex-1">
-                                <h2 className="text-xl font-bold text-gray-900 mb-1">Company name</h2>
-                                <p className="text-gray-500 text-sm mb-4">Enter your waste collection company name</p>
-                                <input
-                                    type="text"
-                                    value={orgName}
-                                    onChange={(e) => setOrgName(e.target.value)}
-                                    placeholder="e.g. Clean Gambia Services"
-                                    className="w-full px-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-900 focus:border-transparent font-medium"
-                                />
-                            </div>
-                        )}
+                        {/* Removed Org Registration from Step 1A - moved to Step 3 */}
 
                         {isJoiningOrg && (
                             <div className="mb-6 flex-1">
@@ -694,7 +725,7 @@ function AuthPage() {
                                 setError(null);
                                 setShowOrgDetails(false);
                             }}
-                            disabled={(registrationType === 'organization' && orgName.length < 2) || (isJoiningOrg && joinOrgCode.length < 3)}
+                            disabled={isJoiningOrg && joinOrgCode.length < 3}
                             className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
                         >
                             Continue
@@ -838,20 +869,24 @@ function AuthPage() {
                         transition={{ type: 'tween', duration: 0.25 }}
                         className="flex-1 flex flex-col px-6 pb-6"
                     >
-                        <h2 className="text-xl font-bold text-gray-900 mb-1">Your profile</h2>
-                        <p className="text-gray-500 text-sm mb-8">Add your name and photo</p>
+                        <h2 className="text-xl font-bold text-gray-900 mb-1">
+                            {registrationType === 'organization' ? 'Organization details' : 'Your profile'}
+                        </h2>
+                        <p className="text-gray-500 text-sm mb-8">
+                            {registrationType === 'organization' ? 'Add your organization name and logo' : 'Add your name and photo'}
+                        </p>
 
-                        {/* Profile image */}
+                        {/* Profile image / Org Logo */}
                         <div className="flex flex-col items-center mb-8">
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
-                                className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors overflow-hidden border-2 border-dashed border-gray-300"
+                                className={`${registrationType === 'organization' ? 'w-28 h-28 rounded-2xl' : 'w-24 h-24 rounded-full'} bg-gray-100 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors overflow-hidden border-2 border-dashed border-gray-300`}
                             >
                                 {profileImage ? (
                                     <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
                                 ) : (
-                                    <Camera className="w-7 h-7 text-gray-400" />
+                                    registrationType === 'organization' ? <Building2 className="w-8 h-8 text-gray-400" /> : <Camera className="w-7 h-7 text-gray-400" />
                                 )}
                             </button>
                             <input
@@ -862,20 +897,33 @@ function AuthPage() {
                                 onChange={handleImageUpload}
                             />
                             <p className="text-xs text-gray-400 mt-2">
-                                {profileImage ? 'Tap to change' : 'Add photo (optional)'}
+                                {profileImage ? 'Tap to change' : (registrationType === 'organization' ? 'Upload organization logo' : 'Add photo (optional)')}
                             </p>
                         </div>
 
                         {/* Name input */}
                         <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                {registrationType === 'organization' ? 'Organization Name' : 'Full Name'}
+                            </label>
                             <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                {registrationType === 'organization' ? (
+                                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                ) : (
+                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                )}
                                 <input
                                     type="text"
-                                    value={fullName}
-                                    onChange={(e) => setFullName(e.target.value)}
-                                    placeholder="Your full name"
+                                    value={registrationType === 'organization' ? orgName : fullName}
+                                    onChange={(e) => {
+                                        if (registrationType === 'organization') {
+                                            setOrgName(e.target.value);
+                                            setFullName(e.target.value); // Sync to fullName for processing compatibility
+                                        } else {
+                                            setFullName(e.target.value);
+                                        }
+                                    }}
+                                    placeholder={registrationType === 'organization' ? "e.g. Clean Gambia Services" : "Your full name"}
                                     className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-900 focus:border-transparent font-medium"
                                 />
                             </div>
@@ -892,7 +940,7 @@ function AuthPage() {
                                     setStep(4);
                                 }
                             }}
-                            disabled={!fullName.trim()}
+                            disabled={registrationType === 'organization' ? !orgName.trim() : !fullName.trim()}
                             className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
                         >
                             {registrationType === 'waste_owner' ? 'Complete Setup' : 'Continue'}

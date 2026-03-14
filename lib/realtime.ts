@@ -66,6 +66,8 @@ export interface RealtimeJob {
     customerId: string;
     customerEmail: string;
     customerPhone: string;
+    customerName?: string;
+    customerProfileImage?: string;
     collectorId?: string;
     collectorName?: string;
     collectorPhone?: string;
@@ -253,4 +255,118 @@ export function subscribeToOnlineCollectors(
     });
 
     return () => off(collectorsRef);
+}
+
+// =====================================
+// PAYMENT REQUESTS (Real-time)
+// =====================================
+
+export interface PaymentRequest {
+    id: string;
+    subscriptionId?: string;
+    jobId?: string;
+    collectorId: string;
+    collectorName: string;
+    customerId: string;
+    originalAmount: number;
+    requestedAmount: number;
+    adjustmentReason?: string;
+    status: 'pending' | 'confirmed' | 'cancelled';
+    createdAt: number;
+    confirmedAt?: number;
+}
+
+// Collector creates a payment request when arriving at location
+export async function createPaymentRequest(
+    collectorId: string,
+    collectorName: string,
+    customerId: string,
+    originalAmount: number,
+    requestedAmount: number,
+    adjustmentReason?: string,
+    subscriptionId?: string,
+    jobId?: string,
+): Promise<string> {
+    const requestId = `pr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const requestRef = ref(realtimeDb, `paymentRequests/${customerId}/${requestId}`);
+
+    await set(requestRef, {
+        id: requestId,
+        subscriptionId: subscriptionId || null,
+        jobId: jobId || null,
+        collectorId,
+        collectorName,
+        customerId,
+        originalAmount,
+        requestedAmount,
+        adjustmentReason: adjustmentReason || null,
+        status: 'pending',
+        createdAt: Date.now(),
+    });
+
+    return requestId;
+}
+
+// Customer listens for incoming payment requests
+export function subscribeToPaymentRequests(
+    customerId: string,
+    callback: (requests: PaymentRequest[]) => void
+): () => void {
+    const requestsRef = ref(realtimeDb, `paymentRequests/${customerId}`);
+
+    const unsubscribe = onValue(requestsRef, (snapshot) => {
+        const requests: PaymentRequest[] = [];
+
+        snapshot.forEach((child) => {
+            const data = child.val();
+            if (data.status === 'pending') {
+                requests.push(data as PaymentRequest);
+            }
+        });
+
+        callback(requests);
+    });
+
+    return () => off(requestsRef);
+}
+
+// Customer confirms payment
+export async function confirmPaymentRequest(
+    customerId: string,
+    requestId: string
+): Promise<void> {
+    const requestRef = ref(realtimeDb, `paymentRequests/${customerId}/${requestId}`);
+    const snapshot = await new Promise<any>((resolve) => {
+        onValue(requestRef, (snap) => {
+            resolve(snap);
+        }, { onlyOnce: true });
+    });
+
+    if (snapshot.exists()) {
+        await set(requestRef, {
+            ...snapshot.val(),
+            status: 'confirmed',
+            confirmedAt: Date.now(),
+        });
+    }
+}
+
+// Cancel payment request
+export async function cancelPaymentRequest(
+    customerId: string,
+    requestId: string
+): Promise<void> {
+    const requestRef = ref(realtimeDb, `paymentRequests/${customerId}/${requestId}`);
+    const snapshot = await new Promise<any>((resolve) => {
+        onValue(requestRef, (snap) => {
+            resolve(snap);
+        }, { onlyOnce: true });
+    });
+
+    if (snapshot.exists()) {
+        await set(requestRef, {
+            ...snapshot.val(),
+            status: 'cancelled',
+        });
+    }
 }

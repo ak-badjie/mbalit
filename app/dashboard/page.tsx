@@ -15,6 +15,7 @@ import {
     Truck,
     ChevronRight,
     Bell,
+    Users,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { PaymentModal } from '@/components/ui/payment-modal';
 import { WASTE_TYPES, calculatePrice, formatPrice } from '@/lib/waste-config';
 import { WasteType, GeoLocation } from '@/types';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import PaymentNotification from '@/components/payment-notification';
 
 // Step indicator (minimalist dots)
 const StepDots: React.FC<{ current: number; total: number }> = ({ current, total }) => (
@@ -160,6 +162,8 @@ function DashboardContent() {
                 customerId: user.id,
                 customerEmail: user.email,
                 customerPhone: user.phone,
+                customerName: user.name || 'Customer',
+                customerProfileImage: user.profileImage || '',
                 wasteTypes: selectedWasteTypes,
                 bucketCount,
                 largeBinCount,
@@ -308,6 +312,20 @@ function DashboardContent() {
                         </button>
 
                         <button
+                            onClick={() => router.push('/dashboard/subscribe')}
+                            className="w-full flex items-center gap-3 p-3.5 bg-white rounded-xl border border-gray-100 text-left"
+                        >
+                            <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+                                <Users className="w-4 h-4 text-emerald-600" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">Subscribe to Collector</p>
+                                <p className="text-xs text-gray-400">Regular scheduled pickups</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-gray-300" />
+                        </button>
+
+                        <button
                             onClick={() => router.push('/dashboard/recycling-tips')}
                             className="w-full flex items-center gap-3 p-3.5 bg-white rounded-xl border border-gray-100 text-left"
                         >
@@ -323,6 +341,7 @@ function DashboardContent() {
                 </div>
 
                 {/* Payment Modal */}
+                <PaymentNotification />
                 <PaymentModal
                     isOpen={showPaymentModal}
                     onClose={() => { setShowPaymentModal(false); setPendingOrderId(null); }}

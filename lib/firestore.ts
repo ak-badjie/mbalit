@@ -9,355 +9,25 @@ import {
     where,
     orderBy,
     limit,
-    onSnapshot,
     serverTimestamp,
-    Timestamp,
     GeoPoint,
-    DocumentReference,
 } from 'firebase/firestore';
-import { ref, set, onValue, off } from 'firebase/database';
-import { db, realtimeDb } from './firebase';
+import { db } from './firebase';
 import {
-    PickupRequest,
     WasteType,
-    WasteSize,
     GeoLocation,
-    RequestStatus,
-    Collector,
-    Payment,
-    PaymentStatus
 } from '@/types';
-import { calculateDistance } from './maps';
-import { calculatePrice } from './waste-config';
+
+import {
+    CollectorStats,
+    CollectorSettings,
+    CollectorProfile,
+    Review,
+    Notification as AppNotification,
+} from '@/types';
 
 // =====================================
-// PICKUP REQUESTS
-// =====================================
-
-// Legacy: Create a new pickup request (backwards compatible)
-export async function createPickupRequest(
-    customerId: string,
-    wasteType: WasteType,
-    wasteSize: WasteSize,
-    pickupLocation: GeoLocation,
-    estimatedPrice: number
-): Promise<string> {
-    const requestRef = doc(collection(db, 'requests'));
-
-    const requestData = {
-        customerId,
-        wasteType,
-        wasteSize,
-        bucketCount: 0,
-        largeBinCount: 0,
-        pickupLocation: new GeoPoint(pickupLocation.lat, pickupLocation.lng),
-        pickupAddress: pickupLocation.formattedAddress || '',
-        estimatedPrice,
-        tipAmount: 0,
-        status: 'pending' as RequestStatus,
-        createdAt: serverTimestamp(),
-    };
-
-    await setDoc(requestRef, requestData);
-    return requestRef.id;
-}
-
-// NEW: Create pickup request with bucket/bin quantities
-export async function createBucketPickupRequest(
-    customerId: string,
-    wasteType: WasteType,
-    bucketCount: number,
-    largeBinCount: number,
-    pickupLocation: GeoLocation,
-    description?: string
-): Promise<{ requestId: string; estimatedPrice: number }> {
-    const requestRef = doc(collection(db, 'requests'));
-
-    // Calculate price from container quantities
-    const priceEstimate = calculatePrice(bucketCount, 0, largeBinCount);
-
-    const requestData = {
-        customerId,
-        wasteType,
-        bucketCount,
-        largeBinCount,
-        pickupLocation: new GeoPoint(pickupLocation.lat, pickupLocation.lng),
-        pickupAddress: pickupLocation.formattedAddress || '',
-        description: description || '',
-        estimatedPrice: priceEstimate.totalPrice,
-        tipAmount: 0,
-        status: 'pending' as RequestStatus,
-        createdAt: serverTimestamp(),
-    };
-
-    await setDoc(requestRef, requestData);
-    return { requestId: requestRef.id, estimatedPrice: priceEstimate.totalPrice };
-}
-
-// Get a pickup request by ID
-export async function getPickupRequest(requestId: string): Promise<PickupRequest | null> {
-    const requestDoc = await getDoc(doc(db, 'requests', requestId));
-
-    if (!requestDoc.exists()) return null;
-
-    const data = requestDoc.data();
-    return {
-        id: requestDoc.id,
-        customerId: data.customerId,
-        collectorId: data.collectorId,
-        agencyId: data.agencyId,
-        wasteType: data.wasteType,
-        wasteSize: data.wasteSize,
-        bucketCount: data.bucketCount || 0,
-        largeBinCount: data.largeBinCount || 0,
-        description: data.description,
-        pickupLocation: {
-            lat: data.pickupLocation.latitude,
-            lng: data.pickupLocation.longitude,
-            formattedAddress: data.pickupAddress,
-        },
-        estimatedPrice: data.estimatedPrice,
-        tipAmount: data.tipAmount || 0,
-        adjustedPrice: data.adjustedPrice,
-        finalPrice: data.finalPrice,
-        platformFee: data.platformFee,
-        collectorEarnings: data.collectorEarnings,
-        status: data.status,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        assignedAt: data.assignedAt?.toDate(),
-        arrivedAt: data.arrivedAt?.toDate(),
-        completedAt: data.completedAt?.toDate(),
-    } as PickupRequest;
-}
-
-// Update pickup request status
-export async function updateRequestStatus(
-    requestId: string,
-    status: RequestStatus,
-    additionalData?: Record<string, unknown>
-): Promise<void> {
-    const updateData: Record<string, unknown> = {
-        status,
-        updatedAt: serverTimestamp(),
-        ...additionalData,
-    };
-
-    if (status === 'assigned') {
-        updateData.assignedAt = serverTimestamp();
-    } else if (status === 'completed') {
-        updateData.completedAt = serverTimestamp();
-    }
-
-    await updateDoc(doc(db, 'requests', requestId), updateData);
-}
-
-// Listen to request updates in real-time
-export function subscribeToRequest(
-    requestId: string,
-    callback: (request: PickupRequest | null) => void
-): () => void {
-    const unsubscribe = onSnapshot(
-        doc(db, 'requests', requestId),
-        (snapshot) => {
-            if (!snapshot.exists()) {
-                callback(null);
-                return;
-            }
-
-            const data = snapshot.data();
-            callback({
-                id: snapshot.id,
-                customerId: data.customerId,
-                collectorId: data.collectorId,
-                agencyId: data.agencyId,
-                wasteType: data.wasteType,
-                wasteSize: data.wasteSize,
-                bucketCount: data.bucketCount || 0,
-                largeBinCount: data.largeBinCount || 0,
-                description: data.description,
-                pickupLocation: {
-                    lat: data.pickupLocation.latitude,
-                    lng: data.pickupLocation.longitude,
-                    formattedAddress: data.pickupAddress,
-                },
-                estimatedPrice: data.estimatedPrice,
-                tipAmount: data.tipAmount || 0,
-                adjustedPrice: data.adjustedPrice,
-                finalPrice: data.finalPrice,
-                platformFee: data.platformFee,
-                collectorEarnings: data.collectorEarnings,
-                status: data.status,
-                createdAt: data.createdAt?.toDate() || new Date(),
-                assignedAt: data.assignedAt?.toDate(),
-                arrivedAt: data.arrivedAt?.toDate(),
-                completedAt: data.completedAt?.toDate(),
-            } as PickupRequest);
-        }
-    );
-
-    return unsubscribe;
-}
-
-// =====================================
-// COLLECTORS
-// =====================================
-
-// Get available collectors who handle a specific waste type
-export async function getAvailableCollectors(wasteType: WasteType): Promise<Collector[]> {
-    const q = query(
-        collection(db, 'users'),
-        where('role', '==', 'collector'),
-        where('isAvailable', '==', true),
-        where('wasteTypesHandled', 'array-contains', wasteType)
-    );
-
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            email: data.email,
-            name: data.name,
-            phone: data.phone,
-            role: 'collector' as const,
-            wasteTypesHandled: data.wasteTypesHandled,
-            isAvailable: data.isAvailable,
-            currentLocation: data.currentLocation ? {
-                lat: data.currentLocation.latitude,
-                lng: data.currentLocation.longitude,
-            } : undefined,
-            rating: data.rating,
-            totalPickups: data.totalPickups,
-            earnings: data.earnings,
-            createdAt: data.createdAt?.toDate() || new Date(),
-            updatedAt: data.updatedAt?.toDate() || new Date(),
-        } as Collector;
-    });
-}
-
-// Find nearest available collector
-export async function findNearestCollector(
-    customerLocation: GeoLocation,
-    wasteType: WasteType
-): Promise<{ collector: Collector; distance: number } | null> {
-    const collectors = await getAvailableCollectors(wasteType);
-
-    if (collectors.length === 0) return null;
-
-    let nearest: { collector: Collector; distance: number } | null = null;
-
-    for (const collector of collectors) {
-        if (!collector.currentLocation) continue;
-
-        const distance = calculateDistance(
-            customerLocation.lat,
-            customerLocation.lng,
-            collector.currentLocation.lat,
-            collector.currentLocation.lng
-        );
-
-        if (!nearest || distance < nearest.distance) {
-            nearest = { collector, distance };
-        }
-    }
-
-    return nearest;
-}
-
-// Assign collector to request
-export async function assignCollectorToRequest(
-    requestId: string,
-    collectorId: string,
-    distance: number
-): Promise<void> {
-    await updateDoc(doc(db, 'requests', requestId), {
-        collectorId,
-        distance,
-        status: 'assigned',
-        assignedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-    });
-
-    // Also update collector's availability
-    await updateDoc(doc(db, 'users', collectorId), {
-        isAvailable: false,
-        currentRequestId: requestId,
-        updatedAt: serverTimestamp(),
-    });
-}
-
-// Update collector location in Realtime Database (for live tracking)
-export async function updateCollectorLocation(
-    collectorId: string,
-    location: GeoLocation
-): Promise<void> {
-    const locationRef = ref(realtimeDb, `collectors/${collectorId}/location`);
-    await set(locationRef, {
-        lat: location.lat,
-        lng: location.lng,
-        timestamp: Date.now(),
-    });
-
-    // Also update in Firestore for matching queries
-    await updateDoc(doc(db, 'users', collectorId), {
-        currentLocation: new GeoPoint(location.lat, location.lng),
-        updatedAt: serverTimestamp(),
-    });
-}
-
-// Subscribe to collector location updates
-export function subscribeToCollectorLocation(
-    collectorId: string,
-    callback: (location: GeoLocation | null) => void
-): () => void {
-    const locationRef = ref(realtimeDb, `collectors/${collectorId}/location`);
-
-    const listener = onValue(locationRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            callback({ lat: data.lat, lng: data.lng });
-        } else {
-            callback(null);
-        }
-    });
-
-    return () => off(locationRef, 'value', listener);
-}
-
-// Get pending requests for collectors
-export async function getPendingRequests(wasteTypes: WasteType[]): Promise<PickupRequest[]> {
-    const q = query(
-        collection(db, 'requests'),
-        where('status', '==', 'pending'),
-        where('wasteType', 'in', wasteTypes),
-        orderBy('createdAt', 'desc'),
-        limit(20)
-    );
-
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            customerId: data.customerId,
-            wasteType: data.wasteType,
-            wasteSize: data.wasteSize,
-            pickupLocation: {
-                lat: data.pickupLocation.latitude,
-                lng: data.pickupLocation.longitude,
-                formattedAddress: data.pickupAddress,
-            },
-            estimatedPrice: data.estimatedPrice,
-            status: data.status,
-            createdAt: data.createdAt?.toDate() || new Date(),
-        } as PickupRequest;
-    });
-}
-
-// =====================================
-// PAYMENTS
+// PAYMENTS (Firestore)
 // =====================================
 
 // Create payment record
@@ -376,7 +46,7 @@ export async function createPayment(
         collectorId,
         amount,
         currency: 'GMD',
-        status: 'pending' as PaymentStatus,
+        status: 'pending',
         method,
         createdAt: serverTimestamp(),
     });
@@ -387,7 +57,7 @@ export async function createPayment(
 // Update payment status
 export async function updatePaymentStatus(
     paymentId: string,
-    status: PaymentStatus,
+    status: string,
     transactionId?: string
 ): Promise<void> {
     const updateData: Record<string, unknown> = {
@@ -422,7 +92,7 @@ export async function getCollectorEarnings(collectorId: string): Promise<number>
 }
 
 // =====================================
-// WALLET BALANCE
+// WALLET BALANCE (Firestore)
 // =====================================
 
 // Get collector's wallet balance
@@ -554,16 +224,8 @@ export async function getWalletTransactions(collectorId: string, limitCount: num
 }
 
 // =====================================
-// COLLECTOR STATS
+// COLLECTOR STATS (Firestore)
 // =====================================
-
-import {
-    CollectorStats,
-    CollectorSettings,
-    CollectorProfile,
-    Review,
-    Notification as AppNotification,
-} from '@/types';
 
 // Get collector stats
 export async function getCollectorStats(collectorId: string): Promise<CollectorStats> {
@@ -645,7 +307,7 @@ export async function updateCollectorStats(
 }
 
 // =====================================
-// COLLECTOR NOTIFICATIONS
+// COLLECTOR NOTIFICATIONS (Firestore)
 // =====================================
 
 export async function getCollectorNotifications(collectorId: string): Promise<AppNotification[]> {
@@ -721,7 +383,7 @@ export async function createNotification(
 }
 
 // =====================================
-// COLLECTOR SETTINGS
+// COLLECTOR SETTINGS (Firestore)
 // =====================================
 
 export async function getCollectorSettings(collectorId: string): Promise<CollectorSettings> {
@@ -781,7 +443,7 @@ export async function updateCollectorSettings(
 }
 
 // =====================================
-// COLLECTOR PROFILE
+// COLLECTOR PROFILE (Firestore)
 // =====================================
 
 export async function getCollectorProfile(collectorId: string): Promise<CollectorProfile | null> {
@@ -847,7 +509,7 @@ export async function updateCollectorProfile(
 }
 
 // =====================================
-// REVIEWS (Bidirectional)
+// REVIEWS (Firestore - Bidirectional)
 // =====================================
 
 export async function getReviewsForUser(userId: string): Promise<Review[]> {
@@ -969,9 +631,237 @@ async function updateUserRating(userId: string): Promise<void> {
 }
 
 // =====================================
-// USER NOTIFICATIONS (alias for collectors)
+// USER NOTIFICATIONS (alias)
 // =====================================
 
 export async function getNotifications(userId: string): Promise<AppNotification[]> {
     return getCollectorNotifications(userId);
+}
+
+// =====================================
+// BROWSE COLLECTORS (Firestore)
+// =====================================
+
+export interface CollectorListItem {
+    id: string;
+    displayName: string;
+    profileImage?: string;
+    rating: number;
+    totalReviews: number;
+    totalPickups: number;
+    wasteTypesHandled: string[];
+    vehicleType: string;
+    collectorType: string;
+    bio?: string;
+}
+
+// Get all collectors for subscription browsing
+export async function getAllCollectors(): Promise<CollectorListItem[]> {
+    const q = query(
+        collection(db, 'collectorProfiles'),
+        orderBy('displayName', 'asc'),
+        limit(100)
+    );
+
+    const snapshot = await getDocs(q);
+
+    const collectors: CollectorListItem[] = [];
+
+    for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+
+        // Get stats for rating
+        let rating = 0;
+        let totalReviews = 0;
+        let totalPickups = 0;
+        try {
+            const statsDoc = await getDoc(doc(db, 'collectorStats', docSnap.id));
+            if (statsDoc.exists()) {
+                const stats = statsDoc.data();
+                rating = stats.averageRating || 0;
+                totalReviews = stats.totalReviews || 0;
+                totalPickups = stats.monthlyPickups || 0;
+            }
+        } catch { /* ignore */ }
+
+        collectors.push({
+            id: docSnap.id,
+            displayName: data.displayName || 'Collector',
+            profileImage: data.profileImage,
+            rating,
+            totalReviews,
+            totalPickups,
+            wasteTypesHandled: data.wasteTypesHandled || [],
+            vehicleType: data.vehicleType || 'motorcycle',
+            collectorType: data.collectorType || 'individual',
+            bio: data.bio,
+        });
+    }
+
+    return collectors;
+}
+
+// Search collectors by name
+export async function searchCollectors(searchTerm: string): Promise<CollectorListItem[]> {
+    // Firestore doesn't support full-text search, so we fetch all and filter client-side
+    const all = await getAllCollectors();
+    const term = searchTerm.toLowerCase();
+    return all.filter(c =>
+        c.displayName.toLowerCase().includes(term) ||
+        c.bio?.toLowerCase().includes(term) ||
+        c.wasteTypesHandled.some(w => w.toLowerCase().includes(term))
+    );
+}
+
+// =====================================
+// SUBSCRIPTION PAYMENT PROCESSING (Firestore)
+// =====================================
+
+const PLATFORM_FEE_RATE = 0.30; // 30% platform fee
+const COLLECTOR_RATE = 0.70;     // 70% to collector
+
+export async function processSubscriptionPayment(
+    collectorId: string,
+    customerId: string,
+    amount: number,
+    subscriptionId?: string,
+    jobId?: string,
+): Promise<{ paymentId: string; collectorEarnings: number; platformFee: number }> {
+    const collectorEarnings = Math.round(amount * COLLECTOR_RATE * 100) / 100;
+    const platformFee = Math.round(amount * PLATFORM_FEE_RATE * 100) / 100;
+
+    // Create payment record
+    const paymentRef = doc(collection(db, 'payments'));
+    await setDoc(paymentRef, {
+        requestId: jobId || subscriptionId || '',
+        subscriptionId: subscriptionId || null,
+        customerId,
+        collectorId,
+        amount,
+        collectorEarnings,
+        platformFee,
+        currency: 'GMD',
+        status: 'completed',
+        method: 'in_app',
+        createdAt: serverTimestamp(),
+        completedAt: serverTimestamp(),
+    });
+
+    // Credit collector wallet (70%)
+    await creditWallet(
+        collectorId,
+        collectorEarnings,
+        `Payment received${subscriptionId ? ' (subscription)' : ''}: ${amount} GMD total, ${collectorEarnings} GMD earned`,
+        paymentRef.id
+    );
+
+    // Update collector stats
+    await updateCollectorStats(collectorId, collectorEarnings);
+
+    // Create notification for collector
+    await createNotification(
+        collectorId,
+        'Payment Received',
+        `You earned ${collectorEarnings} GMD from a ${amount} GMD payment (70% share).`,
+        'success',
+        { paymentId: paymentRef.id, amount, collectorEarnings, platformFee }
+    );
+
+    return { paymentId: paymentRef.id, collectorEarnings, platformFee };
+}
+
+// =====================================
+// ORGANIZATION MANAGEMENT (Firestore)
+// =====================================
+
+// Get organization by org code
+export async function getOrganization(orgCode: string) {
+    const orgDoc = await getDoc(doc(db, 'organizations', orgCode));
+    if (!orgDoc.exists()) return null;
+    return { id: orgDoc.id, ...orgDoc.data() };
+}
+
+// Get organization by owner ID
+export async function getOrganizationByOwner(ownerId: string) {
+    const q = query(collection(db, 'organizations'), where('ownerId', '==', ownerId));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const orgDoc = snap.docs[0];
+    return { id: orgDoc.id, ...orgDoc.data() };
+}
+
+// Get all members (approved + pending) of an organization
+export async function getOrganizationMembers(orgCode: string) {
+    const org = await getOrganization(orgCode);
+    if (!org) return { approved: [], pending: [] };
+
+    const memberIds = (org as any).members || [];
+    const pendingIds = (org as any).pendingMembers || [];
+
+    const fetchUsers = async (ids: string[]) => {
+        const users = [];
+        for (const id of ids) {
+            const userDoc = await getDoc(doc(db, 'users', id));
+            if (userDoc.exists()) {
+                users.push({ id: userDoc.id, ...userDoc.data() });
+            }
+        }
+        return users;
+    };
+
+    const [approved, pending] = await Promise.all([
+        fetchUsers(memberIds),
+        fetchUsers(pendingIds),
+    ]);
+
+    return { approved, pending };
+}
+
+// Approve a pending member
+export async function approveMember(orgCode: string, memberId: string) {
+    const orgRef = doc(db, 'organizations', orgCode);
+    const orgDoc = await getDoc(orgRef);
+    if (!orgDoc.exists()) throw new Error('Organization not found');
+
+    const data = orgDoc.data();
+    const pending = (data.pendingMembers || []).filter((id: string) => id !== memberId);
+    const members = [...(data.members || []), memberId];
+
+    await updateDoc(orgRef, {
+        pendingMembers: pending,
+        members,
+        updatedAt: serverTimestamp(),
+    });
+
+    // Update the member's user doc
+    await updateDoc(doc(db, 'users', memberId), {
+        isApproved: true,
+        updatedAt: serverTimestamp(),
+    });
+}
+
+// Remove a member from the organization
+export async function removeMember(orgCode: string, memberId: string) {
+    const orgRef = doc(db, 'organizations', orgCode);
+    const orgDoc = await getDoc(orgRef);
+    if (!orgDoc.exists()) throw new Error('Organization not found');
+
+    const data = orgDoc.data();
+    const members = (data.members || []).filter((id: string) => id !== memberId);
+    const pending = (data.pendingMembers || []).filter((id: string) => id !== memberId);
+
+    await updateDoc(orgRef, {
+        members,
+        pendingMembers: pending,
+        updatedAt: serverTimestamp(),
+    });
+}
+
+// Update organization details
+export async function updateOrganizationDetails(orgCode: string, updates: Record<string, unknown>) {
+    const orgRef = doc(db, 'organizations', orgCode);
+    await updateDoc(orgRef, {
+        ...updates,
+        updatedAt: serverTimestamp(),
+    });
 }
