@@ -572,18 +572,22 @@ function DashboardContent() {
                                 <div className="flex-1 h-px bg-gray-200" />
                             </div>
 
-                            <button
-                                onClick={handleFindLocation}
-                                disabled={isLocating}
-                                className="mt-4 w-full py-3 flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
-                            >
-                                {isLocating ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : (
+                            {isLocating ? (
+                                <div className="mt-4 flex flex-col items-center justify-center py-4 bg-gray-50 rounded-xl border border-gray-100">
+                                    <div className="w-24 h-24 mb-2">
+                                        <DotLottieReact src="/find_location.lottie" autoplay loop />
+                                    </div>
+                                    <p className="text-sm font-medium text-gray-500 animate-pulse">Locating you...</p>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleFindLocation}
+                                    className="mt-4 w-full py-3 flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                                >
                                     <MapPin className="w-5 h-5" />
-                                )}
-                                Find My Location
-                            </button>
+                                    Find My Location
+                                </button>
+                            )}
                         </div>
 
                         {/* Map */}

@@ -6,6 +6,7 @@ import { Loader2, CheckCircle, XCircle, CreditCard, X, ExternalLink } from 'luci
 import { Button } from '@/components/ui/button';
 import { ref, onValue, off } from 'firebase/database';
 import { realtimeDb } from '@/lib/firebase';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface PaymentModalProps {
     isOpen: boolean;
@@ -204,8 +205,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                         initial={{ scale: 0 }}
                                         animate={{ scale: 1 }}
                                         transition={{ type: 'spring', stiffness: 200 }}
+                                        className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm shadow-xl"
                                     >
-                                        <CheckCircle className="w-20 h-20 text-white drop-shadow-lg" />
+                                        <div className="w-20 h-20 -m-2">
+                                            <DotLottieReact src="/success.lottie" autoplay loop={false} />
+                                        </div>
                                     </motion.div>
                                 )}
                                 {status === 'failed' && (

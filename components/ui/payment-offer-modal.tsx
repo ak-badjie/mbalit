@@ -24,6 +24,7 @@ import {
     cancelPaymentOffer,
 } from '@/lib/payment-negotiation';
 import { PaymentOffer } from '@/types';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 // =====================================
 // CUSTOMER SIDE - Send Payment Offer
@@ -160,9 +161,13 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
                             <motion.div
                                 initial={{ scale: 0.95, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
-                                className="flex items-center gap-3 p-4 bg-emerald-50  rounded-2xl border border-emerald-200 "
+                                className="flex items-center gap-3 p-4 bg-emerald-50 rounded-2xl border border-emerald-200"
                             >
-                                <Check className="w-6 h-6 text-emerald-600" />
+                                <div className="w-12 h-12 flex-shrink-0 bg-white rounded-full flex items-center justify-center shadow-sm">
+                                    <div className="w-16 h-16">
+                                        <DotLottieReact src="/success.lottie" autoplay loop={false} />
+                                    </div>
+                                </div>
                                 <div>
                                     <p className="font-medium text-emerald-800 ">
                                         Payment Accepted! 🎉
@@ -516,8 +521,10 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
                                 animate={{ scale: 1, opacity: 1 }}
                                 className="text-center py-6"
                             >
-                                <div className="w-16 h-16 bg-emerald-100  rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <Check className="w-8 h-8 text-emerald-600" />
+                                <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden border-4 border-emerald-100">
+                                    <div className="w-28 h-28">
+                                        <DotLottieReact src="/success.lottie" autoplay loop={false} />
+                                    </div>
                                 </div>
                                 <h3 className="text-xl font-bold text-gray-900  mb-2">
                                     Payment Complete! 🎉
