@@ -6,6 +6,7 @@ import { MapPin, Loader2, Check, Copy, AlertTriangle, RefreshCw, Navigation, Cro
 import { loadGoogleMaps, reverseGeocode } from '@/lib/maps';
 import { GeoLocation } from '@/types';
 import { Button } from '@/components/ui/button';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface ProfileLocationMapProps {
     location?: GeoLocation;
@@ -322,8 +323,16 @@ export const ProfileLocationMap: React.FC<ProfileLocationMapProps> = ({
                             exit={{ scale: 0.9, opacity: 0 }}
                             className="flex flex-col items-center gap-4 p-6 bg-white/95  rounded-2xl shadow-2xl max-w-sm mx-4"
                         >
-                            <div className="w-16 h-16 rounded-full bg-emerald-100  flex items-center justify-center">
-                                <Crosshair className="w-8 h-8 text-emerald-600" />
+                            <div className="flex h-24 items-center justify-center mb-2">
+                                {isLocating ? (
+                                    <div className="w-24 h-24">
+                                        <DotLottieReact src="/find_location.lottie" autoplay loop />
+                                    </div>
+                                ) : (
+                                    <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                                        <Crosshair className="w-8 h-8 text-emerald-600" />
+                                    </div>
+                                )}
                             </div>
                             <div className="text-center">
                                 <h3 className="text-lg font-bold text-gray-900  mb-1">
