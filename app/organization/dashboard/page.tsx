@@ -101,7 +101,7 @@ export default function OrganizationDashboard() {
     // Subscribe to pending jobs when online
     useEffect(() => {
         if (!isOnline || !currentLocation) return;
-        const unsub = subscribeToPendingJobs(currentLocation, new Set(), (jobs) => {
+        const unsub = subscribeToPendingJobs((jobs) => {
             setPendingJobs(jobs);
         });
         return () => unsub();

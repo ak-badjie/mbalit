@@ -282,61 +282,61 @@ function DashboardContent() {
                     </div>
 
                     {/* Menu Items */}
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1">Menu</h3>
+                    <div className="mt-2">
+                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-1 mb-3">Quick Actions</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={() => setStep(1)}
+                                className="flex flex-col p-4 bg-blue-50 hover:bg-blue-100 rounded-2xl border border-blue-100 text-left transition-colors aspect-[4/3] group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-auto group-hover:scale-105 transition-transform">
+                                    <Truck className="w-5 h-5 text-blue-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">Schedule</p>
+                                    <p className="text-[11px] text-blue-600/80 font-medium mt-0.5 leading-tight">Book a one-time pickup</p>
+                                </div>
+                            </button>
 
-                        <button
-                            onClick={() => setStep(1)}
-                            className="w-full flex items-center gap-3 p-3.5 bg-white rounded-xl border border-gray-100 text-left"
-                        >
-                            <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
-                                <Truck className="w-4 h-4 text-gray-600" />
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">Schedule Pickup</p>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-gray-300" />
-                        </button>
+                            <button
+                                onClick={() => router.push('/dashboard/orders')}
+                                className="flex flex-col p-4 bg-purple-50 hover:bg-purple-100 rounded-2xl border border-purple-100 text-left transition-colors aspect-[4/3] group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-auto group-hover:scale-105 transition-transform">
+                                    <Clock className="w-5 h-5 text-purple-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">History</p>
+                                    <p className="text-[11px] text-purple-600/80 font-medium mt-0.5 leading-tight">View past orders</p>
+                                </div>
+                            </button>
 
-                        <button
-                            onClick={() => router.push('/dashboard/orders')}
-                            className="w-full flex items-center gap-3 p-3.5 bg-white rounded-xl border border-gray-100 text-left"
-                        >
-                            <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
-                                <Clock className="w-4 h-4 text-gray-600" />
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">Order History</p>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-gray-300" />
-                        </button>
+                            <button
+                                onClick={() => router.push('/dashboard/subscribe')}
+                                className="flex flex-col p-4 bg-emerald-50 hover:bg-emerald-100 rounded-2xl border border-emerald-100 text-left transition-colors aspect-[4/3] group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-auto group-hover:scale-105 transition-transform">
+                                    <Users className="w-5 h-5 text-emerald-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">Subscribe</p>
+                                    <p className="text-[11px] text-emerald-600/80 font-medium mt-0.5 leading-tight">Regular scheduled pickups</p>
+                                </div>
+                            </button>
 
-                        <button
-                            onClick={() => router.push('/dashboard/subscribe')}
-                            className="w-full flex items-center gap-3 p-3.5 bg-white rounded-xl border border-gray-100 text-left"
-                        >
-                            <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
-                                <Users className="w-4 h-4 text-emerald-600" />
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">Subscribe to Collector</p>
-                                <p className="text-xs text-gray-400">Regular scheduled pickups</p>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-gray-300" />
-                        </button>
-
-                        <button
-                            onClick={() => router.push('/dashboard/recycling-tips')}
-                            className="w-full flex items-center gap-3 p-3.5 bg-white rounded-xl border border-gray-100 text-left"
-                        >
-                            <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
-                                <MapPin className="w-4 h-4 text-gray-600" />
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">Recycling Tips</p>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-gray-300" />
-                        </button>
+                            <button
+                                onClick={() => router.push('/dashboard/recycling-tips')}
+                                className="flex flex-col p-4 bg-amber-50 hover:bg-amber-100 rounded-2xl border border-amber-100 text-left transition-colors aspect-[4/3] group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-auto group-hover:scale-105 transition-transform">
+                                    <MapPin className="w-5 h-5 text-amber-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">Tips</p>
+                                    <p className="text-[11px] text-amber-600/80 font-medium mt-0.5 leading-tight">Learn to recycle</p>
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
