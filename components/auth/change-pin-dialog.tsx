@@ -73,17 +73,17 @@ export function ChangePinDialog({ isOpen, onClose }: ChangePinDialogProps) {
 
         if (pinStep === 'current') {
             setCurrentPin(val);
-            if (val.length === 4) {
+            if (val.length === 6) {
                 setTimeout(() => setStep('newPin'), 200);
             }
         } else if (pinStep === 'newPin') {
             setNewPin(val);
-            if (val.length === 4) {
+            if (val.length === 6) {
                 setTimeout(() => setStep('confirm'), 200);
             }
         } else if (pinStep === 'confirm') {
             setConfirmPin(val);
-            if (val.length === 4) {
+            if (val.length === 6) {
                 if (val !== newPin) {
                     setError('PINs do not match');
                     setConfirmPin('');
@@ -105,8 +105,8 @@ export function ChangePinDialog({ isOpen, onClose }: ChangePinDialogProps) {
 
     const getSubtitle = () => {
         switch (step) {
-            case 'current': return 'Enter your current 4-digit PIN';
-            case 'newPin': return 'Choose a new 4-digit PIN';
+            case 'current': return 'Enter your current 6-digit PIN';
+            case 'newPin': return 'Choose a new 6-digit PIN';
             case 'confirm': return 'Enter your new PIN again';
             case 'success': return 'Your PIN has been updated successfully';
         }
@@ -192,12 +192,12 @@ export function ChangePinDialog({ isOpen, onClose }: ChangePinDialogProps) {
 
                             {/* PIN dots */}
                             <div className="flex gap-4 justify-center mb-12">
-                                {[0, 1, 2, 3].map((i) => {
+                                {[0, 1, 2, 3, 4, 5].map((i) => {
                                     const val = getCurrentValue();
                                     return (
                                         <div
                                             key={i}
-                                            className={`w-14 h-14 rounded-2xl border-2 flex items-center justify-center transition-all ${
+                                            className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center transition-all ${
                                                 val[i]
                                                     ? 'border-gray-900 bg-gray-900'
                                                     : error
@@ -218,7 +218,7 @@ export function ChangePinDialog({ isOpen, onClose }: ChangePinDialogProps) {
                                 <DialPad
                                     value={getCurrentValue()}
                                     onChange={(val) => handlePinChange(val, step)}
-                                    maxLength={4}
+                                    maxLength={6}
                                     showLetters={true}
                                 />
                             </div>

@@ -14,7 +14,7 @@ import { db, realtimeDb } from './firebase';
 import { PaymentOffer, PaymentOfferStatus, PickupRequest } from '@/types';
 import { calculatePlatformFee, calculateCollectorShare } from './waste-config';
 import { creditWallet } from './firestore';
-import { creditAgencyWallet } from './agencies';
+import { updateJobStatus } from './realtime';
 
 // =====================================
 // PAYMENT OFFER CREATION
@@ -69,6 +69,9 @@ export async function createPaymentOffer(
         updatedAt: serverTimestamp(),
     });
 
+    // Update Realtime job status
+    await updateJobStatus(requestId, 'awaiting_payment');
+
     // Notify collector
     await createPaymentNotification(
         collectorId,
@@ -110,20 +113,7 @@ export async function respondToPaymentOffer(
             respondedAt: Date.now(),
         });
 
-        if (accept) {
-            // Process the payment
-            const offerDoc = await getDoc(doc(db, 'paymentOffers', offerId));
-            if (offerDoc.exists()) {
-                const offer = offerDoc.data();
-                await processPaymentAfterAcceptance(
-                    requestId,
-                    offer.customerId,
-                    offer.collectorId,
-                    offer.totalAmount,
-                    offer.tipAmount
-                );
-            }
-        } else {
+        if (!accept) {
             // Notify customer of rejection
             const offerDoc = await getDoc(doc(db, 'paymentOffers', offerId));
             if (offerDoc.exists()) {
@@ -231,23 +221,13 @@ async function processPaymentAfterAcceptance(
     });
 
     // Credit the appropriate wallet
-    if (agencyId) {
-        // Payment goes to agency wallet
-        await creditAgencyWallet(
-            agencyId,
-            collectorShare,
-            `Pickup completed - Request #${requestId.slice(0, 8)}`,
-            requestId
-        );
-    } else {
-        // Payment goes to individual collector wallet
-        await creditWallet(
-            collectorId,
-            collectorShare,
-            `Pickup completed - Request #${requestId.slice(0, 8)}`,
-            paymentRef.id
-        );
-    }
+    // Payment goes to individual collector wallet
+    await creditWallet(
+        collectorId,
+        collectorShare,
+        `Pickup completed - Request #${requestId.slice(0, 8)}`,
+        paymentRef.id
+    );
 
     // Record platform fee
     const platformFeeRef = doc(collection(db, 'platformFees'));

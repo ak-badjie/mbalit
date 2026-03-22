@@ -18,7 +18,7 @@ export default function Home() {
   useEffect(() => setMounted(true), []);
 
   return (
-    <div className="min-h-screen bg-emerald-950 overflow-hidden font-sans selection:bg-emerald-500/30">
+    <div className="min-h-screen bg-white overflow-hidden font-sans selection:bg-emerald-500/30">
         <Header />
 
       {/* Hero Section */}
@@ -26,7 +26,7 @@ export default function Home() {
         {/* Assets & Overlays */}
         <div className="absolute inset-0 z-0 overflow-hidden">
             {/* Desktop Hero Image */}
-            <div className="absolute inset-0 z-0 hidden sm:block opacity-60 brightness-75">
+            <div className="absolute inset-0 z-0 hidden sm:block">
                 <Image
                   src="/hero.png"
                   alt="Waste truck collection"
@@ -37,7 +37,7 @@ export default function Home() {
             </div>
 
             {/* Mobile Hero Image */}
-            <div className="absolute inset-0 z-0 sm:hidden opacity-60 brightness-75">
+            <div className="absolute inset-0 z-0 sm:hidden">
                 <Image
                   src="/hero-mobile.png"
                   alt="Waste truck collection mobile"
@@ -46,64 +46,28 @@ export default function Home() {
                   priority
                 />
             </div>
-
-            {/* Premium Gradient Orbs with Slight Dark Tint */}
-            <div className="absolute inset-0 bg-black/40 z-0">
-              <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-600/20 blur-[120px] rounded-full mix-blend-screen" />
-              <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-teal-500/20 blur-[120px] rounded-full mix-blend-screen" />
-            </div>
-
-            {/* Grain/Noise Overlay */}
-            <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-overlay z-0 pointer-events-none" />
-
-            {/* Binary Data Overlay - Only render on client to avoid hydration mismatch */}
-            {mounted && (
-              <div className="absolute inset-0 overflow-hidden opacity-[0.03] select-none z-0 mt-20">
-                {Array.from({ length: 30 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute text-emerald-100 font-mono text-[10px] sm:text-xs tracking-widest whitespace-nowrap"
-                    style={{
-                      top: `${Math.random() * 100}%`,
-                      left: `${(i % 10) * 10}%`,
-                    }}
-                  >
-                    {[...Array(12)].map(() => (Math.random() > 0.5 ? '1' : '0')).join(' ')}
-                  </div>
-                ))}
-              </div>
-            )}
         </div>
 
-        <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col items-center justify-center -mt-8 sm:mt-0">
+        <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col items-center justify-center -mt-24 sm:mt-0">
           
           {/* Main Content Group */}
-          <div className="w-full flex flex-col items-center justify-center relative mt-8 sm:mt-12 text-center mb-8">
+          <div className="w-full flex flex-col items-center justify-center relative mt-0 sm:mt-12 text-center mb-8">
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
-              className="mb-8"
+              className="mb-4 sm:mb-8"
             >
                 <TruckLogo size="xl" className="mx-auto drop-shadow-2xl" showText={false} />
             </motion.div>
 
             <motion.h1 
-              className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-4 tracking-tight px-2 leading-tight drop-shadow-xl"
+              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-emerald-950 mb-4 tracking-tight px-2 leading-tight drop-shadow-sm"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.8 }}
             >
-              Smart <span className="text-emerald-400 relative inline-block">
-                Waste
-                <motion.span 
-                  className="absolute -bottom-2 left-0 w-full h-1.5 bg-emerald-400 rounded-full"
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ delay: 1.2, duration: 0.8, ease: "easeOut" }}
-                />
-              </span>
-              <br className="sm:hidden" /> Management
+              Smart <span className="text-emerald-600">Waste</span><br className="sm:hidden" /> Management
             </motion.h1>
 
             {/* Hero Subtitle */}
@@ -111,7 +75,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.8 }}
-              className="text-sm sm:text-lg md:text-xl text-gray-200 max-w-xl md:max-w-2xl mx-auto mb-10 leading-relaxed font-light drop-shadow-md px-4"
+              className="text-sm sm:text-lg md:text-xl text-emerald-900/80 font-medium max-w-xl md:max-w-2xl mx-auto mb-10 leading-relaxed px-4"
             >
               Connect with verified waste collectors in your area. Schedule pickups,
               track in real-time, and contribute to a cleaner environment.

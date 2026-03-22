@@ -148,16 +148,6 @@ function DashboardContent() {
 
         setIsSubmitting(true);
         try {
-            const paymentResult: PaymentIntentResult = await initializePayment(estimatedPrice, 'GMD', {
-                name: user.name || 'Customer',
-                email: user.email,
-                phone: user.phone,
-                wasteTypes: selectedWasteTypes,
-                bucketCount,
-                largeBinCount,
-            });
-
-            const paymentIntentId = paymentResult.id || `mbalit_${Date.now()}`;
             const jobId = await createJob({
                 customerId: user.id,
                 customerEmail: user.email,
@@ -172,26 +162,19 @@ function DashboardContent() {
                 manualAddress: manualAddress || '',
                 amount: estimatedPrice,
                 paymentStatus: 'pending',
-                paymentIntentId,
                 status: 'pending',
             });
 
-            if (paymentResult.paymentUrl) {
-                setPaymentUrl(paymentResult.paymentUrl);
-                setPendingOrderId(jobId);
-                setShowPaymentModal(true);
-                setIsSubmitting(false);
-            } else {
-                setCreatedJobId(jobId);
-                setIsOrderSuccess(true);
-                setTimeout(() => {
-                    router.push(`/track/${jobId}`);
-                }, 3500);
-            }
+            setCreatedJobId(jobId);
+            setIsOrderSuccess(true);
+            setTimeout(() => {
+                router.push(`/track/${jobId}`);
+            }, 1000);
+            
         } catch (error) {
-            console.error('Payment/Job creation failed:', error);
+            console.error('Job creation failed:', error);
             setIsSubmitting(false);
-            alert('Payment failed. Please try again.');
+            alert('Booking failed. Please try again.');
         }
     };
 
@@ -640,8 +623,11 @@ function DashboardContent() {
                                     </div>
                                 )}
                                 <div className="border-t border-gray-200 pt-2 mt-2">
-                                    <div className="flex justify-between items-center">
-                                        <span className="font-bold text-gray-900">Total</span>
+                                    <div className="flex justify-between items-center pt-3 border-t border-gray-100 mt-2">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-gray-900">Total</span>
+                                            <span className="text-xs text-amber-600 font-medium">Pay on arrival</span>
+                                        </div>
                                         <span className="text-xl font-bold text-gray-900">
                                             {estimatedPrice ? formatPrice(estimatedPrice) : '---'}
                                         </span>
@@ -661,7 +647,7 @@ function DashboardContent() {
                             {isSubmitting ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
-                                <>Pay {estimatedPrice ? formatPrice(estimatedPrice) : ''}</>
+                                <>Book Pickup</>
                             )}
                         </button>
                     </div>

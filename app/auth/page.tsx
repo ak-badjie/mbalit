@@ -15,6 +15,8 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import TruckLogo from '@/components/ui/truck-logo';
@@ -65,10 +67,10 @@ function AuthPage() {
     const isSignupMode = searchParams.get('signup') === 'true';
     const isCollectorMode = searchParams.get('role') === 'collector';
     const continueOnboarding = searchParams.get('continue') === 'onboarding';
-    const { login, signup, checkPhoneExists, checkOrgCode, isLoading, user } = useAuth();
+    const { login, signup, checkPhoneExists, checkOrgCode, sendSmsVerification, resetPinWithSms, isLoading, user } = useAuth();
 
     // Flow state
-    const [mode, setMode] = useState<'login' | 'signup'>(isSignupMode ? 'signup' : 'login');
+    const [mode, setMode] = useState<'login' | 'signup' | 'forgot_pin'>(isSignupMode ? 'signup' : 'login');
     const [step, setStep] = useState(0); // 0 = role select, 1 = phone, 2 = pin, 3 = profile, 4 = vehicle (collectors), 5 = waste types (collectors)
     const [registrationType, setRegistrationType] = useState<RegistrationType>(
         isCollectorMode ? 'collector' : null
@@ -101,7 +103,39 @@ function AuthPage() {
     const [vehicleType, setVehicleType] = useState<string | null>(null);
     const [selectedWasteTypes, setSelectedWasteTypes] = useState<WasteType[]>([]);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
+        const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // SMS Verification State
+    const [smsCode, setSmsCode] = useState('');
+    const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+    const [isSendingSms, setIsSendingSms] = useState(false);
+    const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+
+    useEffect(() => {
+        if (!recaptchaVerifierRef.current && typeof window !== 'undefined') {
+            let container = document.getElementById('recaptcha-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'recaptcha-container';
+                document.body.appendChild(container);
+            }
+            try {
+                recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                    size: 'invisible'
+                });
+            } catch (e) {
+                console.error("Error initializing RecaptchaVerifier", e);
+            }
+        }
+        return () => {
+            if (recaptchaVerifierRef.current) {
+                try {
+                    recaptchaVerifierRef.current.clear();
+                } catch(e) {}
+                recaptchaVerifierRef.current = null;
+            }
+        };
+    }, []);
 
     // Auto-continue onboarding for existing users
     useEffect(() => {
@@ -152,7 +186,7 @@ function AuthPage() {
             // Phone + PIN login
             const fullPhone = `+220 ${formatPhone(phoneNumber)}`; // Always Gambia for phone+pin now
             const pinToUse = pinOverride || loginPin;
-            if (pinToUse.length !== 4) return;
+            if (pinToUse.length !== 6) return;
             
             await login(fullPhone, pinToUse);
             // Check user role and collector type for redirect
@@ -191,7 +225,8 @@ function AuthPage() {
             let userId = user?.id;
             if (!userId) {
                 try {
-                    userId = await signup(fullPhone, pin);
+                    if (!confirmationResult) throw new Error('No SMS verification found');
+                    userId = await signup(fullPhone, pin, confirmationResult, smsCode);
                 } catch (error: any) {
                     if (error.message.includes('already registered')) {
                         // The user might have completed the phone step but never finished onboarding
@@ -324,7 +359,8 @@ function AuthPage() {
     const handleBack = () => {
         setError(null);
         if (step > 0) {
-            if (step === 2 && pinStep === 'confirm') {
+            if (step === 2 && pinStep === 'confirm') { // pin step is actually 3 now, but we'll fix step numbers later
+
                 setPinStep('create');
                 setConfirmPin('');
                 return;
@@ -350,11 +386,13 @@ function AuthPage() {
     };
 
     const getTotalDisplaySteps = () => {
-        if (registrationType === 'waste_owner') return 3; // phone, pin, profile
-        return 6; // org, phone, pin, profile, vehicle, waste types
+        if (mode === 'forgot_pin') return 3; // phone, sms, pin
+        if (registrationType === 'waste_owner') return 4; // phone, sms, pin, profile
+        return 7; // org, phone, sms, pin, profile, vehicle, waste types
     };
 
     const getCurrentDisplayStep = () => {
+        if (mode === 'forgot_pin') return step;
         if (registrationType === 'waste_owner') return step;
         if (step === 1 && showOrgDetails) return 1;
         if (step === 1 && !showOrgDetails) return 2;
@@ -414,10 +452,10 @@ function AuthPage() {
                         )}
 
                         <div className="flex gap-4 justify-center mb-12">
-                            {[0, 1, 2, 3].map((i) => (
+                            {[0, 1, 2, 3, 4, 5].map((i) => (
                                 <div
                                     key={i}
-                                    className={`w-14 h-14 rounded-2xl border-2 flex items-center justify-center transition-all ${
+                                    className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center transition-all ${
                                         loginPin[i] 
                                             ? 'border-gray-900 bg-gray-900' 
                                             : error 
@@ -438,15 +476,30 @@ function AuthPage() {
                                 onChange={(val) => {
                                     setLoginPin(val);
                                     setError(null);
-                                    if (val.length === 4) {
-                                        handleLogin(undefined, val); // auto-submit when 4 digits
+                                    if (val.length === 6) {
+                                        handleLogin(undefined, val); // auto-submit when 6 digits
                                     }
                                 }}
-                                maxLength={4}
+                                maxLength={6}
                                 showLetters={true}
                             />
                         </div>
                         
+                        <div className="mt-6 text-center">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setMode('forgot_pin');
+                                    setStep(1);
+                                    setLoginStep(0);
+                                    setLoginPin('');
+                                    setPhoneNumber('');
+                                }}
+                                className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                            >
+                                Forgot PIN?
+                            </button>
+                        </div>
                         <div className="mt-8 text-center">
                             {isLoading && <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-900" />}
                         </div>
@@ -773,22 +826,112 @@ function AuthPage() {
                         {/* Continue button */}
                         <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
                                 setError(null);
-                                setStep(2);
+                                setIsSendingSms(true);
+                                try {
+                                    const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+                                    if (mode === 'signup') {
+                                        const exists = await checkPhoneExists(fullPhone);
+                                        if (exists) {
+                                            setError('This phone number is already registered. Please log in instead.');
+                                            setIsSendingSms(false);
+                                            return;
+                                        }
+                                    }
+                                    
+                                    if (!recaptchaVerifierRef.current) {
+                                        let container = document.getElementById('recaptcha-container');
+                                        if (!container) {
+                                            container = document.createElement('div');
+                                            container.id = 'recaptcha-container';
+                                            document.body.appendChild(container);
+                                        }
+                                        try {
+                                            recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                                                size: 'invisible'
+                                            });
+                                        } catch (e) {
+                                            console.error("Error initializing RecaptchaVerifier fallback", e);
+                                        }
+                                    }
+                                    
+                                    const result = await sendSmsVerification(fullPhone, recaptchaVerifierRef.current);
+                                    setConfirmationResult(result);
+                                    setStep(2);
+                                } catch (err: any) {
+                                    console.error(err);
+                                    setError(err.message || 'Failed to send SMS');
+                                    if (recaptchaVerifierRef.current) {
+                                        recaptchaVerifierRef.current.clear();
+                                        recaptchaVerifierRef.current = null;
+                                    }
+                                } finally {
+                                    setIsSendingSms(false);
+                                }
                             }}
-                            disabled={phoneNumber.length < 7}
+                            disabled={phoneNumber.length < 7 || isSendingSms}
                             className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
                         >
-                            Continue
+                            {isSendingSms ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Continue'}
                         </button>
                     </motion.div>
                 )}
 
                 {/* ==========================================
-                    STEP 2: PIN Creation (Dial Pad)
+                    STEP 2: SMS Code Verification
                 ========================================== */}
                 {step === 2 && (
+                    <motion.div
+                        key="sms"
+                        variants={pageVariants}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{ type: 'tween', duration: 0.25 }}
+                        className="flex-1 flex flex-col px-6 pb-6"
+                    >
+                        <h2 className="text-xl font-bold text-gray-900 mb-1">Enter Verification Code</h2>
+                        <p className="text-gray-500 text-sm mb-6">We sent a 6-digit code to {formatPhone(phoneNumber)}</p>
+
+                        <div className="flex gap-3 justify-center mb-8">
+                            {[0, 1, 2, 3, 4, 5].map((i) => (
+                                <div
+                                    key={i}
+                                    className={`w-12 h-14 rounded-2xl border-2 flex items-center justify-center transition-all text-xl font-bold ${
+                                        smsCode[i] 
+                                            ? 'border-gray-900 bg-white text-gray-900' 
+                                            : error 
+                                                ? 'border-red-300 bg-red-50'
+                                                : 'border-gray-200 bg-gray-50'
+                                    }`}
+                                >
+                                    {smsCode[i] || ''}
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex-1 flex items-center">
+                            <DialPad
+                                value={smsCode}
+                                onChange={(val) => {
+                                    setSmsCode(val);
+                                    setError(null);
+                                    if (val.length === 6) {
+                                        setStep(3);
+                                    }
+                                }}
+                                maxLength={6}
+                                showLetters={false}
+                            />
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* ==========================================
+                    STEP 3: PIN Creation (Dial Pad)
+                ========================================== */}
+                {step === 6 && (
                     <motion.div
                         key="pin"
                         variants={pageVariants}
@@ -803,13 +946,13 @@ function AuthPage() {
                         </h2>
                         <p className="text-gray-500 text-sm mb-8">
                             {pinStep === 'create'
-                                ? 'Choose a 4-digit PIN for quick sign in'
+                                ? 'Choose a 6-digit PIN for quick sign in'
                                 : 'Enter your PIN again to confirm'}
                         </p>
 
                         {/* PIN dots */}
                         <div className="flex gap-4 justify-center mb-8">
-                            {[0, 1, 2, 3].map((i) => {
+                            {[0, 1, 2, 3, 4, 5].map((i) => {
                                 const currentPin = pinStep === 'create' ? pin : confirmPin;
                                 return (
                                     <motion.div
@@ -817,7 +960,7 @@ function AuthPage() {
                                         animate={{
                                             scale: currentPin.length === i ? [1, 1.2, 1] : 1,
                                         }}
-                                        className={`w-4 h-4 rounded-full transition-colors ${
+                                        className={`w-3 h-3 rounded-full transition-colors ${
                                             currentPin[i] ? 'bg-gray-900' : 'bg-gray-200'
                                         }`}
                                     />
@@ -829,17 +972,27 @@ function AuthPage() {
                         <div className="flex-1 flex items-center">
                             <DialPad
                                 value={pinStep === 'create' ? pin : confirmPin}
-                                onChange={(val) => {
+                                onChange={async (val) => {
                                     if (pinStep === 'create') {
                                         setPin(val);
-                                        if (val.length === 4) {
+                                        if (val.length === 6) {
                                             setTimeout(() => setPinStep('confirm'), 300);
                                         }
                                     } else {
                                         setConfirmPin(val);
-                                        if (val.length === 4) {
+                                        if (val.length === 6) {
                                             if (val === pin) {
-                                                setTimeout(() => setStep(3), 300);
+                                                if (mode === 'forgot_pin') {
+                                                    try {
+                                                        if (!confirmationResult) throw new Error('No SMS verification found');
+                                                        await resetPinWithSms(pin, confirmationResult, smsCode);
+                                                        window.location.href = '/dashboard';
+                                                    } catch (err: any) {
+                                                        setError(err.message || 'Failed to reset PIN');
+                                                    }
+                                                } else {
+                                                    setTimeout(() => setStep(4), 300);
+                                                }
                                             } else {
                                                 setError('PINs do not match. Please try again.');
                                                 setConfirmPin('');
@@ -849,7 +1002,7 @@ function AuthPage() {
                                         }
                                     }
                                 }}
-                                maxLength={4}
+                                maxLength={6}
                                 showLetters={false}
                             />
                         </div>
@@ -937,7 +1090,7 @@ function AuthPage() {
                                 if (registrationType === 'waste_owner') {
                                     handleCompleteSignup();
                                 } else {
-                                    setStep(4);
+                                    setStep(5);
                                 }
                             }}
                             disabled={registrationType === 'organization' ? !orgName.trim() : !fullName.trim()}
@@ -998,7 +1151,7 @@ function AuthPage() {
 
                         <button
                             type="button"
-                            onClick={() => setStep(5)}
+                            onClick={() => setStep(6)}
                             disabled={!vehicleType}
                             className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
                         >

@@ -33,7 +33,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 interface CustomerPaymentModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess: () => void;
+    onAccept: (totalAmount: number) => void;
     requestId: string;
     collectorId: string;
     customerId: string;
@@ -43,7 +43,7 @@ interface CustomerPaymentModalProps {
 export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
     isOpen,
     onClose,
-    onSuccess,
+    onAccept,
     requestId,
     collectorId,
     customerId,
@@ -65,16 +65,16 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
             setCurrentOffer(offer);
             if (offer?.id) setOfferId(offer.id);
 
-            // If accepted, trigger success
+            // If accepted, trigger onAccept
             if (offer?.status === 'accepted') {
                 setTimeout(() => {
-                    onSuccess();
+                    onAccept(offer.totalAmount);
                 }, 1500);
             }
         });
 
         return () => unsubscribe();
-    }, [requestId, isOpen, onSuccess]);
+    }, [requestId, isOpen, onAccept]);
 
     const handleSendOffer = async () => {
         setIsSubmitting(true);
@@ -325,6 +325,7 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
     const [currentOffer, setCurrentOffer] = useState<PaymentOffer | null>(null);
     const [isResponding, setIsResponding] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
+    const [counterAmount, setCounterAmount] = useState('');
     const [showRejectForm, setShowRejectForm] = useState(false);
 
     // Subscribe to offer updates
@@ -361,14 +362,19 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
         if (!currentOffer) return;
         setIsResponding(true);
         try {
+            const finalReason = counterAmount
+                ? `Counter Offer: D${counterAmount} - ${rejectionReason}`
+                : rejectionReason || 'Offer too low';
+                
             await respondToPaymentOffer(
                 currentOffer.id,
                 requestId,
                 false,
-                rejectionReason || 'Offer too low'
+                finalReason
             );
             setShowRejectForm(false);
             setRejectionReason('');
+            setCounterAmount('');
         } catch (error) {
             console.error('Failed to reject offer:', error);
         } finally {
@@ -465,7 +471,7 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
                                         leftIcon={<ThumbsDown size={18} />}
                                         className="border border-red-200 text-red-600 hover:bg-red-50"
                                     >
-                                        Decline
+                                        Counter
                                     </Button>
                                     <Button
                                         variant="primary"
@@ -482,17 +488,31 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
 
                         {currentOffer?.status === 'pending' && showRejectForm && (
                             <>
-                                <div className="space-y-3">
-                                    <p className="font-medium text-gray-900 ">
-                                        Why are you declining?
-                                    </p>
-                                    <textarea
-                                        value={rejectionReason}
-                                        onChange={(e) => setRejectionReason(e.target.value)}
-                                        placeholder="e.g., Amount too low for the service"
-                                        className="w-full p-3 rounded-xl border border-gray-200  bg-gray-50  resize-none"
-                                        rows={3}
-                                    />
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="font-medium text-gray-900 mb-1">
+                                            Suggest New Amount (D)
+                                        </p>
+                                        <input
+                                            type="number"
+                                            value={counterAmount}
+                                            onChange={(e) => setCounterAmount(e.target.value)}
+                                            placeholder="e.g., 150"
+                                            className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-purple-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-gray-900 mb-1">
+                                            Reason for change
+                                        </p>
+                                        <textarea
+                                            value={rejectionReason}
+                                            onChange={(e) => setRejectionReason(e.target.value)}
+                                            placeholder="e.g., More trash than expected"
+                                            className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 resize-none focus:ring-2 focus:ring-purple-500"
+                                            rows={2}
+                                        />
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <Button
@@ -509,7 +529,7 @@ export const CollectorPaymentModal: React.FC<CollectorPaymentModalProps> = ({
                                         isLoading={isResponding}
                                         className="bg-red-500 hover:bg-red-600"
                                     >
-                                        Confirm Decline
+                                        Send Counter
                                     </Button>
                                 </div>
                             </>

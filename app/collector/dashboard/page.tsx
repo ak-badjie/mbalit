@@ -65,6 +65,7 @@ import {
     useDynamicIslandSize,
 } from '@/components/ui/dynamic-island';
 import { FullScreenNavigation } from '@/components/ui/full-screen-navigation';
+import { CollectorPaymentModal } from '@/components/ui/payment-offer-modal';
 
 // Haversine distance calculation (km)
 function haversineDistance(
@@ -374,6 +375,17 @@ function DashboardContent() {
         }
     };
 
+    const handleArriveJob = async () => {
+        if (activeJob) {
+            try {
+                await updateJobStatus(activeJob.id, 'arrived');
+                setActiveJob({ ...activeJob, status: 'arrived' });
+            } catch (err) {
+                console.error('Failed to update job status to arrived:', err);
+            }
+        }
+    };
+
     const handleCompleteJob = async () => {
         if (activeJob) {
             try {
@@ -555,8 +567,13 @@ function DashboardContent() {
                                                 </DynamicDescription>
                                             </div>
                                         </div>
-                                        <span className="text-emerald-400 font-bold">
+                                        <span className="text-emerald-400 font-bold flex items-center gap-2">
                                             {formatPrice(incomingJob.amount)}
+                                            {incomingJob.paymentStatus !== 'paid' && (
+                                                <span className="text-[10px] font-normal text-amber-600 bg-amber-100/20 px-1.5 py-0.5 rounded-full">
+                                                    Unpaid
+                                                </span>
+                                            )}
                                         </span>
                                     </>
                                 ) : activeJob ? (
@@ -1219,12 +1236,27 @@ function DashboardContent() {
                         notes: (activeJob as any).notes,
                     }}
                     collectorLocation={currentLocation || undefined}
+                    onArrive={handleArriveJob}
+                    isArrived={activeJob.status === 'arrived' || activeJob.status === 'awaiting_payment'}
+                    isPaid={activeJob.paymentStatus === 'paid'}
                     onComplete={() => {
                         handleCompleteJob();
                         setShowFullScreenNav(false);
                     }}
                     onCall={() => window.open(`tel:${activeJob.customerPhone}`, '_self')}
                     onMessage={() => window.open(`sms:${activeJob.customerPhone}`, '_self')}
+                />
+            )}
+
+            {/* Payment Offer Negotiation Modal */}
+            {activeJob && activeJob.status === 'awaiting_payment' && (
+                <CollectorPaymentModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    onComplete={() => {
+                        // Keep open or handle success, the actual job status will update to paid via webhook
+                    }}
+                    requestId={activeJob.id}
                 />
             )}
         </div>

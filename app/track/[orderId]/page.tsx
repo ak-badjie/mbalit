@@ -25,6 +25,9 @@ import { subscribeToJob, subscribeToCollectorLocation, RealtimeJob } from '@/lib
 import { formatPrice, WASTE_TYPES } from '@/lib/waste-config';
 import { GeoLocation } from '@/types';
 import Link from 'next/link';
+import { CustomerPaymentModal } from '@/components/ui/payment-offer-modal';
+import { PaymentModal } from '@/components/ui/payment-modal';
+import { initializePayment } from '@/lib/payment';
 
 type OrderStatus = 'pending' | 'assigned' | 'en_route' | 'arrived' | 'completed' | 'cancelled';
 
@@ -77,6 +80,12 @@ export default function TrackingPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Payment states
+    const [showOfferModal, setShowOfferModal] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentUrl, setPaymentUrl] = useState('');
+    const [isInitializingPayment, setIsInitializingPayment] = useState(false);
+
     // Subscribe to job updates
     useEffect(() => {
         if (!orderId) return;
@@ -85,6 +94,11 @@ export default function TrackingPage() {
             if (jobData) {
                 setJob(jobData);
                 setIsLoading(false);
+                
+                // Auto-open offer modal when arrived
+                if (jobData.status === 'arrived' && jobData.paymentStatus === 'pending' && !showPaymentModal && !paymentUrl) {
+                    // Could auto-open, but we'll let user click the button to be safe
+                }
             } else {
                 setError('Order not found');
                 setIsLoading(false);
@@ -92,7 +106,7 @@ export default function TrackingPage() {
         });
 
         return () => unsubscribe();
-    }, [orderId]);
+    }, [orderId, showPaymentModal, paymentUrl]);
 
     // Subscribe to collector location when assigned
     useEffect(() => {
@@ -106,6 +120,31 @@ export default function TrackingPage() {
 
         return () => unsubscribe();
     }, [job?.collectorId]);
+
+    const handleAcceptOffer = async (totalAmount: number) => {
+        setIsInitializingPayment(true);
+        try {
+            const paymentResult = await initializePayment(totalAmount, 'GMD', {
+                name: job?.customerName || 'Customer',
+                email: job?.customerEmail || 'customer@example.com',
+                phone: job?.customerPhone || '',
+                wasteTypes: job?.wasteTypes || [],
+            });
+
+            if (paymentResult.paymentUrl) {
+                setPaymentUrl(paymentResult.paymentUrl);
+                setShowOfferModal(false);
+                setShowPaymentModal(true);
+            } else {
+                throw new Error('No payment URL returned');
+            }
+        } catch (error) {
+            console.error('Failed to initialize Modem Pay:', error);
+            alert('Failed to initialize payment. Please try again.');
+        } finally {
+            setIsInitializingPayment(false);
+        }
+    };
 
     const wasteType = job?.wasteType ? WASTE_TYPES.find(t => t.id === job.wasteType) : null;
     const currentStatus = (job?.status as OrderStatus) || 'pending';
@@ -251,6 +290,32 @@ export default function TrackingPage() {
                     </Card>
                 </motion.div>
 
+                {/* Review & Pay Button (When Arrived) */}
+                <AnimatePresence>
+                    {currentStatus === 'arrived' && job.paymentStatus !== 'paid' && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="mb-6"
+                        >
+                            <Card variant="elevated" padding="lg" className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-center">
+                                <h3 className="text-xl font-bold mb-2">Driver has arrived!</h3>
+                                <p className="text-emerald-50 mb-6">Review the pickup details and confirm payment with the driver.</p>
+                                <Button
+                                    variant="primary"
+                                    size="lg"
+                                    fullWidth
+                                    onClick={() => setShowOfferModal(true)}
+                                    className="bg-white text-emerald-600 hover:bg-emerald-50"
+                                >
+                                    Review & Pay {formatPrice(job.amount)}
+                                </Button>
+                            </Card>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 <div className="grid md:grid-cols-2 gap-6">
                     {/* Order Details */}
                     <motion.div
@@ -294,10 +359,17 @@ export default function TrackingPage() {
                                             {formatPrice(job.amount)}
                                         </span>
                                     </div>
-                                    <Badge variant="success" className="mt-2">
-                                        <CheckCircle className="w-3 h-3 mr-1" />
-                                        Payment Confirmed
-                                    </Badge>
+                                    {job.paymentStatus === 'paid' ? (
+                                        <Badge variant="success" className="mt-2">
+                                            <CheckCircle className="w-3 h-3 mr-1" />
+                                            Payment Confirmed
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="warning" className="mt-2 bg-amber-100 text-amber-800 border-none">
+                                            <Clock className="w-3 h-3 mr-1" />
+                                            To be paid on arrival
+                                        </Badge>
+                                    )}
                                 </div>
                             </div>
                         </Card>
@@ -415,6 +487,32 @@ export default function TrackingPage() {
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Modals */}
+                {job && (
+                    <CustomerPaymentModal
+                        isOpen={showOfferModal}
+                        onClose={() => setShowOfferModal(false)}
+                        onAccept={handleAcceptOffer}
+                        requestId={job.id}
+                        collectorId={job.collectorId || ''}
+                        customerId={job.customerId}
+                        baseAmount={job.amount}
+                    />
+                )}
+
+                <PaymentModal
+                    isOpen={showPaymentModal}
+                    onClose={() => setShowPaymentModal(false)}
+                    onSuccess={(orderId) => {
+                        setShowPaymentModal(false);
+                        // The webhook or Realtime DB will update status to 'paid', 
+                        // triggering the UI update automatically.
+                    }}
+                    paymentUrl={paymentUrl}
+                    orderId={orderId}
+                    amount={job?.amount || 0}
+                />
             </main>
         </div>
     );

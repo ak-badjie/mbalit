@@ -1,16 +1,27 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { doc, setDoc, getDoc, getDocs, query, collection, where, serverTimestamp } from 'firebase/firestore';
-import { db } from './firebase';
+import { 
+    doc, setDoc, getDoc, getDocs, query, collection, where, serverTimestamp 
+} from 'firebase/firestore';
+import { 
+    onAuthStateChanged, 
+    signInWithEmailAndPassword, 
+    signOut,
+    RecaptchaVerifier,
+    signInWithPhoneNumber,
+    ConfirmationResult,
+    updateEmail,
+    updatePassword,
+} from 'firebase/auth';
+import { db, auth } from './firebase';
 import { User, UserRole, WasteType, Collector } from '@/types';
 
-// Auth context types
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    signup: (phone: string, pin: string) => Promise<string>;
+    signup: (phone: string, pin: string, confirmationResult: ConfirmationResult, smsCode: string) => Promise<string>;
     login: (phone: string, pin: string) => Promise<void>;
     checkPhoneExists: (phone: string) => Promise<boolean>;
     checkOrgCode: (orgCode: string) => Promise<boolean>;
@@ -18,36 +29,21 @@ interface AuthContextType {
     logout: () => Promise<void>;
     updateCollectorWasteTypes: (wasteTypes: WasteType[]) => Promise<void>;
     setCollectorAvailability: (available: boolean) => Promise<void>;
+    sendSmsVerification: (phone: string, appVerifier: RecaptchaVerifier) => Promise<ConfirmationResult>;
+    resetPinWithSms: (newPin: string, confirmationResult: ConfirmationResult, smsCode: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Generate a unique user ID
-function generateUserId(): string {
-    return 'u_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+function generateDummyEmail(phone: string): string {
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    return `${cleanPhone}@mbalit.app`;
 }
 
-// Auth provider component (Database-only, no Google/Firebase Auth)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Restore session from localStorage on mount
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-
-        const storedUserId = localStorage.getItem('mbalit_user_id');
-        if (storedUserId) {
-            fetchUserProfile(storedUserId).then((profile) => {
-                setUser(profile);
-                setIsLoading(false);
-            });
-        } else {
-            setIsLoading(false);
-        }
-    }, []);
-
-    // Fetch user profile from Firestore
     const fetchUserProfile = useCallback(async (userId: string): Promise<User | null> => {
         try {
             const userDoc = await getDoc(doc(db, 'users', userId));
@@ -71,7 +67,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    // Check if a phone number already exists in the database
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                const profile = await fetchUserProfile(firebaseUser.uid);
+                setUser(profile);
+            } else {
+                setUser(null);
+            }
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [fetchUserProfile]);
+
     const checkPhoneExists = async (phone: string): Promise<boolean> => {
         try {
             const usersRef = collection(db, 'users');
@@ -84,7 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // Check if an organization code exists
     const checkOrgCode = async (orgCode: string): Promise<boolean> => {
         try {
             const orgDoc = await getDoc(doc(db, 'organizations', orgCode));
@@ -95,36 +103,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // Signup: create user directly in Firestore (no Firebase Auth)
-    const signup = async (phone: string, pin: string): Promise<string> => {
+    const sendSmsVerification = async (phone: string, appVerifier: RecaptchaVerifier): Promise<ConfirmationResult> => {
+        try {
+            return await signInWithPhoneNumber(auth, phone, appVerifier);
+        } catch (error) {
+            console.error('Error sending SMS:', error);
+            throw error;
+        }
+    };
+
+    const signup = async (phone: string, pin: string, confirmationResult: ConfirmationResult, smsCode: string): Promise<string> => {
         setIsLoading(true);
         try {
-            // Check if phone already registered
             const exists = await checkPhoneExists(phone);
             if (exists) {
                 throw new Error('This phone number is already registered. Please log in instead.');
             }
 
-            const userId = generateUserId();
+            const credential = await confirmationResult.confirm(smsCode);
+            const firebaseUser = credential.user;
+
+            const dummyEmail = generateDummyEmail(phone);
+            await updateEmail(firebaseUser, dummyEmail);
+            await updatePassword(firebaseUser, pin);
 
             const userData = {
                 phone,
-                pin,
                 role: 'user' as UserRole,
                 onboardingComplete: false,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             };
+            
+            await setDoc(doc(db, 'users', firebaseUser.uid), userData);
 
-            await setDoc(doc(db, 'users', userId), userData);
-
-            // Store session
-            localStorage.setItem('mbalit_user_id', userId);
-
-            const profile = await fetchUserProfile(userId);
+            const profile = await fetchUserProfile(firebaseUser.uid);
             setUser(profile);
 
-            return userId;
+            return firebaseUser.uid;
         } catch (error) {
             console.error('Signup error:', error);
             throw error;
@@ -133,39 +149,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // Login: phone + PIN lookup in Firestore
     const login = async (phone: string, pin: string) => {
         setIsLoading(true);
         try {
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('phone', '==', phone));
-            const querySnapshot = await getDocs(q);
-
-            if (querySnapshot.empty) {
-                throw new Error('user-not-found');
-            }
-
-            const userDoc = querySnapshot.docs[0];
-            const userData = userDoc.data();
-
-            if (userData.pin !== pin) {
-                throw new Error('wrong-password');
-            }
-
-            const profile = {
-                id: userDoc.id,
-                email: userData.email || '',
-                name: userData.name || '',
-                phone: userData.phone || '',
-                role: userData.role || 'user',
-                createdAt: userData.createdAt?.toDate() || new Date(),
-                updatedAt: userData.updatedAt?.toDate() || new Date(),
-                ...userData,
-            } as User;
-
-            // Store session
-            localStorage.setItem('mbalit_user_id', userDoc.id);
-            setUser(profile);
+            const dummyEmail = generateDummyEmail(phone);
+            await signInWithEmailAndPassword(auth, dummyEmail, pin);
         } catch (error) {
             console.error('Login error:', error);
             throw error;
@@ -174,28 +162,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // Change PIN
-    const changePin = async (oldPin: string, newPin: string) => {
-        if (!user) throw new Error('No user logged in');
-
+    const resetPinWithSms = async (newPin: string, confirmationResult: ConfirmationResult, smsCode: string) => {
         setIsLoading(true);
         try {
-            const userRef = doc(db, 'users', user.id);
-            const userDoc = await getDoc(userRef);
+            const credential = await confirmationResult.confirm(smsCode);
+            const firebaseUser = credential.user;
+            await updatePassword(firebaseUser, newPin);
+            const profile = await fetchUserProfile(firebaseUser.uid);
+            setUser(profile);
+        } catch (error) {
+            console.error('Reset PIN error:', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-            if (!userDoc.exists()) throw new Error('User not found');
-
-            const userData = userDoc.data();
-            if (userData.pin && userData.pin !== oldPin) {
-                throw new Error('old-pin-incorrect');
-            }
-
-            await setDoc(userRef, {
-                pin: newPin,
-                updatedAt: serverTimestamp()
-            }, { merge: true });
-
-            setUser(prev => prev ? { ...prev, pin: newPin } : null);
+    const changePin = async (oldPin: string, newPin: string) => {
+        if (!auth.currentUser || !user) throw new Error('No user logged in');
+        setIsLoading(true);
+        try {
+            const dummyEmail = generateDummyEmail(user.phone);
+            await signInWithEmailAndPassword(auth, dummyEmail, oldPin);
+            await updatePassword(auth.currentUser, newPin);
         } catch (error) {
             console.error('Change PIN error:', error);
             throw error;
@@ -204,10 +193,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // Logout
     const logout = async () => {
         try {
-            localStorage.removeItem('mbalit_user_id');
+            await signOut(auth);
             setUser(null);
         } catch (error) {
             console.error('Logout error:', error);
@@ -215,10 +203,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // Update collector waste types
     const updateCollectorWasteTypes = async (wasteTypes: WasteType[]) => {
         if (!user) return;
-
         try {
             await setDoc(
                 doc(db, 'users', user.id),
@@ -232,10 +218,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // Set collector availability
     const setCollectorAvailability = async (available: boolean) => {
         if (!user) return;
-
         try {
             await setDoc(
                 doc(db, 'users', user.id),
@@ -249,28 +233,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const value: AuthContextType = {
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        signup,
-        login,
-        checkPhoneExists,
-        checkOrgCode,
-        changePin,
-        logout,
-        updateCollectorWasteTypes,
-        setCollectorAvailability,
-    };
-
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider
+            value={{
+                user,
+                isLoading,
+                isAuthenticated: !!user,
+                signup,
+                login,
+                checkPhoneExists,
+                checkOrgCode,
+                changePin,
+                logout,
+                updateCollectorWasteTypes,
+                setCollectorAvailability,
+                sendSmsVerification,
+                resetPinWithSms,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );
 }
 
-// Hook to use auth context
 export function useAuth() {
     const context = useContext(AuthContext);
     if (!context) {
@@ -279,15 +264,14 @@ export function useAuth() {
     return context;
 }
 
-// Hook to require authentication
-export function useRequireAuth(redirectTo: string = '/auth') {
-    const { user, isLoading, isAuthenticated } = useAuth();
-
-    useEffect(() => {
-        if (!isLoading && !isAuthenticated) {
-            window.location.href = redirectTo;
+export function useRequireAuth() {
+    const context = useAuth();
+    const router = require('next/navigation').useRouter();
+    React.useEffect(() => {
+        if (!context.isLoading && !context.user) {
+            router.push('/auth');
         }
-    }, [isLoading, isAuthenticated, redirectTo]);
-
-    return { user, isLoading, isAuthenticated };
+    }, [context.user, context.isLoading, router]);
+    return context;
 }
+

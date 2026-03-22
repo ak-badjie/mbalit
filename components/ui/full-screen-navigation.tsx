@@ -44,6 +44,9 @@ interface FullScreenNavigationProps {
     pickup: PickupDetails;
     collectorLocation?: GeoLocation;
     onComplete: () => void;
+    onArrive?: () => void;
+    isArrived?: boolean;
+    isPaid?: boolean;
     onCall?: () => void;
     onMessage?: () => void;
 }
@@ -348,16 +351,40 @@ export function FullScreenNavigation({
                                 </Button>
                             </div>
 
-                            {/* Complete Button */}
-                            <Button
-                                variant="primary"
-                                fullWidth
-                                onClick={handleComplete}
-                                leftIcon={<CheckCircle size={20} />}
-                                className="py-4 text-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
-                            >
-                                Arrived • Mark Complete
-                            </Button>
+                            {/* Main Action Button */}
+                            {!isArrived ? (
+                                <Button
+                                    variant="primary"
+                                    fullWidth
+                                    onClick={() => {
+                                        if (voiceEnabled) speak('You have arrived. Please wait for the customer to confirm payment.');
+                                        if (onArrive) onArrive();
+                                    }}
+                                    leftIcon={<MapPin size={20} />}
+                                    className="py-4 text-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+                                >
+                                    Arrived at Location
+                                </Button>
+                            ) : !isPaid ? (
+                                <Button
+                                    variant="secondary"
+                                    fullWidth
+                                    disabled
+                                    className="py-4 text-lg opacity-80"
+                                >
+                                    Waiting for Payment...
+                                </Button>
+                            ) : (
+                                <Button
+                                    variant="primary"
+                                    fullWidth
+                                    onClick={handleComplete}
+                                    leftIcon={<CheckCircle size={20} />}
+                                    className="py-4 text-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+                                >
+                                    Mark Complete
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </motion.div>
