@@ -54,6 +54,7 @@ export default function AuthPageWrapper() {
                 </div>
             </div>
         }>
+            <div id="recaptcha-container"></div>
             <AuthPage />
         </Suspense>
     );
@@ -110,32 +111,6 @@ function AuthPage() {
     const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
     const [isSendingSms, setIsSendingSms] = useState(false);
     const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-
-    useEffect(() => {
-        if (!recaptchaVerifierRef.current && typeof window !== 'undefined') {
-            let container = document.getElementById('recaptcha-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'recaptcha-container';
-                document.body.appendChild(container);
-            }
-            try {
-                recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                    size: 'invisible'
-                });
-            } catch (e) {
-                console.error("Error initializing RecaptchaVerifier", e);
-            }
-        }
-        return () => {
-            if (recaptchaVerifierRef.current) {
-                try {
-                    recaptchaVerifierRef.current.clear();
-                } catch(e) {}
-                recaptchaVerifierRef.current = null;
-            }
-        };
-    }, []);
 
     // Auto-continue onboarding for existing users
     useEffect(() => {
@@ -840,31 +815,26 @@ function AuthPage() {
                                         }
                                     }
                                     
-                                    if (!recaptchaVerifierRef.current) {
-                                        let container = document.getElementById('recaptcha-container');
-                                        if (!container) {
-                                            container = document.createElement('div');
-                                            container.id = 'recaptcha-container';
-                                            document.body.appendChild(container);
-                                        }
-                                        try {
-                                            recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                                                size: 'invisible'
-                                            });
-                                        } catch (e) {
-                                            console.error("Error initializing RecaptchaVerifier fallback", e);
-                                        }
+                                    // Make sure we have a clean slate on the window object
+                                    if (!(window as any).recaptchaVerifier) {
+                                        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                                            size: 'invisible'
+                                        });
                                     }
                                     
-                                    const result = await sendSmsVerification(fullPhone, recaptchaVerifierRef.current);
+                                    const verifier = (window as any).recaptchaVerifier;
+                                    const result = await sendSmsVerification(fullPhone, verifier);
                                     setConfirmationResult(result);
                                     setStep(2);
                                 } catch (err: any) {
                                     console.error(err);
                                     setError(err.message || 'Failed to send SMS');
-                                    if (recaptchaVerifierRef.current) {
-                                        recaptchaVerifierRef.current.clear();
-                                        recaptchaVerifierRef.current = null;
+                                    // Clear the verifier on failure so the user can try again safely
+                                    if ((window as any).recaptchaVerifier) {
+                                        try {
+                                            (window as any).recaptchaVerifier.clear();
+                                        } catch (e) {}
+                                        (window as any).recaptchaVerifier = null;
                                     }
                                 } finally {
                                     setIsSendingSms(false);

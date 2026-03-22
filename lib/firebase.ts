@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { getAuth, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getDatabase, Database } from 'firebase/database';
@@ -32,6 +32,12 @@ function initializeFirebase() {
         }
 
         auth = getAuth(app);
+        
+        // Ensure the session persists across page reloads
+        setPersistence(auth, browserLocalPersistence).catch((error) => {
+            console.error("Error setting persistence:", error);
+        });
+
         db = getFirestore(app);
         realtimeDb = getDatabase(app);
         storage = getStorage(app);

@@ -75,7 +75,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.8 }}
-              className="text-sm sm:text-lg md:text-xl text-emerald-900/80 font-medium max-w-xl md:max-w-2xl mx-auto mb-10 leading-relaxed px-4"
+              className="hidden sm:block text-sm sm:text-lg md:text-xl text-emerald-900/80 font-medium max-w-xl md:max-w-2xl mx-auto mb-10 leading-relaxed px-4"
             >
               Connect with verified waste collectors in your area. Schedule pickups,
               track in real-time, and contribute to a cleaner environment.

@@ -6,6 +6,7 @@ import { X, LogOut, LayoutDashboard, Truck, ArrowRight, User, HelpCircle, LogIn,
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { TruckLogo } from '@/components/ui/truck-logo';
 
 /* -------------------------------------------------------------------------------------------------
  * Types
@@ -145,7 +146,7 @@ const CapsuleNav: React.FC<CapsuleNavProps> = ({ isOpen, onClose }) => {
                     transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
                 >
                     {/* Background Image Layer - NO BLUR, NO TINT */}
-                    <div className="absolute inset-0 z-0">
+                    <div className="absolute inset-0 z-0 bg-white">
                         {/* Desktop Image */}
                         <div
                             className="hidden md:block absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -164,7 +165,7 @@ const CapsuleNav: React.FC<CapsuleNavProps> = ({ isOpen, onClose }) => {
 
                     {/* Close Button */}
                     <motion.button
-                        className="absolute top-5 right-4 md:top-6 md:right-6 z-20 w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors border border-white/30"
+                        className="absolute top-5 right-4 md:top-6 md:right-6 z-20 w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-emerald-900 hover:bg-white/30 transition-colors border border-emerald-900/10 shadow-sm"
                         onClick={toggleMenu}
                         initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
                         animate={{ opacity: 1, scale: 1, rotate: 0 }}
@@ -183,8 +184,7 @@ const CapsuleNav: React.FC<CapsuleNavProps> = ({ isOpen, onClose }) => {
                             transition={{ delay: 0.2 }}
                             className="text-center mb-10"
                         >
-                            <h2 className="text-4xl font-bold text-white tracking-tight leading-none mb-1">Mbalit</h2>
-                            <p className="text-emerald-100 text-sm tracking-widest font-medium uppercase">Waste Made Easy</p>
+                            <TruckLogo size="xl" showText={false} />
                         </motion.div>
 
                         <div className="w-full max-w-lg flex flex-col gap-4">
