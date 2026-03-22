@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
                 amount,
                 currency,
                 reference,
-                callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/webhooks/modem-pay`,
+                callback_url: `${process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://mbalit.com' : 'http://localhost:3000')}/api/webhooks/modem-pay`,
                 metadata: {
                     ...metadata,
                     source: 'mbalit_web',

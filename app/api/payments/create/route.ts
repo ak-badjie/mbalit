@@ -25,8 +25,9 @@ export async function POST(request: NextRequest) {
             customer_name,
             customer_email,
             customer_phone,
-            return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment/success`,
-            cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment/cancelled`,
+            return_url: `${process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://mbalit.com' : 'http://localhost:3000')}/payment/success`,
+            cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://mbalit.com' : 'http://localhost:3000')}/payment/cancelled`,
+            callback_url: `${process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://mbalit.com' : 'http://localhost:3000')}/api/webhooks/modem-pay`,
             metadata,
         });
 
