@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getAuth, Auth, setPersistence, browserLocalPersistence, initializeRecaptchaConfig } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getDatabase, Database } from 'firebase/database';
@@ -32,6 +32,16 @@ function initializeFirebase() {
         }
 
         auth = getAuth(app);
+
+        // Disable reCAPTCHA verification for localhost (use test phone numbers in Firebase Console)
+        if (window.location.hostname === 'localhost') {
+            auth.settings.appVerificationDisabledForTesting = true;
+        } else {
+            // Load reCAPTCHA Enterprise config for phone auth (production only)
+            initializeRecaptchaConfig(auth).catch((error) => {
+                console.warn('reCAPTCHA config initialization:', error);
+            });
+        }
         
         // Ensure the session persists across page reloads
         setPersistence(auth, browserLocalPersistence).catch((error) => {
