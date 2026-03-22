@@ -54,7 +54,6 @@ export default function AuthPageWrapper() {
                 </div>
             </div>
         }>
-            <div id="recaptcha-container"></div>
             <AuthPage />
         </Suspense>
     );
@@ -813,6 +812,14 @@ function AuthPage() {
                                             setIsSendingSms(false);
                                             return;
                                         }
+                                    }
+                                    
+                                    // Ensure the container exists completely outside of React's lifecycle
+                                    let rContainer = document.getElementById('recaptcha-container');
+                                    if (!rContainer) {
+                                        rContainer = document.createElement('div');
+                                        rContainer.id = 'recaptcha-container';
+                                        document.body.appendChild(rContainer);
                                     }
                                     
                                     // Make sure we have a clean slate on the window object
