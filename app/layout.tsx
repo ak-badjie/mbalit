@@ -23,6 +23,10 @@ export const metadata: Metadata = {
   title: "Mbalit - Garbage Collection Made Easy",
   description: "Request garbage pickup in The Gambia. Fast, simple, and eco-friendly. The nearest collector comes to you.",
   keywords: ["garbage collection", "waste management", "Gambia", "eco-friendly", "pickup service"],
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export const viewport: Viewport = {
