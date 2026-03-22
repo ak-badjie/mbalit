@@ -18,7 +18,7 @@ export default function Home() {
   useEffect(() => setMounted(true), []);
 
   return (
-    <div className="min-h-screen bg-white overflow-hidden font-sans selection:bg-emerald-500/30">
+    <div className="h-[100dvh] overflow-hidden sm:h-auto sm:min-h-screen sm:overflow-x-hidden sm:overflow-y-auto bg-white font-sans selection:bg-emerald-500/30">
         <Header />
 
       {/* Hero Section */}
@@ -168,9 +168,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Additional Sections */}
-      <WhoIsItFor />
-      <Footer />
+      {/* Additional Sections - Hidden on mobile to lock view to hero */}
+      <div className="hidden sm:block">
+        <WhoIsItFor />
+        <Footer />
+      </div>
     </div>
   );
 }
