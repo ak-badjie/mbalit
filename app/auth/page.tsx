@@ -777,33 +777,27 @@ function AuthPage() {
                                         }
                                     }
                                     
-                                    // Always clear previous verifier to avoid MALFORMED token errors
-                                    if ((window as any).recaptchaVerifier) {
-                                        try {
-                                            (window as any).recaptchaVerifier.clear();
-                                        } catch (e) {}
-                                        (window as any).recaptchaVerifier = null;
+                                    // Ensure the container exists completely outside of React's lifecycle
+                                    let rContainer = document.getElementById('recaptcha-container');
+                                    if (!rContainer) {
+                                        rContainer = document.createElement('div');
+                                        rContainer.id = 'recaptcha-container';
+                                        document.body.appendChild(rContainer);
                                     }
 
-                                    // Remove and recreate container for a clean slate
-                                    const oldContainer = document.getElementById('recaptcha-container');
-                                    if (oldContainer) oldContainer.remove();
-                                    const rContainer = document.createElement('div');
-                                    rContainer.id = 'recaptcha-container';
-                                    document.body.appendChild(rContainer);
+                                    // Make sure we have a clean slate on the window object
+                                    if (!(window as any).recaptchaVerifier) {
+                                        // Explicitly set testing flag right before use (don't rely on module init timing)
+                                        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                                            auth.settings.appVerificationDisabledForTesting = true;
+                                        }
 
-                                    // Explicitly set testing flag right before use (don't rely on module init timing)
-                                    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                                        auth.settings.appVerificationDisabledForTesting = true;
+                                        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                                            size: 'invisible'
+                                        });
                                     }
                                     
-                                    // Create a fresh RecaptchaVerifier and explicitly render it
-                                    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                                        size: 'invisible',
-                                    });
-                                    (window as any).recaptchaVerifier = verifier;
-                                    await verifier.render();
-                                    
+                                    const verifier = (window as any).recaptchaVerifier;
                                     const result = await sendSmsVerification(fullPhone, verifier);
                                     setConfirmationResult(result);
                                     setStep(2);
