@@ -203,14 +203,14 @@ export default function OrganizationDashboard() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="h-[100dvh] overflow-hidden bg-gray-50 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-amber-50">
+        <div className="h-[100dvh] overflow-hidden bg-gradient-to-br from-gray-50 via-white to-amber-50">
             {/* Header */}
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200">
                 <div className="max-w-4xl mx-auto px-4 py-3">

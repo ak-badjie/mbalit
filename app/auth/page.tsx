@@ -48,7 +48,7 @@ const pageVariants = {
 export default function AuthPageWrapper() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-white">
+            <div className="h-[100dvh] overflow-hidden flex items-center justify-center bg-white">
                 <div className="text-center">
                     <div className="w-10 h-10 border-3 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 </div>
@@ -67,7 +67,7 @@ function AuthPage() {
     const isSignupMode = searchParams.get('signup') === 'true';
     const isCollectorMode = searchParams.get('role') === 'collector';
     const continueOnboarding = searchParams.get('continue') === 'onboarding';
-    const { login, signup, checkPhoneExists, checkOrgCode, sendSmsVerification, resetPinWithSms, isLoading, user } = useAuth();
+    const { login, verifySmsCode, completeProfile, checkPhoneExists, checkOrgCode, sendSmsVerification, resetPinWithSms, isLoading, user } = useAuth();
 
     // Flow state
     const [mode, setMode] = useState<'login' | 'signup' | 'forgot_pin'>(isSignupMode ? 'signup' : 'login');
@@ -89,6 +89,8 @@ function AuthPage() {
     const [pinStep, setPinStep] = useState<'create' | 'confirm'>('create');
     const [fullName, setFullName] = useState('');
     const [profileImage, setProfileImage] = useState<string | null>(null);
+    const [verifiedUid, setVerifiedUid] = useState<string | null>(null); // Temp ID after SMS verify
+
 
     // Organization state
     const [orgName, setOrgName] = useState('');
@@ -196,43 +198,19 @@ function AuthPage() {
         const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
 
         try {
-            let userId = user?.id;
-            if (!userId) {
-                try {
-                    if (!confirmationResult) throw new Error('No SMS verification found');
-                    userId = await signup(fullPhone, pin, confirmationResult, smsCode);
-                } catch (error: any) {
-                    if (error.message.includes('already registered')) {
-                        // The user might have completed the phone step but never finished onboarding
-                        const usersRef = collection(db, 'users');
-                        const q = query(usersRef, where('phone', '==', fullPhone));
-                        const snapshot = await getDocs(q);
-                        if (!snapshot.empty) {
-                            userId = snapshot.docs[0].id;
-                        } else {
-                            throw error;
-                        }
-                    } else {
-                        throw error;
-                    }
-                }
-            }
+            let userId = user?.id || verifiedUid;
 
             if (!userId) {
-                setError('No user found. Please try again.');
+                setError('No user found or SMS verification missing. Please try again.');
                 return;
             }
 
             if (registrationType === 'waste_owner') {
-                await setDoc(doc(db, 'users', userId), {
+                await completeProfile(userId, fullPhone, pin, {
                     name: fullName,
-                    phone: fullPhone,
                     profileImage: profileImage || '',
                     role: 'user',
-                    pin: pin,
-                    onboardingComplete: true,
-                    updatedAt: serverTimestamp(),
-                }, { merge: true });
+                });
                 setIsSignupSuccess(true);
                 setTimeout(() => {
                     window.location.href = '/dashboard';
@@ -240,7 +218,6 @@ function AuthPage() {
             } else if (registrationType === 'collector' || registrationType === 'organization') {
                 const collectorData: Record<string, unknown> = {
                     name: registrationType === 'organization' ? orgName : fullName,
-                    phone: fullPhone,
                     profileImage: profileImage || '',
                     role: 'collector',
                     vehicleType,
@@ -249,11 +226,9 @@ function AuthPage() {
                     rating: 0,
                     totalPickups: 0,
                     earnings: 0,
-                    pin: pin,
-                    onboardingComplete: true,
-                    updatedAt: serverTimestamp(),
                 };
 
+                // The rest is essentially identical to the old setDoc logic
                 if (registrationType === 'organization') {
                     collectorData.collectorType = 'organization';
                     collectorData.organizationName = orgName;
@@ -273,7 +248,6 @@ function AuthPage() {
                         updatedAt: serverTimestamp(),
                     });
                 } else if (isJoiningOrg) {
-                    // Validate org code exists before proceeding
                     const orgExists = await checkOrgCode(joinOrgCode);
                     if (!orgExists) {
                         setError('Invalid organization code. Please check and try again.');
@@ -286,7 +260,7 @@ function AuthPage() {
                     collectorData.collectorType = 'individual';
                 }
 
-                await setDoc(doc(db, 'users', userId), collectorData, { merge: true });
+                await completeProfile(userId, fullPhone, pin, collectorData);
 
                 await setDoc(doc(db, 'collectorProfiles', userId), {
                     displayName: registrationType === 'organization' ? orgName : fullName,
@@ -333,10 +307,17 @@ function AuthPage() {
     const handleBack = () => {
         setError(null);
         if (step > 0) {
-            if (step === 2 && pinStep === 'confirm') { // pin step is actually 3 now, but we'll fix step numbers later
-
-                setPinStep('create');
-                setConfirmPin('');
+            if (step === 6) {
+                if (pinStep === 'confirm') {
+                    setPinStep('create');
+                    setConfirmPin('');
+                } else {
+                    setStep(2); // Go back to SMS
+                }
+                return;
+            }
+            if (step === 3) {
+                setStep(6);
                 return;
             }
             if (step === 1) {
@@ -378,7 +359,7 @@ function AuthPage() {
     // ==========================================
     if (isSignupSuccess) {
         return (
-            <div className="min-h-screen bg-white flex items-center justify-center flex-col pb-16">
+            <div className="h-[100dvh] overflow-hidden bg-white flex items-center justify-center flex-col pb-16">
                 <div className="w-80 h-80">
                     <DotLottieReact
                         src="/account_created.lottie"
@@ -397,7 +378,7 @@ function AuthPage() {
         // Step 1: Full screen PIN entry for phone login
         if (loginStep === 1) {
             return (
-                <div className="min-h-screen bg-white flex flex-col">
+                <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
                     <div className="flex items-center pt-16 px-6 mb-8">
                         <motion.button
                             whileTap={{ scale: 0.9 }}
@@ -484,7 +465,7 @@ function AuthPage() {
 
         // Step 0: Phone Number Entry (Full Screen Dial Pad)
         return (
-            <div className="min-h-screen bg-white flex flex-col">
+            <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
                 {/* Header */}
                 <div className="relative flex items-center justify-center pt-16 pb-8 px-6">
                     <button
@@ -561,7 +542,7 @@ function AuthPage() {
     // ==========================================
     if (mode === 'signup' && step === 0) {
         return (
-            <div className="min-h-screen bg-white flex flex-col">
+            <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
                 {/* Header with Back Button */}
                 <div className="relative flex items-center justify-center pt-16 pb-6 px-6">
                     <button
@@ -581,21 +562,15 @@ function AuthPage() {
                     </div>
 
                     <div className="flex flex-col relative pb-4 w-full">
-                        <div className="flex flex-col gap-0 w-full">
-                            {/* Waste Owner - Top Puzzle Piece */}
+                        <div className="flex flex-col gap-4 w-full">
+                            {/* Waste Owner - Card */}
                             <motion.div 
                                 whileTap={{ scale: 0.98 }} 
                                 whileHover={{ y: -2 }} 
                                 onClick={() => handleRoleSelect('waste_owner')}
-                                className="w-full relative z-30 group cursor-pointer block"
+                                className="w-full group cursor-pointer block bg-[#F0F7FF] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
                             >
-                                <JigsawBlock
-                                    tabPosition="bottom"
-                                    colorClass="text-[#F0F7FF] fill-current drop-shadow-md group-hover:drop-shadow-lg transition-all"
-                                    contentClassName="flex flex-row items-center gap-5 pt-8 pb-10 px-6 text-left"
-                                    width={320} height={110} strokeColor="white"
-                                    tabSize={16} cornerRadius={22}
-                                >
+                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
                                     <div className="w-14 h-14 rounded-[16px] bg-blue-100/50 flex flex-shrink-0 items-center justify-center text-blue-600">
                                         <Trash2 className="w-6 h-6" />
                                     </div>
@@ -604,10 +579,10 @@ function AuthPage() {
                                         <p className="text-sm text-blue-700/70 mt-0.5">Get your waste collected</p>
                                     </div>
                                     <ChevronRight className="w-5 h-5 text-blue-300 transition-transform group-hover:translate-x-1" />
-                                </JigsawBlock>
+                                </div>
                             </motion.div>
 
-                            {/* Join Team - Middle Puzzle Piece */}
+                            {/* Join Team - Card */}
                             <motion.div 
                                 whileTap={{ scale: 0.98 }} 
                                 whileHover={{ y: -2 }} 
@@ -617,15 +592,9 @@ function AuthPage() {
                                     setShowOrgDetails(true);
                                     setStep(1);
                                 }}
-                                className="w-full relative z-20 group cursor-pointer block -mt-[18px]"
+                                className="w-full group cursor-pointer block bg-[#F0FDF4] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
                             >
-                                <JigsawBlock
-                                    tabPosition="bottom"
-                                    colorClass="text-[#F0FDF4] fill-current drop-shadow-md group-hover:drop-shadow-lg transition-all"
-                                    contentClassName="flex flex-row items-center gap-5 pt-10 pb-10 px-6 text-left"
-                                    width={320} height={120} strokeColor="white"
-                                    tabSize={16} cornerRadius={22}
-                                >
+                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
                                     <div className="w-14 h-14 rounded-[16px] bg-emerald-100/50 flex flex-shrink-0 items-center justify-center text-emerald-600">
                                         <Truck className="w-6 h-6" />
                                     </div>
@@ -634,23 +603,17 @@ function AuthPage() {
                                         <p className="text-sm text-emerald-700/70 mt-0.5">Have an organization code</p>
                                     </div>
                                     <ChevronRight className="w-5 h-5 text-emerald-300 transition-transform group-hover:translate-x-1" />
-                                </JigsawBlock>
+                                </div>
                             </motion.div>
 
-                            {/* Organization - Bottom Puzzle Piece */}
+                            {/* Organization - Card */}
                             <motion.div 
                                 whileTap={{ scale: 0.98 }} 
                                 whileHover={{ y: -2 }} 
                                 onClick={() => handleRoleSelect('organization')}
-                                className="w-full relative z-10 group cursor-pointer block -mt-[18px]"
+                                className="w-full group cursor-pointer block bg-[#FFFBEB] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
                             >
-                                <JigsawBlock
-                                    tabPosition="none"
-                                    colorClass="text-[#FFFBEB] fill-current drop-shadow-md group-hover:drop-shadow-lg transition-all"
-                                    contentClassName="flex flex-row items-center gap-5 pt-10 pb-8 px-6 text-left"
-                                    width={320} height={110} strokeColor="white"
-                                    tabSize={16} cornerRadius={22}
-                                >
+                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
                                     <div className="w-14 h-14 rounded-[16px] bg-amber-100/50 flex flex-shrink-0 items-center justify-center text-amber-600">
                                         <Building2 className="w-6 h-6" />
                                     </div>
@@ -659,7 +622,7 @@ function AuthPage() {
                                         <p className="text-sm text-amber-700/70 mt-0.5">Waste business</p>
                                     </div>
                                     <ChevronRight className="w-5 h-5 text-amber-300 transition-transform group-hover:translate-x-1" />
-                                </JigsawBlock>
+                                </div>
                             </motion.div>
                         </div>
                     </div>
@@ -684,7 +647,7 @@ function AuthPage() {
     // SIGNUP STEPS (Full-screen)
     // ==========================================
     return (
-        <div className="min-h-screen bg-white flex flex-col">
+        <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
             {/* Top bar with back button and step dots */}
             <div className="flex items-center justify-between px-6 pt-6 pb-4">
                 <motion.button
@@ -814,29 +777,40 @@ function AuthPage() {
                                         }
                                     }
                                     
-                                    // Ensure the container exists completely outside of React's lifecycle
-                                    let rContainer = document.getElementById('recaptcha-container');
-                                    if (!rContainer) {
-                                        rContainer = document.createElement('div');
-                                        rContainer.id = 'recaptcha-container';
-                                        document.body.appendChild(rContainer);
+                                    // Always clear previous verifier to avoid MALFORMED token errors
+                                    if ((window as any).recaptchaVerifier) {
+                                        try {
+                                            (window as any).recaptchaVerifier.clear();
+                                        } catch (e) {}
+                                        (window as any).recaptchaVerifier = null;
+                                    }
+
+                                    // Remove and recreate container for a clean slate
+                                    const oldContainer = document.getElementById('recaptcha-container');
+                                    if (oldContainer) oldContainer.remove();
+                                    const rContainer = document.createElement('div');
+                                    rContainer.id = 'recaptcha-container';
+                                    document.body.appendChild(rContainer);
+
+                                    // Explicitly set testing flag right before use (don't rely on module init timing)
+                                    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                                        auth.settings.appVerificationDisabledForTesting = true;
                                     }
                                     
-                                    // Make sure we have a clean slate on the window object
-                                    if (!(window as any).recaptchaVerifier) {
-                                        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                                            size: 'invisible'
-                                        });
-                                    }
+                                    // Create a fresh RecaptchaVerifier and explicitly render it
+                                    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                                        size: 'invisible',
+                                    });
+                                    (window as any).recaptchaVerifier = verifier;
+                                    await verifier.render();
                                     
-                                    const verifier = (window as any).recaptchaVerifier;
                                     const result = await sendSmsVerification(fullPhone, verifier);
                                     setConfirmationResult(result);
                                     setStep(2);
                                 } catch (err: any) {
                                     console.error(err);
                                     setError(err.message || 'Failed to send SMS');
-                                    // Clear the verifier on failure so the user can try again safely
+                                    // Clear the verifier on failure
                                     if ((window as any).recaptchaVerifier) {
                                         try {
                                             (window as any).recaptchaVerifier.clear();
@@ -891,11 +865,19 @@ function AuthPage() {
                         <div className="flex-1 flex items-center">
                             <DialPad
                                 value={smsCode}
-                                onChange={(val) => {
+                                onChange={async (val) => {
                                     setSmsCode(val);
                                     setError(null);
                                     if (val.length === 6) {
-                                        setStep(3);
+                                        try {
+                                            if (!confirmationResult) throw new Error('No SMS verification found');
+                                            const newUid = await verifySmsCode(confirmationResult, val);
+                                            setVerifiedUid(newUid);
+                                            setStep(6);
+                                        } catch (err: any) {
+                                            console.error('SMS validation failed', err);
+                                            setError(err.message || 'Incorrect verification code');
+                                        }
                                     }
                                 }}
                                 maxLength={6}
@@ -968,7 +950,7 @@ function AuthPage() {
                                                         setError(err.message || 'Failed to reset PIN');
                                                     }
                                                 } else {
-                                                    setTimeout(() => setStep(4), 300);
+                                                    setTimeout(() => setStep(3), 300);
                                                 }
                                             } else {
                                                 setError('PINs do not match. Please try again.');
@@ -1067,7 +1049,7 @@ function AuthPage() {
                                 if (registrationType === 'waste_owner') {
                                     handleCompleteSignup();
                                 } else {
-                                    setStep(5);
+                                    setStep(4);
                                 }
                             }}
                             disabled={registrationType === 'organization' ? !orgName.trim() : !fullName.trim()}

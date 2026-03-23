@@ -436,7 +436,7 @@ function DashboardContent() {
     };
 
     return (
-        <div className="min-h-screen">
+        <div className="h-[100dvh] overflow-hidden">
             {/* Desktop Header - Hidden on Mobile */}
             <header className="hidden md:block fixed top-0 left-0 right-0 z-40">
                 {/* Gradient accent line */}

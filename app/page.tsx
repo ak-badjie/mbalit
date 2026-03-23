@@ -46,6 +46,9 @@ export default function Home() {
                   priority
                 />
             </div>
+
+            {/* Dark Tint Overlay */}
+            <div className="absolute inset-0 bg-black/5 z-10 pointer-events-none"></div>
         </div>
 
         <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col items-center justify-center -mt-24 sm:mt-0">

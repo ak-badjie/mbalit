@@ -66,7 +66,7 @@ function PaymentSuccessContent() {
     }, [transactionId, status]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-400 to-teal-500">
+        <div className="h-[100dvh] overflow-hidden flex items-center justify-center bg-gradient-to-br from-emerald-400 to-teal-500">
             <div className="text-center text-white">
                 <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center">
                     <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
@@ -83,7 +83,7 @@ function PaymentSuccessContent() {
 export default function PaymentSuccessPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-400 to-teal-500">
+            <div className="h-[100dvh] overflow-hidden flex items-center justify-center bg-gradient-to-br from-emerald-400 to-teal-500">
                 <div className="text-center text-white">
                     <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                     <p>Processing payment...</p>

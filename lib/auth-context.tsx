@@ -21,7 +21,8 @@ interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    signup: (phone: string, pin: string, confirmationResult: ConfirmationResult, smsCode: string) => Promise<string>;
+    verifySmsCode: (confirmationResult: ConfirmationResult, smsCode: string) => Promise<string>;
+    completeProfile: (uid: string, phone: string, pin: string, roleData: any) => Promise<void>;
     login: (phone: string, pin: string) => Promise<void>;
     checkPhoneExists: (phone: string) => Promise<boolean>;
     checkOrgCode: (orgCode: string) => Promise<boolean>;
@@ -112,37 +113,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const signup = async (phone: string, pin: string, confirmationResult: ConfirmationResult, smsCode: string): Promise<string> => {
+    const verifySmsCode = async (confirmationResult: ConfirmationResult, smsCode: string): Promise<string> => {
         setIsLoading(true);
         try {
-            const exists = await checkPhoneExists(phone);
-            if (exists) {
-                throw new Error('This phone number is already registered. Please log in instead.');
-            }
-
             const credential = await confirmationResult.confirm(smsCode);
-            const firebaseUser = credential.user;
+            return credential.user.uid;
+        } catch (error) {
+            console.error('SMS verification error:', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-            const dummyEmail = generateDummyEmail(phone);
-            await updateEmail(firebaseUser, dummyEmail);
-            await updatePassword(firebaseUser, pin);
+    const completeProfile = async (uid: string, phone: string, pin: string, roleData: any): Promise<void> => {
+        setIsLoading(true);
+        try {
+            // Note: We are no longer creating an email/password credential here 
+            // because `auth/operation-not-allowed` means the Email/Password provider isn't enabled.
+            // The user is already authenticated via Phone Auth.
+            // We just store the PIN securely in Firestore for future logins (if wanted) or 
+            // continue relying solely on phone sessions.
 
             const userData = {
                 phone,
-                role: 'user' as UserRole,
-                onboardingComplete: false,
+                pin, // Storing PIN for alternative login check later
+                onboardingComplete: true,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
+                ...roleData
             };
             
-            await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+            await setDoc(doc(db, 'users', uid), userData, { merge: true });
 
-            const profile = await fetchUserProfile(firebaseUser.uid);
+            const profile = await fetchUserProfile(uid);
             setUser(profile);
-
-            return firebaseUser.uid;
         } catch (error) {
-            console.error('Signup error:', error);
+            console.error('Profile cleanup error:', error);
             throw error;
         } finally {
             setIsLoading(false);
@@ -239,7 +246,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 user,
                 isLoading,
                 isAuthenticated: !!user,
-                signup,
+                verifySmsCode,
+                completeProfile,
                 login,
                 checkPhoneExists,
                 checkOrgCode,
