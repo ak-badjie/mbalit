@@ -106,14 +106,14 @@ export default function SubscribePage() {
 
     if (isLoading) {
         return (
-            <div className="h-[100dvh] overflow-hidden bg-gray-50 flex items-center justify-center">
+            <div className="min-h-full bg-gray-50 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="h-[100dvh] overflow-hidden bg-gray-50">
+        <div className="min-h-full bg-gray-50">
             {/* Header */}
             <div className="bg-white px-5 pt-14 pb-4 border-b border-gray-100 sticky top-0 z-30">
                 <div className="flex items-center gap-3 mb-4">

@@ -40,14 +40,14 @@ export default function DashboardLayout({
     }
 
     return (
-        <div className="h-[100dvh] overflow-hidden bg-gray-50">
+        <div className="h-[100dvh] flex flex-col overflow-hidden bg-gray-50">
             {/* Desktop Header - hidden on mobile */}
             <div className="hidden md:block">
                 <Header />
             </div>
 
-            {/* Mobile-optimized content area */}
-            <main className="md:pt-20 pb-24 md:pb-8">
+            {/* Mobile-optimized content area - scrollable */}
+            <main className="flex-1 overflow-y-auto md:pt-20 pb-24 md:pb-8">
                 {children}
             </main>
 

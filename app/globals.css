@@ -527,6 +527,11 @@ body {
   display: none;
 }
 
+/* Safe area padding for iOS/Android bottom bar */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* ===== ELASTIC SCALING FOR MOBILE (SHORT VIEWPORTS) ===== */
 @media (max-height: 750px) {
   .mb-8 { margin-bottom: clamp(1rem, 2vh, 2rem) !important; }

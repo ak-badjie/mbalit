@@ -68,7 +68,7 @@ export default function ProfilePage() {
     };
 
     return (
-        <div className="h-[100dvh] overflow-hidden bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
+        <div className="min-h-full bg-gradient-to-br from-gray-50 via-white to-emerald-50">
             {/* Header */}
             <header className="sticky top-0 z-40 bg-white/80  backdrop-blur-xl border-b border-gray-200 ">
                 <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">

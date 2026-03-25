@@ -195,7 +195,7 @@ function DashboardContent() {
     // ==========================================
     if (isOrderSuccess && createdJobId) {
         return (
-            <div className="h-[100dvh] overflow-hidden bg-gray-50 flex items-center justify-center flex-col pb-16">
+            <div className="min-h-full bg-gray-50 flex items-center justify-center flex-col pb-16">
                 <div className="w-80 h-80">
                     <DotLottieReact
                         src="/success.lottie"
@@ -212,7 +212,7 @@ function DashboardContent() {
     // ==========================================
     if (step === 0) {
         return (
-            <div className="h-[100dvh] overflow-hidden bg-gray-50">
+            <div className="min-h-full bg-gray-50">
                 {/* Header */}
                 <div className="bg-white px-5 pt-14 pb-5 border-b border-gray-100">
                     <div className="flex items-center justify-between">
@@ -348,7 +348,7 @@ function DashboardContent() {
     // BOOKING FLOW (Steps 1-3)
     // ==========================================
     return (
-        <div className="h-[100dvh] overflow-hidden bg-white px-5 pt-6 pb-6">
+        <div className="min-h-full bg-white px-5 pt-6 pb-6">
             {/* Back button + Steps */}
             <div className="flex items-center justify-between mb-4">
                 <motion.button
