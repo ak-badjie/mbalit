@@ -256,7 +256,7 @@ export default function ReportHazardPage() {
     }
 
     return (
-        <div className="min-h-full bg-gray-50 pb-32">
+        <div className="min-h-full bg-gray-50 pb-[224px] md:pb-32">
             {/* Header */}
             <div className="bg-white px-5 pt-14 pb-5 border-b border-gray-100 flex items-center gap-3">
                 <button
@@ -403,8 +403,11 @@ export default function ReportHazardPage() {
                 )}
             </div>
 
-            {/* Submit (sticky) */}
-            <div className="fixed bottom-0 left-0 right-0 px-5 py-4 bg-white/90 backdrop-blur border-t border-gray-100">
+            {/* Submit (sticky). Sits ABOVE the dashboard BottomNav (which is
+                also fixed bottom-0 with z-50 on mobile) so the primary action
+                is never hidden. On md+ the BottomNav is hidden, so we drop
+                back to bottom-0. */}
+            <div className="fixed left-0 right-0 px-5 py-4 bg-white/90 backdrop-blur border-t border-gray-100 z-40 bottom-[calc(env(safe-area-inset-bottom,0px)+72px)] md:bottom-0">
                 <motion.button
                     whileTap={{ scale: 0.98 }}
                     type="button"

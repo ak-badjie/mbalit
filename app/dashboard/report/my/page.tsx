@@ -14,7 +14,6 @@ import {
     collection,
     query,
     where,
-    orderBy,
     onSnapshot,
     Timestamp,
 } from 'firebase/firestore';
@@ -58,15 +57,17 @@ export default function MyReportsPage() {
     useEffect(() => {
         if (isLoading || !user) return;
 
-        // Subscribe to this reporter's hazard reports, newest first.
-        // Ordering by createdAt desc plus the reporterId equality filter
-        // requires a composite index on (reporterId, createdAt desc); Firestore
-        // surfaces a one-click index creation link in the console error if it's
-        // missing.
+        // Subscribe to this reporter's hazard reports. We intentionally do
+        // NOT add an `orderBy('createdAt', 'desc')` clause here because
+        // combining it with the `reporterId` equality filter requires a
+        // composite index that the project does not provision automatically;
+        // when it's missing, Firestore throws FAILED_PRECONDITION and the user
+        // sees a generic "could not load your reports" error. Resident report
+        // volumes are tiny (one user's own submissions), so sorting in JS is
+        // both correct and cheap.
         const q = query(
             collection(db, 'environmentalReports'),
             where('reporterId', '==', user.id),
-            orderBy('createdAt', 'desc'),
         );
         const unsub = onSnapshot(
             q,
@@ -81,6 +82,11 @@ export default function MyReportsPage() {
                         status: (data.status as EnvironmentalReportStatus) || 'pending',
                         createdAt: data.createdAt as Timestamp | undefined,
                     };
+                });
+                rows.sort((a, b) => {
+                    const at = a.createdAt?.toMillis?.() ?? 0;
+                    const bt = b.createdAt?.toMillis?.() ?? 0;
+                    return bt - at;
                 });
                 setReports(rows);
                 setLoading(false);
