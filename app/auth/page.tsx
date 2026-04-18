@@ -64,8 +64,34 @@ function AuthPage() {
     const searchParams = useSearchParams();
     const isSignupMode = searchParams.get('signup') === 'true';
     const isCollectorMode = searchParams.get('role') === 'collector';
-    const continueOnboarding = searchParams.get('continue') === 'onboarding';
     const { login, completeProfile, createAccount, checkPhoneExists, checkOrgCode, isLoading, user } = useAuth();
+
+    // Map any auth error (Firebase or otherwise) to a friendly, actionable message.
+    const friendlyAuthError = (err: unknown): string => {
+        const anyErr = err as { code?: string; message?: string } | null;
+        const code = anyErr?.code || '';
+        const msg = anyErr?.message || (typeof err === 'string' ? err : '');
+        const haystack = `${code} ${msg}`;
+        if (haystack.includes('operation-not-allowed')) {
+            return 'Sign-in is currently disabled for this account type. Please contact support.';
+        }
+        if (haystack.includes('network-request-failed')) {
+            return 'Network error — check your connection and try again.';
+        }
+        if (haystack.includes('too-many-requests')) {
+            return 'Too many attempts. Please wait a minute and try again.';
+        }
+        if (haystack.includes('user-not-found') || haystack.includes('wrong-password') || haystack.includes('invalid-credential')) {
+            return 'Invalid phone number or PIN.';
+        }
+        if (haystack.includes('email-already-in-use')) {
+            return 'This phone number is already registered.';
+        }
+        if (haystack.includes('weak-password')) {
+            return 'PIN is too weak. Please choose a different 6-digit PIN.';
+        }
+        return msg || 'Something went wrong. Please try again.';
+    };
 
     // Flow state
     const [mode, setMode] = useState<'login' | 'signup'>(isSignupMode ? 'signup' : 'login');
@@ -106,10 +132,27 @@ function AuthPage() {
         const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+    const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+    const [noAccountFound, setNoAccountFound] = useState(false);
 
-    // Auto-continue onboarding for existing users
+    // Reset all transient PIN/error state — used when switching mode or recovering.
+    const resetTransientAuthState = () => {
+        setPin('');
+        setConfirmPin('');
+        setPinStep('create');
+        setLoginPin('');
+        setError(null);
+        setCreatedUid(null);
+        setNoAccountFound(false);
+        setIsCheckingPhone(false);
+        setIsCreatingAccount(false);
+    };
+
+    // Auto-resume onboarding for any authenticated user with an incomplete profile,
+    // or redirect to the appropriate dashboard if onboarding is already complete.
     useEffect(() => {
-        if (continueOnboarding && user && user.onboardingComplete === false) {
+        if (!user) return;
+        if (user.onboardingComplete === false) {
             if (user.role === 'collector') {
                 if ('collectorType' in user && user.collectorType === 'organization') {
                     setRegistrationType('organization');
@@ -119,15 +162,25 @@ function AuthPage() {
                 } else {
                     setRegistrationType('collector');
                 }
-                setStep(1);
             } else {
                 setRegistrationType('waste_owner');
-                setStep(1);
             }
+            setMode('signup');
+            setStep(3); // PIN already created — jump to profile completion
             if (user.name) setFullName(user.name);
             if (user.profileImage) setProfileImage(user.profileImage);
+        } else if (user.onboardingComplete === true) {
+            // Already onboarded — don't keep them stuck on /auth.
+            const isOrg = user.role === 'collector' && 'collectorType' in user && user.collectorType === 'organization';
+            if (isOrg) {
+                window.location.href = '/organization/dashboard';
+            } else if (user.role === 'collector') {
+                window.location.href = '/collector/dashboard';
+            } else {
+                window.location.href = '/dashboard';
+            }
         }
-    }, [continueOnboarding, user]);
+    }, [user]);
 
     // Format phone display
     const formatPhone = (num: string) => {
@@ -176,12 +229,7 @@ function AuthPage() {
                 window.location.href = '/dashboard';
             }
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Login failed';
-            if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential')) {
-                setError('Invalid phone number or PIN');
-            } else {
-                setError(msg);
-            }
+            setError(friendlyAuthError(err));
             setLoginPin(''); // Clear pin on error
         }
     };
@@ -501,21 +549,59 @@ function AuthPage() {
                         />
                     </div>
 
-                    {/* Continue button */}
+                    {/* Continue button — checks if account exists before asking for PIN */}
                     <button
                         type="button"
-                        onClick={() => { setLoginStep(1); setError(null); }}
-                        disabled={phoneNumber.length < 7}
-                        className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed transition-opacity mt-8"
+                        onClick={async () => {
+                            setError(null);
+                            setNoAccountFound(false);
+                            const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+                            setIsCheckingPhone(true);
+                            try {
+                                const exists = await checkPhoneExists(fullPhone);
+                                if (!exists) {
+                                    setNoAccountFound(true);
+                                    setError('No account found for this number.');
+                                    return;
+                                }
+                                setLoginStep(1);
+                            } catch (err: unknown) {
+                                setError(friendlyAuthError(err));
+                            } finally {
+                                setIsCheckingPhone(false);
+                            }
+                        }}
+                        disabled={phoneNumber.length < 7 || isCheckingPhone}
+                        className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed transition-opacity mt-8 flex items-center justify-center"
                     >
-                        Continue
+                        {isCheckingPhone ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Continue'}
                     </button>
+
+                    {/* "No account found" recovery: one-tap switch to signup with phone preserved */}
+                    {noAccountFound && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                resetTransientAuthState();
+                                setMode('signup');
+                                setStep(0);
+                                // phoneNumber + country are preserved across mode switch
+                            }}
+                            className="w-full py-3 mt-3 border-2 border-gray-900 text-gray-900 font-semibold rounded-2xl"
+                        >
+                            Sign up with this number
+                        </button>
+                    )}
 
                     {/* Switch to signup */}
                     <div className="mt-8 text-center pb-6">
                         <button
                             type="button"
-                            onClick={() => { setMode('signup'); setStep(0); }}
+                            onClick={() => {
+                                resetTransientAuthState();
+                                setMode('signup');
+                                setStep(0);
+                            }}
                             className="text-sm text-gray-500"
                         >
                             Don&apos;t have an account? <span className="font-semibold text-gray-900">Sign Up</span>
@@ -621,7 +707,11 @@ function AuthPage() {
                     <div className="mt-8 text-center">
                         <button
                             type="button"
-                            onClick={() => setMode('login')}
+                            onClick={() => {
+                                resetTransientAuthState();
+                                setMode('login');
+                                setLoginStep(0);
+                            }}
                             className="text-sm text-gray-500"
                         >
                             Already have an account? <span className="font-semibold text-gray-900">Sign In</span>
@@ -758,22 +848,28 @@ function AuthPage() {
                             type="button"
                             onClick={async () => {
                                 setError(null);
+                                setIsCheckingPhone(true);
                                 try {
                                     const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
                                     if (mode === 'signup') {
                                         const exists = await checkPhoneExists(fullPhone);
                                         if (exists) {
-                                            setError('This phone number is already registered. Please log in instead.');
+                                            // Auto-switch to login mode preserving phone — no dead end.
+                                            resetTransientAuthState();
+                                            setMode('login');
+                                            setLoginStep(1);
+                                            setError('This phone is already registered. Please enter your existing PIN.');
                                             return;
                                         }
                                     }
                                     setStep(6);
-                                } catch (err: any) {
-                                    console.error(err);
-                                    setError(err.message || 'Failed to continue');
+                                } catch (err: unknown) {
+                                    setError(friendlyAuthError(err));
+                                } finally {
+                                    setIsCheckingPhone(false);
                                 }
                             }}
-                            disabled={phoneNumber.length < 7}
+                            disabled={phoneNumber.length < 7 || isCheckingPhone}
                             className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
                         >
                             Continue
@@ -821,54 +917,92 @@ function AuthPage() {
                             })}
                         </div>
 
-                        {/* Dial pad */}
+                        {/* Dial pad — replaced with loader during account creation */}
                         <div className="flex-1 flex items-center">
-                            <DialPad
-                                value={pinStep === 'create' ? pin : confirmPin}
-                                onChange={async (val) => {
-                                    if (pinStep === 'create') {
-                                        setPin(val);
-                                        if (val.length === 6) {
-                                            setTimeout(() => setPinStep('confirm'), 300);
-                                        }
-                                    } else {
-                                        setConfirmPin(val);
-                                        if (val.length === 6) {
-                                            if (val === pin) {
-                                                try {
-                                                    setIsCreatingAccount(true);
-                                                    const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
-                                                    const newUid = await createAccount(fullPhone, pin);
-                                                    setCreatedUid(newUid);
-                                                    setTimeout(() => setStep(3), 300);
-                                                } catch (err: any) {
-                                                    console.error('Account creation failed', err);
-                                                    const msg = err?.message || 'Failed to create account';
-                                                    if (msg.includes('email-already-in-use')) {
-                                                        setError('This phone number is already registered. Please log in.');
-                                                    } else if (msg.includes('weak-password')) {
-                                                        setError('PIN is too weak. Please choose a different PIN.');
-                                                    } else {
-                                                        setError(msg);
-                                                    }
+                            {isCreatingAccount ? (
+                                <div className="w-full flex flex-col items-center justify-center gap-4 py-12">
+                                    <Loader2 className="w-10 h-10 animate-spin text-gray-900" />
+                                    <p className="text-gray-600 font-medium">Creating your account…</p>
+                                </div>
+                            ) : (
+                                <DialPad
+                                    value={pinStep === 'create' ? pin : confirmPin}
+                                    onChange={async (val) => {
+                                        if (isCreatingAccount) return; // ignore key presses mid-request
+                                        if (pinStep === 'create') {
+                                            setPin(val);
+                                            if (val.length === 6) {
+                                                setTimeout(() => setPinStep('confirm'), 300);
+                                            }
+                                        } else {
+                                            setConfirmPin(val);
+                                            if (val.length === 6) {
+                                                if (val !== pin) {
+                                                    setError('PINs do not match. Please try again.');
                                                     setConfirmPin('');
                                                     setPinStep('create');
                                                     setPin('');
+                                                    return;
+                                                }
+
+                                                const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+                                                setIsCreatingAccount(true);
+                                                setError(null);
+                                                try {
+                                                    const newUid = await createAccount(fullPhone, pin);
+                                                    setCreatedUid(newUid);
+                                                    setTimeout(() => setStep(3), 300);
+                                                } catch (err: unknown) {
+                                                    const code = (err as { code?: string; message?: string })?.code || '';
+                                                    const msg = (err as { message?: string })?.message || '';
+                                                    const isDup = code.includes('email-already-in-use') || msg.includes('email-already-in-use');
+
+                                                    if (isDup) {
+                                                        // Silent recovery: maybe an abandoned previous signup.
+                                                        // Try to sign in with the same PIN before bothering the user.
+                                                        try {
+                                                            const uid = await login(fullPhone, pin);
+                                                            setCreatedUid(uid);
+                                                            // Look up the existing user doc to decide where to send them.
+                                                            const usersRef = collection(db, 'users');
+                                                            const lookupSnap = await getDocs(query(usersRef, where('phone', '==', fullPhone)));
+                                                            const docData = lookupSnap.empty ? null : lookupSnap.docs[0].data();
+                                                            if (docData && docData.onboardingComplete === true) {
+                                                                if (docData.role === 'collector' && docData.collectorType === 'organization') {
+                                                                    window.location.href = '/organization/dashboard';
+                                                                } else if (docData.role === 'collector') {
+                                                                    window.location.href = '/collector/dashboard';
+                                                                } else {
+                                                                    window.location.href = '/dashboard';
+                                                                }
+                                                                return;
+                                                            }
+                                                            // Account exists but onboarding incomplete → resume at profile step.
+                                                            setTimeout(() => setStep(3), 300);
+                                                            return;
+                                                        } catch {
+                                                            // Sign-in with same PIN also failed — they have an account but a different PIN.
+                                                            resetTransientAuthState();
+                                                            setMode('login');
+                                                            setLoginStep(1);
+                                                            setError('This phone is already registered. Please enter your existing PIN.');
+                                                            return;
+                                                        }
+                                                    }
+
+                                                    // Other failures — keep the create PIN, just clear confirm so user can retry.
+                                                    setError(friendlyAuthError(err));
+                                                    setConfirmPin('');
                                                 } finally {
                                                     setIsCreatingAccount(false);
                                                 }
-                                            } else {
-                                                setError('PINs do not match. Please try again.');
-                                                setConfirmPin('');
-                                                setPinStep('create');
-                                                setPin('');
                                             }
                                         }
-                                    }
-                                }}
-                                maxLength={6}
-                                showLetters={false}
-                            />
+                                    }}
+                                    maxLength={6}
+                                    showLetters={false}
+                                />
+                            )}
                         </div>
                     </motion.div>
                 )}

@@ -20,7 +20,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     createAccount: (phone: string, pin: string) => Promise<string>;
     completeProfile: (uid: string, phone: string, pin: string, roleData: any) => Promise<void>;
-    login: (phone: string, pin: string) => Promise<void>;
+    login: (phone: string, pin: string) => Promise<string>;
     checkPhoneExists: (phone: string) => Promise<boolean>;
     checkOrgCode: (orgCode: string) => Promise<boolean>;
     changePin: (oldPin: string, newPin: string) => Promise<void>;
@@ -147,11 +147,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const login = async (phone: string, pin: string) => {
+    const login = async (phone: string, pin: string): Promise<string> => {
         setIsLoading(true);
         try {
             const dummyEmail = generateDummyEmail(phone);
-            await signInWithEmailAndPassword(auth, dummyEmail, pin);
+            const cred = await signInWithEmailAndPassword(auth, dummyEmail, pin);
+            return cred.user.uid;
         } catch (error) {
             console.error('Login error:', error);
             throw error;
