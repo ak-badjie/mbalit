@@ -42,3 +42,7 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = "AIzaSyCY6vNoIN_MGZxOl4myjpF8hZK7H1jATwU"
 run = ["sh", "-c", " npm run start"]
 deploymentTarget = "cloudrun"
 build = ["sh", "-c", "npm run build"]
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
