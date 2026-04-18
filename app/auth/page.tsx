@@ -64,7 +64,7 @@ function AuthPage() {
     const searchParams = useSearchParams();
     const isSignupMode = searchParams.get('signup') === 'true';
     const isCollectorMode = searchParams.get('role') === 'collector';
-    const { login, completeProfile, createAccount, checkPhoneExists, checkOrgCode, isLoading, user } = useAuth();
+    const { login, completeProfile, createAccount, checkPhoneExists, checkOrgCode, requestPinReset, isLoading, user } = useAuth();
 
     // Map any auth error (Firebase or otherwise) to a friendly, actionable message.
     const friendlyAuthError = (err: unknown): string => {
@@ -102,8 +102,12 @@ function AuthPage() {
 
     // Login state
     const [loginPin, setLoginPin] = useState('');
-    const [loginStep, setLoginStep] = useState(0); // 0 = phone, 1 = pin entry
+    const [loginStep, setLoginStep] = useState(0); // 0 = phone, 1 = pin entry, 2 = forgot pin recovery
     const [error, setError] = useState<string | null>(null);
+
+    // Forgot-PIN recovery state
+    const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+    const [resetReference, setResetReference] = useState<string | null>(null);
 
     // Registration shared state
     const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
@@ -569,6 +573,132 @@ function AuthPage() {
                         <div className="mt-8 text-center">
                             {isLoading && <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-900" />}
                         </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setError(null);
+                                setLoginPin('');
+                                setResetReference(null);
+                                setLoginStep(2);
+                            }}
+                            className="mt-4 text-sm font-medium text-gray-700 underline underline-offset-4"
+                        >
+                            Forgot PIN?
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Step 2: Forgot-PIN recovery flow
+        if (loginStep === 2) {
+            const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+            return (
+                <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
+                    <div className="flex items-center pt-16 px-6 mb-8">
+                        <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => {
+                                setLoginStep(1);
+                                setError(null);
+                                setResetReference(null);
+                            }}
+                            className="p-2 -ml-2 rounded-full hover:bg-gray-100"
+                        >
+                            <ArrowLeft className="w-6 h-6 text-gray-900" />
+                        </motion.button>
+                        <div className="flex-1 text-center font-semibold text-gray-900 pr-8">
+                            Reset PIN
+                        </div>
+                    </div>
+
+                    <div className="flex-1 px-6 flex flex-col items-center pb-safe">
+                        {resetReference ? (
+                            <div className="w-full max-w-sm mt-6">
+                                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
+                                    <Check className="w-8 h-8 text-emerald-600" />
+                                </div>
+                                <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                                    Request received
+                                </h1>
+                                <p className="text-gray-500 text-center mb-6">
+                                    Our support team will contact you on{' '}
+                                    <span className="font-medium text-gray-900">{fullPhone}</span>{' '}
+                                    within 24 hours to verify your identity. Once verified you&apos;ll be issued a temporary PIN that you can change after signing in.
+                                </p>
+                                <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl mb-6">
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Reference</p>
+                                    <p className="font-mono font-semibold text-gray-900 text-lg">{resetReference}</p>
+                                    <p className="text-xs text-gray-500 mt-2">Quote this code when our team calls you.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setResetReference(null);
+                                        setError(null);
+                                        setLoginStep(0);
+                                        setPhoneNumber('');
+                                    }}
+                                    className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl"
+                                >
+                                    Back to sign in
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="w-full max-w-sm mt-6">
+                                <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                                    Forgot your PIN?
+                                </h1>
+                                <p className="text-gray-500 text-center mb-6">
+                                    For your security we don&apos;t reset PINs based on a phone number alone. Submit a reset request and our support team will verify your identity before issuing a temporary PIN.
+                                </p>
+
+                                <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl mb-6">
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Account phone</p>
+                                    <p className="font-semibold text-gray-900">{fullPhone}</p>
+                                </div>
+
+                                {error && (
+                                    <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl">
+                                        <p className="text-sm text-red-600 text-center">{error}</p>
+                                    </div>
+                                )}
+
+                                <button
+                                    type="button"
+                                    disabled={isSubmittingReset}
+                                    onClick={async () => {
+                                        setError(null);
+                                        setIsSubmittingReset(true);
+                                        try {
+                                            const result = await requestPinReset(fullPhone);
+                                            setResetReference(result.referenceCode);
+                                        } catch (err: unknown) {
+                                            const msg = err instanceof Error ? err.message : friendlyAuthError(err);
+                                            setError(msg);
+                                        } finally {
+                                            setIsSubmittingReset(false);
+                                        }
+                                    }}
+                                    className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-50 flex items-center justify-center"
+                                >
+                                    {isSubmittingReset ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit reset request'}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setError(null);
+                                        setResetReference(null);
+                                        setLoginStep(1);
+                                    }}
+                                    className="w-full py-3 mt-3 text-sm text-gray-500"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             );

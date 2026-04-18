@@ -48,6 +48,33 @@ A Next.js web application for waste collection management, featuring real-time t
 - `MODEM_PAY_SECRET_KEY`
 - `MODEM_PAY_WEBHOOK_SECRET`
 
+## PIN Reset (Forgot PIN flow)
+Self-service PIN reset is intentionally **not** automated by phone alone — that would let anyone with a target's number take over the account. The flow is support-assisted and enforced server-side:
+1. User taps "Forgot PIN?" on the PIN entry screen.
+2. The client calls `POST /api/auth/pin-reset` (see `app/api/auth/pin-reset/route.ts`). The server uses `firebase-admin` (`lib/firebase-admin.ts`) to:
+   - Throttle per phone: max 1 active request per 24h, max 3 per 7 days.
+   - Throttle per IP: max 5 requests per hour.
+   - Look up the matching user (without leaking which phones are registered).
+   - Write a record to `pinResetRequests` (status `pending`) and an entry to `pinResetAuditLog` (event `pin_reset_requested`, plus `pin_reset_rejected` events with reason when throttled).
+   - Return a human-readable reference code (e.g. `R-AB12-CD34`).
+3. The user sees the reference code and is told support will contact them within 24 hours.
+4. **Operator action** (out of band): support verifies the user's identity, then resets the password via the Firebase Console or Admin SDK and updates the request doc to `status: 'completed'`. The user is given a temporary PIN they can change after signing in.
+
+### Required env var for production
+- `FIREBASE_SERVICE_ACCOUNT` — JSON string of a Firebase service account (or set up application-default credentials). Without it the API route returns 503 and the reset flow is disabled.
+
+### Required Firestore security rules
+Reset metadata must not be exposed to clients. Recommended rules:
+- `pinResetRequests` and `pinResetAuditLog`: deny all client read/list/create/update/delete. The server uses Admin SDK and bypasses rules.
+- `users` collection should already restrict reads to the user's own document; the server admin path bypasses this for the lookup.
+
+### Firestore composite indexes
+The server queries on `pinResetRequests` need:
+- `(phone ASC, createdAt DESC)` — per-phone throttle lookup.
+- `(ip ASC, createdAt ASC)` — per-IP throttle lookup.
+
+Firestore prints a creation link the first time each query runs in production.
+
 ## Notes
 - Firebase credentials currently have inline fallback values in `lib/firebase.ts`. These should be moved to environment variables for production.
 - The app uses Modem Pay for mobile money payments.

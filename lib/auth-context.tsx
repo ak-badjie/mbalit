@@ -24,6 +24,7 @@ interface AuthContextType {
     checkPhoneExists: (phone: string) => Promise<boolean>;
     checkOrgCode: (orgCode: string) => Promise<boolean>;
     changePin: (oldPin: string, newPin: string) => Promise<void>;
+    requestPinReset: (phone: string) => Promise<{ referenceCode: string }>;
     logout: () => Promise<void>;
     updateCollectorWasteTypes: (wasteTypes: WasteType[]) => Promise<void>;
     setCollectorAvailability: (available: boolean) => Promise<void>;
@@ -174,6 +175,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const requestPinReset = async (phone: string): Promise<{ referenceCode: string }> => {
+        // All rate limiting, audit logging, and Firestore writes happen on the
+        // server (see app/api/auth/pin-reset/route.ts) so they are enforced with
+        // admin credentials and cannot be bypassed by a modified client.
+        let res: Response;
+        try {
+            res = await fetch('/api/auth/pin-reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone }),
+            });
+        } catch (err) {
+            console.error('Network error during PIN reset request:', err);
+            throw new Error('Could not start a reset right now. Please check your connection and try again.');
+        }
+
+        let data: { success?: boolean; referenceCode?: string; error?: string } = {};
+        try {
+            data = await res.json();
+        } catch {
+            // ignore JSON parse errors; we'll fall back to status-based message
+        }
+
+        if (!res.ok || !data.success || !data.referenceCode) {
+            throw new Error(data.error || 'Could not start a reset right now. Please try again in a moment.');
+        }
+
+        return { referenceCode: data.referenceCode };
+    };
+
     const logout = async () => {
         try {
             await signOut(auth);
@@ -226,6 +257,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 checkPhoneExists,
                 checkOrgCode,
                 changePin,
+                requestPinReset,
                 logout,
                 updateCollectorWasteTypes,
                 setCollectorAvailability,
