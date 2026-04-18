@@ -105,6 +105,16 @@ export default function ReportHazardPage() {
     const canSubmit =
         !!user && photos.length > 0 && !!location && !isSubmitting;
 
+    // Persist a requestId for the current draft so a retry after a network
+    // hiccup is treated by the server as the SAME report (no duplicates).
+    const requestIdRef = useRef<string>('');
+    if (!requestIdRef.current) {
+        requestIdRef.current =
+            typeof crypto !== 'undefined' && 'randomUUID' in crypto
+                ? crypto.randomUUID()
+                : `req_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    }
+
     const handleSubmit = async () => {
         if (!canSubmit || !user || !location) return;
         setIsSubmitting(true);
@@ -138,7 +148,12 @@ export default function ReportHazardPage() {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${idToken}`,
                 },
-                body: JSON.stringify({ photos, note: note.trim(), location }),
+                body: JSON.stringify({
+                    requestId: requestIdRef.current,
+                    photos,
+                    note: note.trim(),
+                    location,
+                }),
             });
 
             if (!res.ok) {
