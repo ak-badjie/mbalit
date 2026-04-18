@@ -64,7 +64,7 @@ function AuthPage() {
     const searchParams = useSearchParams();
     const isSignupMode = searchParams.get('signup') === 'true';
     const isCollectorMode = searchParams.get('role') === 'collector';
-    const { login, completeProfile, createAccount, checkPhoneExists, checkOrgCode, requestPinReset, isLoading, user } = useAuth();
+    const { login, completeProfile, createAccount, checkPhoneExists, checkOrgCode, requestPinReset, lookupRecoveryEmailForPhone, sendPinResetEmail, isLoading, user } = useAuth();
 
     // Map any auth error (Firebase or otherwise) to a friendly, actionable message.
     const friendlyAuthError = (err: unknown): string => {
@@ -108,6 +108,11 @@ function AuthPage() {
     // Forgot-PIN recovery state
     const [isSubmittingReset, setIsSubmittingReset] = useState(false);
     const [resetReference, setResetReference] = useState<string | null>(null);
+    // Self-service email reset (when user has a verified recovery email).
+    const [recoveryEmailOnFile, setRecoveryEmailOnFile] = useState<{ email: string; verified: boolean } | null>(null);
+    const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+    const [resetEmailSentTo, setResetEmailSentTo] = useState<string | null>(null);
+    const [isCheckingRecovery, setIsCheckingRecovery] = useState(false);
 
     // Registration shared state
     const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
@@ -153,7 +158,29 @@ function AuthPage() {
         setNoAccountFound(false);
         setIsCheckingPhone(false);
         setIsCreatingAccount(false);
+        setRecoveryEmailOnFile(null);
+        setResetEmailSentTo(null);
     };
+
+    // When the user enters the Forgot PIN view, look up whether the account
+    // has a verified recovery email so we can offer self-service reset.
+    useEffect(() => {
+        if (loginStep !== 2) return;
+        let cancelled = false;
+        const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+        if (!phoneNumber) return;
+        setIsCheckingRecovery(true);
+        setRecoveryEmailOnFile(null);
+        lookupRecoveryEmailForPhone(fullPhone)
+            .then((res) => {
+                if (cancelled) return;
+                setRecoveryEmailOnFile(res);
+            })
+            .finally(() => {
+                if (!cancelled) setIsCheckingRecovery(false);
+            });
+        return () => { cancelled = true; };
+    }, [loginStep, phoneNumber, country.dialCode, lookupRecoveryEmailForPhone]);
 
     // Auto-resume onboarding for any authenticated user with an incomplete profile,
     // or redirect to the appropriate dashboard if onboarding is already complete.
@@ -624,6 +651,12 @@ function AuthPage() {
         // Step 2: Forgot-PIN recovery flow
         if (loginStep === 2) {
             const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+            const obscureEmail = (e: string) => {
+                const [user, domain] = e.split('@');
+                if (!user || !domain) return e;
+                const head = user.length <= 2 ? user[0] || '' : user.slice(0, 2);
+                return `${head}${'•'.repeat(Math.max(1, user.length - 2))}@${domain}`;
+            };
             return (
                 <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
                     <div className="flex items-center pt-16 px-6 mb-8">
@@ -643,8 +676,37 @@ function AuthPage() {
                         </div>
                     </div>
 
-                    <div className="flex-1 px-6 flex flex-col items-center pb-safe">
-                        {resetReference ? (
+                    <div className="flex-1 px-6 flex flex-col items-center pb-safe overflow-y-auto">
+                        {resetEmailSentTo ? (
+                            <div className="w-full max-w-sm mt-6">
+                                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
+                                    <Check className="w-8 h-8 text-emerald-600" />
+                                </div>
+                                <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                                    Check your email
+                                </h1>
+                                <p className="text-gray-500 text-center mb-6">
+                                    We sent a reset link to{' '}
+                                    <span className="font-medium text-gray-900">{resetEmailSentTo}</span>.
+                                    Open it from this device and you&apos;ll be able to set a new 6-digit PIN.
+                                </p>
+                                <p className="text-xs text-gray-500 text-center mb-6">
+                                    The link expires in about an hour. Check your spam folder if you don&apos;t see it.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setResetEmailSentTo(null);
+                                        setError(null);
+                                        setLoginStep(0);
+                                        setPhoneNumber('');
+                                    }}
+                                    className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl"
+                                >
+                                    Back to sign in
+                                </button>
+                            </div>
+                        ) : resetReference ? (
                             <div className="w-full max-w-sm mt-6">
                                 <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
                                     <Check className="w-8 h-8 text-emerald-600" />
@@ -695,6 +757,40 @@ function AuthPage() {
                                     </div>
                                 )}
 
+                                {/* Self-service: only shown when the account has a verified
+                                    recovery email on file. */}
+                                {recoveryEmailOnFile && recoveryEmailOnFile.verified && (
+                                    <div className="mb-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
+                                        <p className="text-sm text-emerald-800">
+                                            A recovery email is on file:{' '}
+                                            <span className="font-medium">{obscureEmail(recoveryEmailOnFile.email)}</span>
+                                        </p>
+                                    </div>
+                                )}
+
+                                {recoveryEmailOnFile && recoveryEmailOnFile.verified && (
+                                    <button
+                                        type="button"
+                                        disabled={isSendingResetEmail}
+                                        onClick={async () => {
+                                            setError(null);
+                                            setIsSendingResetEmail(true);
+                                            try {
+                                                const { email } = await sendPinResetEmail(fullPhone);
+                                                setResetEmailSentTo(email);
+                                            } catch (err: unknown) {
+                                                const msg = err instanceof Error ? err.message : friendlyAuthError(err);
+                                                setError(msg);
+                                            } finally {
+                                                setIsSendingResetEmail(false);
+                                            }
+                                        }}
+                                        className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-50 flex items-center justify-center mb-3"
+                                    >
+                                        {isSendingResetEmail ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Email me a reset link'}
+                                    </button>
+                                )}
+
                                 <button
                                     type="button"
                                     disabled={isSubmittingReset}
@@ -711,10 +807,24 @@ function AuthPage() {
                                             setIsSubmittingReset(false);
                                         }
                                     }}
-                                    className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-50 flex items-center justify-center"
+                                    className={`w-full py-4 font-semibold rounded-2xl disabled:opacity-50 flex items-center justify-center ${
+                                        recoveryEmailOnFile && recoveryEmailOnFile.verified
+                                            ? 'bg-white border-2 border-gray-900 text-gray-900'
+                                            : 'bg-gray-900 text-white'
+                                    }`}
                                 >
-                                    {isSubmittingReset ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit reset request'}
+                                    {isSubmittingReset
+                                        ? <Loader2 className="w-5 h-5 animate-spin" />
+                                        : recoveryEmailOnFile && recoveryEmailOnFile.verified
+                                            ? 'Use support-assisted reset instead'
+                                            : 'Submit reset request'}
                                 </button>
+
+                                {isCheckingRecovery && (
+                                    <p className="text-xs text-center text-gray-400 mt-3">
+                                        Checking for a recovery email…
+                                    </p>
+                                )}
 
                                 <button
                                     type="button"

@@ -40,7 +40,14 @@ import {
     addDoc,
 } from 'firebase/firestore';
 import bcrypt from 'bcryptjs';
-import { db } from './firebase';
+import {
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
+    verifyPasswordResetCode,
+    confirmPasswordReset,
+    type ActionCodeSettings,
+} from 'firebase/auth';
+import { db, auth } from './firebase';
 import { User, WasteType, Collector } from '@/types';
 
 interface AuthContextType {
@@ -54,6 +61,15 @@ interface AuthContextType {
     checkOrgCode: (orgCode: string) => Promise<boolean>;
     changePin: (oldPin: string, newPin: string) => Promise<void>;
     requestPinReset: (phone: string) => Promise<{ referenceCode: string }>;
+    // Recovery email (self-service PIN reset via Firebase Auth email link)
+    addRecoveryEmail: (email: string) => Promise<void>;
+    resendRecoveryEmailVerification: () => Promise<void>;
+    removeRecoveryEmail: () => Promise<void>;
+    lookupRecoveryEmailForPhone: (phone: string) => Promise<{ email: string; verified: boolean } | null>;
+    sendPinResetEmail: (phone: string) => Promise<{ email: string }>;
+    verifyRecoveryActionCode: (oobCode: string) => Promise<{ email: string }>;
+    completeRecoveryEmailVerification: (oobCode: string) => Promise<void>;
+    completePinResetWithCode: (oobCode: string, newPin: string) => Promise<{ uid: string }>;
     logout: () => Promise<void>;
     updateCollectorWasteTypes: (wasteTypes: WasteType[]) => Promise<void>;
     setCollectorAvailability: (available: boolean) => Promise<void>;
@@ -362,10 +378,305 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { referenceCode };
     };
 
+    // ──────────────────────────────────────────────────────────────────────
+    // RECOVERY EMAIL (self-service PIN reset via Firebase Auth)
+    // ──────────────────────────────────────────────────────────────────────
+    //
+    // Architecture note: PIN auth itself is still phone+bcrypt in Firestore
+    // (see top-of-file SECURITY TRADEOFF). Firebase Auth is used here ONLY
+    // as a verified email factor: when the user attaches a recovery email we
+    // create (or reuse) a Firebase Auth account with a random throwaway
+    // password and immediately send a `sendPasswordResetEmail` link. The act
+    // of completing that email link (which proves email ownership) marks the
+    // recovery email as verified on the user doc. The same `sendPasswordResetEmail`
+    // primitive is later used for the actual PIN-reset flow — the action
+    // handler page (/auth/email-action) calls verifyPasswordResetCode to
+    // confirm ownership, then collects a new 6-digit PIN and writes the
+    // bcrypt hash back to the Firestore user doc. We immediately invalidate
+    // the oobCode by calling confirmPasswordReset with another random
+    // password (the Auth password is never user-facing).
+    //
+    // The email link's continueUrl carries `mode=verify-recovery` or
+    // `mode=reset-pin` so the action handler can branch.
+
+    const ACTION_HANDLER_PATH = '/auth/email-action';
+
+    const buildActionCodeSettings = (mode: 'verify-recovery' | 'reset-pin'): ActionCodeSettings => {
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        return {
+            url: `${origin}${ACTION_HANDLER_PATH}?intent=${mode}`,
+            handleCodeInApp: false,
+        };
+    };
+
+    const randomPassword = () => {
+        // Throwaway 32-char password — never shown, never reused.
+        const bytes = new Uint8Array(24);
+        if (typeof window !== 'undefined' && window.crypto) {
+            window.crypto.getRandomValues(bytes);
+        } else {
+            for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+        }
+        return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('') + 'A1!';
+    };
+
+    const addRecoveryEmail = async (email: string): Promise<void> => {
+        if (!user) throw new Error('You must be signed in to add a recovery email.');
+        if (!auth) throw new Error('Auth not ready. Please try again.');
+        const normalized = email.trim().toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalized)) {
+            throw new Error('Please enter a valid email address.');
+        }
+
+        // Make sure no other Mbalit user has already claimed this recovery
+        // email. Fail-closed: if the duplicate-check query itself fails (bad
+        // index, permissions, network), we refuse rather than risk attaching
+        // the same recovery email to two accounts (which would make the later
+        // email→user lookup in `findUserByRecoveryEmail` ambiguous and could
+        // let one user reset another user's PIN).
+        try {
+            // Pull up to 2 matches so we can distinguish "none" from "only mine".
+            const dupSnap = await getDocs(
+                query(collection(db, 'users'), where('recoveryEmail', '==', normalized), limit(2)),
+            );
+            const other = dupSnap.docs.find((d) => d.id !== user.id);
+            if (other) {
+                throw new Error('This email is already linked to another account.');
+            }
+        } catch (err) {
+            if (err instanceof Error && /already linked/.test(err.message)) throw err;
+            console.error('Recovery email duplicate check failed (refusing):', err);
+            throw new Error('Could not verify this email is unique. Please try again in a moment.');
+        }
+
+        // Try to create a Firebase Auth account with a throwaway password.
+        // If the email is already registered in Firebase Auth (e.g. user
+        // re-attaching after removing), fall through and just resend the
+        // password-reset email — ownership is proven by clicking the link.
+        let authUid: string | undefined;
+        try {
+            const cred = await createUserWithEmailAndPassword(auth, normalized, randomPassword());
+            authUid = cred.user.uid;
+            // Don't keep the user signed in to Firebase Auth — our session
+            // model is the localStorage uid only.
+            try { await auth.signOut(); } catch { /* non-fatal */ }
+        } catch (err) {
+            const code = (err as { code?: string })?.code || '';
+            if (code === 'auth/email-already-in-use') {
+                // Acceptable — the password-reset link still proves ownership.
+                authUid = undefined;
+            } else if (code === 'auth/invalid-email') {
+                throw new Error('Please enter a valid email address.');
+            } else if (code === 'auth/weak-password') {
+                // Should never happen with our random password, but surface it.
+                throw new Error('Could not set up recovery email. Please try again.');
+            } else if (code === 'auth/operation-not-allowed') {
+                throw new Error('Email recovery is not enabled. Please contact support.');
+            } else {
+                throw err;
+            }
+        }
+
+        // Persist the (unverified) recovery email so the action handler can
+        // map the email back to this user when the link is clicked.
+        await setDoc(
+            doc(db, 'users', user.id),
+            {
+                recoveryEmail: normalized,
+                recoveryEmailVerified: false,
+                ...(authUid ? { recoveryAuthUid: authUid } : {}),
+                updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+        );
+
+        // Send the verification email (Firebase Auth password-reset link with
+        // our continueUrl tagging the intent).
+        await sendPasswordResetEmail(auth, normalized, buildActionCodeSettings('verify-recovery'));
+    };
+
+    const resendRecoveryEmailVerification = async (): Promise<void> => {
+        if (!user) throw new Error('You must be signed in.');
+        if (!user.recoveryEmail) throw new Error('No recovery email on file.');
+        if (!auth) throw new Error('Auth not ready. Please try again.');
+        await sendPasswordResetEmail(auth, user.recoveryEmail, buildActionCodeSettings('verify-recovery'));
+    };
+
+    const removeRecoveryEmail = async (): Promise<void> => {
+        if (!user) throw new Error('You must be signed in.');
+        // Just unlink on the user doc. Deleting the underlying Firebase Auth
+        // account requires the user to be signed in to Firebase Auth, which
+        // we don't keep them in. Leaving the orphaned Auth row is harmless —
+        // it can't be used to sign in to Mbalit and the user can re-attach
+        // it later (the email-already-in-use branch above handles that).
+        await setDoc(
+            doc(db, 'users', user.id),
+            {
+                recoveryEmail: null,
+                recoveryEmailVerified: false,
+                recoveryAuthUid: null,
+                updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+        );
+    };
+
+    const lookupRecoveryEmailForPhone = async (
+        phone: string,
+    ): Promise<{ email: string; verified: boolean } | null> => {
+        try {
+            const snap = await getDocs(query(collection(db, 'users'), where('phone', '==', phone), limit(1)));
+            if (snap.empty) return null;
+            const data = snap.docs[0]!.data() as { recoveryEmail?: string; recoveryEmailVerified?: boolean };
+            if (!data.recoveryEmail) return null;
+            return { email: data.recoveryEmail, verified: !!data.recoveryEmailVerified };
+        } catch (err) {
+            console.warn('Recovery-email lookup failed:', err);
+            return null;
+        }
+    };
+
+    const sendPinResetEmail = async (phone: string): Promise<{ email: string }> => {
+        if (!auth) throw new Error('Auth not ready. Please try again.');
+        const found = await lookupRecoveryEmailForPhone(phone);
+        if (!found) {
+            throw new Error('No recovery email is on file for this number.');
+        }
+        if (!found.verified) {
+            throw new Error('Your recovery email is not verified yet. Please use the support-assisted reset.');
+        }
+        try {
+            await sendPasswordResetEmail(auth, found.email, buildActionCodeSettings('reset-pin'));
+        } catch (err) {
+            const code = (err as { code?: string })?.code || '';
+            if (code === 'auth/user-not-found') {
+                // Out-of-sync: the Firestore doc says we have a recovery email
+                // but Firebase Auth doesn't. Treat it as not-on-file so the
+                // caller can fall back to the support flow.
+                throw new Error('No recovery email is on file for this number.');
+            }
+            if (code === 'auth/too-many-requests') {
+                throw new Error('Too many email reset attempts. Please wait a few minutes and try again.');
+            }
+            throw err;
+        }
+        return { email: found.email };
+    };
+
+    const verifyRecoveryActionCode = async (oobCode: string): Promise<{ email: string }> => {
+        if (!auth) throw new Error('Auth not ready. Please try again.');
+        const email = await verifyPasswordResetCode(auth, oobCode);
+        return { email: email.toLowerCase() };
+    };
+
+    // Find the Mbalit user doc whose recoveryEmail matches the given email.
+    // Returns a strictly-typed projection (only the fields we touch in the
+    // recovery flows) so callers can't accidentally consume untrusted fields
+    // from the user document under a different shape.
+    type RecoveryUserRow = {
+        id: string;
+        phone: string;
+        recoveryEmail: string;
+        recoveryEmailVerified: boolean;
+        recoveryAuthUid?: string;
+    };
+    const findUserByRecoveryEmail = async (email: string): Promise<RecoveryUserRow | null> => {
+        const snap = await getDocs(
+            query(collection(db, 'users'), where('recoveryEmail', '==', email.toLowerCase()), limit(1)),
+        );
+        if (snap.empty) return null;
+        const docSnap = snap.docs[0]!;
+        const raw = docSnap.data() as Partial<{
+            phone: string;
+            recoveryEmail: string;
+            recoveryEmailVerified: boolean;
+            recoveryAuthUid: string;
+        }>;
+        return {
+            id: docSnap.id,
+            phone: raw.phone || '',
+            recoveryEmail: (raw.recoveryEmail || '').toLowerCase(),
+            recoveryEmailVerified: !!raw.recoveryEmailVerified,
+            recoveryAuthUid: raw.recoveryAuthUid,
+        };
+    };
+
+    const completeRecoveryEmailVerification = async (oobCode: string): Promise<void> => {
+        if (!auth) throw new Error('Auth not ready. Please try again.');
+        const email = (await verifyPasswordResetCode(auth, oobCode)).toLowerCase();
+        // Invalidate the code immediately by setting another random password.
+        await confirmPasswordReset(auth, oobCode, randomPassword());
+
+        const found = await findUserByRecoveryEmail(email);
+        if (!found) {
+            throw new Error('Could not find an Mbalit account linked to this email.');
+        }
+        await setDoc(
+            doc(db, 'users', found.id),
+            { recoveryEmailVerified: true, updatedAt: serverTimestamp() },
+            { merge: true },
+        );
+    };
+
+    const completePinResetWithCode = async (
+        oobCode: string,
+        newPin: string,
+    ): Promise<{ uid: string }> => {
+        if (!auth) throw new Error('Auth not ready. Please try again.');
+        if (!/^\d{6}$/.test(newPin)) throw new Error('PIN must be exactly 6 digits.');
+
+        const email = (await verifyPasswordResetCode(auth, oobCode)).toLowerCase();
+        const found = await findUserByRecoveryEmail(email);
+        if (!found) {
+            throw new Error('Could not find an Mbalit account linked to this email.');
+        }
+
+        // Hash the new PIN BEFORE consuming the oobCode so a hash failure
+        // doesn't burn the reset link.
+        const pinHash = await bcrypt.hash(newPin, BCRYPT_COST);
+
+        // Burn the reset code (it's single-use anyway, but make it explicit).
+        await confirmPasswordReset(auth, oobCode, randomPassword());
+
+        await setDoc(
+            doc(db, 'users', found.id),
+            {
+                pinHash,
+                // Verifying the email link also implicitly proves email
+                // ownership again, so flip verified=true if it wasn't already.
+                recoveryEmailVerified: true,
+                updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+        );
+
+        // Audit-log the self-service reset for parity with the support flow.
+        try {
+            await addDoc(collection(db, 'pinResetAuditLog'), {
+                event: 'pin_reset_self_service',
+                userId: found.id,
+                phone: found.phone,
+                method: 'recovery_email',
+                createdAt: serverTimestamp(),
+                source: 'web-client',
+            });
+        } catch (err) {
+            console.warn('Could not write pin reset audit log:', err);
+        }
+
+        // Sign the user in (our localStorage-only session model).
+        writeStoredUid(found.id);
+        setUid(found.id);
+        return { uid: found.id };
+    };
+
     const logout = async () => {
         writeStoredUid(null);
         setUid(null);
         setUser(null);
+        // Best-effort sign-out from Firebase Auth in case the user is in the
+        // middle of a recovery flow (otherwise harmless).
+        try { if (auth) await auth.signOut(); } catch { /* non-fatal */ }
     };
 
     const updateCollectorWasteTypes = async (wasteTypes: WasteType[]) => {
@@ -411,6 +722,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 checkOrgCode,
                 changePin,
                 requestPinReset,
+                addRecoveryEmail,
+                resendRecoveryEmailVerification,
+                removeRecoveryEmail,
+                lookupRecoveryEmailForPhone,
+                sendPinResetEmail,
+                verifyRecoveryActionCode,
+                completeRecoveryEmailVerification,
+                completePinResetWithCode,
                 logout,
                 updateCollectorWasteTypes,
                 setCollectorAvailability,

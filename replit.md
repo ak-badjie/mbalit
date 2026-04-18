@@ -73,8 +73,23 @@ Community members report environmental hazards from their dashboard ("Report" ca
 - `MODEM_PAY_SECRET_KEY`
 - `MODEM_PAY_WEBHOOK_SECRET`
 
+## Recovery email (self-service PIN reset via Firebase Auth)
+Users can optionally attach a verified recovery email from Settings → "Recovery email". When present, the Forgot-PIN screen offers an "Email me a reset link" button that bypasses the support queue.
+
+- **Where**: `components/auth/recovery-email-section.tsx` (settings UI), `app/auth/email-action/page.tsx` (action handler), helpers in `lib/auth-context.tsx` (`addRecoveryEmail`, `removeRecoveryEmail`, `resendRecoveryEmailVerification`, `lookupRecoveryEmailForPhone`, `sendPinResetEmail`, `verifyRecoveryActionCode`, `completeRecoveryEmailVerification`, `completePinResetWithCode`).
+- **Mechanism**: PIN auth is still phone+bcrypt in Firestore. Firebase Auth is used purely as a verified email factor:
+  1. Adding a recovery email creates (or reuses) a Firebase Auth account with a throwaway random password and immediately calls `sendPasswordResetEmail` with our `/auth/email-action?intent=verify-recovery` continueUrl. Clicking the link proves email ownership; the handler calls `verifyPasswordResetCode` + `confirmPasswordReset` (with another random password) and flips `recoveryEmailVerified=true` on the user doc.
+  2. Forgot-PIN with a verified recovery email also calls `sendPasswordResetEmail` (`intent=reset-pin`). The handler verifies the oobCode, lets the user enter a new 6-digit PIN on a dial-pad, hashes it with bcrypt, and writes it to `users/{id}.pinHash`. A `pinResetAuditLog` row (`event: 'pin_reset_self_service'`) is written for parity with the support flow. The user is logged in (localStorage uid) and redirected to the dashboard.
+- **Firestore fields added to `users/{id}`**: `recoveryEmail`, `recoveryEmailVerified`, `recoveryAuthUid`. (Nullable.)
+- **One-time Firebase Console setup required for this to work end-to-end**:
+  1. Authentication → Sign-in method → enable **Email/Password** provider.
+  2. Authentication → Templates → Password reset → click the pencil → set **action URL** to `https://<your-app-domain>/auth/email-action` (NOT the default Firebase-hosted URL — otherwise users land on Firebase's generic "set new password" page instead of our PIN dial-pad).
+  3. Authentication → Settings → **Authorized domains** → add the app's production domain.
+- **Firestore indexes**: a single-field equality query on `users.recoveryEmail` is used for the duplicate check and the action-handler's email→user lookup. Firestore will print an index creation link the first time it runs in production if the implicit single-field index has been disabled.
+- **Suggested Firestore rule update**: `users` document `update` should also allow `recoveryEmail`, `recoveryEmailVerified`, `recoveryAuthUid` to be written by the owner. The action-handler page writes these fields without a Firebase-Auth uid (because Mbalit's session model is localStorage-only), so the existing "no-auth-required client writes to users/{id}" posture continues to apply — see the SECURITY TRADEOFF block at the top of `lib/auth-context.tsx`.
+
 ## PIN Reset (Forgot PIN flow)
-Self-service PIN reset is intentionally **not** automated by phone alone — that would let anyone with a target's number take over the account. The flow is support-assisted and enforced server-side:
+The support-assisted flow below is the **fallback** when no verified recovery email is on file (or when the user explicitly chooses it). Self-service PIN reset by phone alone is intentionally **not** automated — that would let anyone with a target's number take over the account.
 1. User taps "Forgot PIN?" on the PIN entry screen.
 2. The client calls `POST /api/auth/pin-reset` (see `app/api/auth/pin-reset/route.ts`). The server uses `firebase-admin` (`lib/firebase-admin.ts`) to:
    - Throttle per phone: max 1 active request per 24h, max 3 per 7 days.
