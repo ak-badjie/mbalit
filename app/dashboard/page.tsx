@@ -321,6 +321,26 @@ function DashboardContent() {
                                 </div>
                             </button>
                         </div>
+
+                        {/* Inline link to the resident's own past hazard reports.
+                            Lives under the Quick Actions grid so users notice it
+                            right after they tap "Report". */}
+                        <button
+                            type="button"
+                            onClick={() => router.push('/dashboard/report/my')}
+                            className="mt-3 w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 rounded-2xl border border-gray-100 transition-colors"
+                        >
+                            <span className="flex items-center gap-2.5">
+                                <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center">
+                                    <AlertTriangle className="w-4 h-4 text-red-500" />
+                                </span>
+                                <span className="text-left">
+                                    <span className="block text-sm font-semibold text-gray-900">My reports</span>
+                                    <span className="block text-[11px] text-gray-500">Track hazards you&apos;ve submitted</span>
+                                </span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </button>
                     </div>
                 </div>
 
