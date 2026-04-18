@@ -12,7 +12,15 @@ import {
     ExternalLink,
     Clock,
 } from 'lucide-react';
-import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
+import {
+    collection,
+    documentId,
+    limit,
+    onSnapshot,
+    query,
+    Timestamp,
+    where,
+} from 'firebase/firestore';
 import { useRequireAuth } from '@/lib/auth-context';
 import { db } from '@/lib/firebase';
 import { EnvironmentalReportStatus } from '@/types';
@@ -64,28 +72,32 @@ export default function MyReportDetailPage() {
 
     useEffect(() => {
         if (isLoading || !user || !reportId) return;
-        const ref = doc(db, 'environmentalReports', reportId);
+        // Use an ownership-CONSTRAINED query (documentId == reportId AND
+        // reporterId == user.id) instead of a direct doc subscription. With
+        // this app's auth model (no Firebase Auth, so Firestore Security Rules
+        // can't enforce per-user reads), a direct doc read would deliver any
+        // other user's report payload to the client whenever someone guessed
+        // the id. Constraining the query forces Firestore (and any rules that
+        // ARE in place) to filter by reporterId before sending the doc.
+        const q = query(
+            collection(db, 'environmentalReports'),
+            where(documentId(), '==', reportId),
+            where('reporterId', '==', user.id),
+            limit(1),
+        );
         const unsub = onSnapshot(
-            ref,
+            q,
             (snap) => {
-                if (!snap.exists()) {
+                if (snap.empty) {
                     setReport(null);
-                    setError('This report no longer exists.');
+                    setError("This report doesn't exist or you don't have access to it.");
                     setLoading(false);
                     return;
                 }
-                const data = snap.data() as Partial<ReportDetail>;
-                // Defense in depth: even though Firestore rules should prevent
-                // a user from reading other reporters' docs, double-check here
-                // so a wrong link can't show someone else's report.
-                if (data.reporterId !== user.id) {
-                    setReport(null);
-                    setError("You don't have access to this report.");
-                    setLoading(false);
-                    return;
-                }
+                const docSnap = snap.docs[0]!;
+                const data = docSnap.data() as Partial<ReportDetail>;
                 setReport({
-                    id: snap.id,
+                    id: docSnap.id,
                     reporterId: data.reporterId as string,
                     photos: Array.isArray(data.photos) ? data.photos : [],
                     note: typeof data.note === 'string' ? data.note : '',
