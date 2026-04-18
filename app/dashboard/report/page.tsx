@@ -13,9 +13,8 @@ import {
     Check,
     Send,
 } from 'lucide-react';
-import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/lib/auth-context';
-import { db, auth } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import { compressImage } from '@/lib/image-utils';
 import { reverseGeocode } from '@/lib/maps';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -111,23 +110,9 @@ export default function ReportHazardPage() {
         setIsSubmitting(true);
         setSubmitError(null);
         try {
-            const reportRef = doc(collection(db, 'environmentalReports'));
-            const payload = {
-                id: reportRef.id,
-                reporterId: user.id,
-                reporterName: user.name || 'Community member',
-                reporterPhone: user.phone || '',
-                photos,
-                note: note.trim(),
-                location,
-                status: 'pending' as const,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-            };
-            // Rough payload size check: serialize and bail early if it would
-            // exceed Firestore's 1MB doc limit. The serverTimestamp sentinel
-            // doesn't serialize meaningfully, but the photos dominate size.
-            const approxBytes = new Blob([JSON.stringify({ ...payload, createdAt: 0, updatedAt: 0 })]).size;
+            // Quick client-side payload guard so we fail fast before hitting
+            // the network. The server enforces the real cap.
+            const approxBytes = new Blob([JSON.stringify({ photos, note, location })]).size;
             if (approxBytes > MAX_PAYLOAD_BYTES) {
                 setSubmitError(
                     'Your photos are too large to send together. Please remove one or two photos and try again.'
@@ -135,28 +120,36 @@ export default function ReportHazardPage() {
                 setIsSubmitting(false);
                 return;
             }
-            await setDoc(reportRef, payload);
 
-            // Fan out an in-app notification to every authority user so they
-            // see the report immediately. Fire-and-forget — we never want a
-            // notification hiccup to block the reporter's success screen, and
-            // the report itself is already safely persisted at this point.
-            void (async () => {
-                try {
-                    const idToken = (await auth.currentUser?.getIdToken()) || '';
-                    if (!idToken) return;
-                    await fetch('/api/reports/notify', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${idToken}`,
-                        },
-                        body: JSON.stringify({ reportId: reportRef.id }),
-                    });
-                } catch (err) {
-                    console.warn('Could not notify authorities (report still saved):', err);
-                }
-            })();
+            const idToken = (await auth.currentUser?.getIdToken()) || '';
+            if (!idToken) {
+                setSubmitError('Your session has expired. Please sign in again and retry.');
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Server-trusted endpoint creates the report AND fans out
+            // notifications to authority orgs in one atomic call. If this
+            // fails we surface the error so the user can retry — we never
+            // silently drop their report.
+            const res = await fetch('/api/reports/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({ photos, note: note.trim(), location }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setSubmitError(
+                    (data as { error?: string })?.error ||
+                        'Could not send your report. Please try again.'
+                );
+                setIsSubmitting(false);
+                return;
+            }
 
             setIsSuccess(true);
             setTimeout(() => router.push('/dashboard'), 2200);
