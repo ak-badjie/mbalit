@@ -1,6 +1,6 @@
+// Mbalit does NOT use firebase-admin/auth — sessions live in Firestore.
 import { App, cert, getApps, initializeApp, applicationDefault } from 'firebase-admin/app';
 import { Firestore, getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { Auth, getAuth } from 'firebase-admin/auth';
 
 let app: App | null = null;
 let initError: string | null = null;
@@ -42,12 +42,6 @@ export function getAdminFirestore(): Firestore | null {
     const a = getAdminApp();
     if (!a) return null;
     return getFirestore(a);
-}
-
-export function getAdminAuth(): Auth | null {
-    const a = getAdminApp();
-    if (!a) return null;
-    return getAuth(a);
 }
 
 export function getAdminInitError(): string | null {

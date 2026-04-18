@@ -14,7 +14,6 @@ import {
     Send,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { auth } from '@/lib/firebase';
 import { compressImage } from '@/lib/image-utils';
 import { reverseGeocode } from '@/lib/maps';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -131,22 +130,17 @@ export default function ReportHazardPage() {
                 return;
             }
 
-            const idToken = (await auth.currentUser?.getIdToken()) || '';
-            if (!idToken) {
-                setSubmitError('Your session has expired. Please sign in again and retry.');
-                setIsSubmitting(false);
-                return;
-            }
-
             // Server-trusted endpoint creates the report AND fans out
-            // notifications to authority orgs in one atomic call. If this
-            // fails we surface the error so the user can retry — we never
-            // silently drop their report.
+            // notifications to authority orgs in one atomic call. The session
+            // cookie travels automatically with `credentials: same-origin`,
+            // so we no longer need a Bearer header. If this fails we surface
+            // the error so the user can retry — we never silently drop their
+            // report.
             const res = await fetch('/api/reports/create', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${idToken}`,
                 },
                 body: JSON.stringify({
                     requestId: requestIdRef.current,

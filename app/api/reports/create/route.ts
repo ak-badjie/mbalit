@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
-import { getAdminAuth, getAdminFirestore, FieldValue } from '@/lib/firebase-admin';
+import { getAdminFirestore, FieldValue } from '@/lib/firebase-admin';
+import { getSessionUser } from '@/lib/auth-server';
 
 /**
  * POST /api/reports/create
@@ -108,37 +109,22 @@ export async function POST(request: NextRequest) {
     }
     const note = typeof body.note === 'string' ? body.note.trim().slice(0, MAX_NOTE_LEN) : '';
 
-    const authHeader = request.headers.get('authorization') || '';
-    const idToken = authHeader.toLowerCase().startsWith('bearer ')
-        ? authHeader.slice(7).trim()
-        : '';
-    if (!idToken) {
-        return NextResponse.json(
-            { success: false, error: 'Authentication required.' },
-            { status: 401 },
-        );
-    }
-
-    const adminAuth = getAdminAuth();
     const adminDb = getAdminFirestore();
-    if (!adminAuth || !adminDb) {
+    if (!adminDb) {
         return NextResponse.json(
             { success: false, error: 'Reporting service is temporarily unavailable.' },
             { status: 503 },
         );
     }
 
-    let callerUid: string;
-    try {
-        const decoded = await adminAuth.verifyIdToken(idToken);
-        callerUid = decoded.uid;
-    } catch (err) {
-        console.warn('Rejected report create with invalid token:', err);
+    const session = await getSessionUser(request);
+    if (!session) {
         return NextResponse.json(
-            { success: false, error: 'Invalid authentication token.' },
+            { success: false, error: 'Authentication required.' },
             { status: 401 },
         );
     }
+    const callerUid = session.userId;
 
     const reportId = deterministicReportId(callerUid, requestId);
     const reportRef = adminDb.collection('environmentalReports').doc(reportId);
