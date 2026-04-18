@@ -125,6 +125,9 @@ function AuthPage() {
     const [joinOrgCode, setJoinOrgCode] = useState('');
     const [isJoiningOrg, setIsJoiningOrg] = useState(false);
     const [showOrgDetails, setShowOrgDetails] = useState(false);
+    // Public-authority flag (KMC, BCC, etc.) — only meaningful when registering
+    // a new organization. Drives access to the community Reports inbox.
+    const [isAuthority, setIsAuthority] = useState(false);
 
     // Success State
     const [isSignupSuccess, setIsSignupSuccess] = useState(false);
@@ -352,6 +355,7 @@ function AuthPage() {
                 if (registrationType === 'organization') {
                     collectorData.collectorType = 'organization';
                     collectorData.organizationName = orgName;
+                    collectorData.isAuthority = isAuthority;
                     const orgCode = orgName.toLowerCase().replace(/\s+/g, '-').slice(0, 12) + '-' + Math.random().toString(36).slice(2, 6);
                     collectorData.orgCode = orgCode;
 
@@ -364,6 +368,7 @@ function AuthPage() {
                         totalEarnings: 0,
                         walletBalance: 0,
                         isActive: true,
+                        isAuthority,
                         createdAt: serverTimestamp(),
                         updatedAt: serverTimestamp(),
                     });
@@ -1270,6 +1275,29 @@ function AuthPage() {
                                 />
                             </div>
                         </div>
+
+                        {/* Authority toggle (organizations only) */}
+                        {registrationType === 'organization' && (
+                            <button
+                                type="button"
+                                onClick={() => setIsAuthority((v) => !v)}
+                                className={`mb-6 w-full text-left p-4 rounded-2xl border-2 transition-all flex items-start gap-3 ${
+                                    isAuthority ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-300 bg-white'
+                                }`}
+                            >
+                                <div className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-colors ${
+                                    isAuthority ? 'bg-gray-900' : 'bg-white border-2 border-gray-300'
+                                }`}>
+                                    {isAuthority && <Check className="w-3 h-3 text-white" />}
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-semibold text-gray-900 text-sm">We are a public authority</p>
+                                    <p className="text-xs text-gray-500 mt-1 leading-snug">
+                                        Authorities (KMC, BCC, etc.) receive environmental hazard reports from the community and can act on them.
+                                    </p>
+                                </div>
+                            </button>
+                        )}
 
                         <div className="flex-1" />
 

@@ -24,6 +24,21 @@ A Next.js web application for waste collection management, featuring real-time t
 - `lib/` - Shared utilities and Firebase config
 - `public/` - Static assets
 
+## Environmental Hazard Reports
+Community members report environmental hazards from their dashboard ("Report" card). Authority organizations (orgs created with the "We are a public authority" toggle on) see incoming reports at `/organization/reports` and can change status (`pending` → `in_progress` → `resolved`).
+
+- Firestore collection: `environmentalReports`
+- Document shape (see `types/index.ts` `EnvironmentalReport`):
+  `{ reporterId, reporterName, reporterPhone, photos: string[] (base64 data URLs), note, location: { lat, lng, address }, status, createdAt, updatedAt }`
+- Photos are stored as **base64 data URLs in Firestore**, not Cloud Storage. The reporter page compresses each image to ~150KB (800x800, JPEG q=0.55) and rejects payloads over ~900KB to stay safely under Firestore's 1MB per-document limit. Up to 5 photos per report. Migrating photos to Firebase Storage is a known follow-up if reports outgrow this constraint.
+- **Trust model caveat**: the authority flag is currently self-attested at signup (a toggle on Step 3 of `/auth`). There is no admin approval flow yet — anyone can register an org as an "authority". This is acceptable for the pilot but should be replaced with an admin-approved claim before wider rollout (tracked as a follow-up).
+- Authority flag lives on both `users/{uid}.isAuthority` and `organizations/{orgCode}.isAuthority` (set together at signup) so client gating can rely on the user doc without an extra org fetch.
+- Suggested Firestore rules for `environmentalReports`:
+  - `create`: any signed-in user, with `request.resource.data.reporterId == request.auth.uid`.
+  - `read`: reporter (`resource.data.reporterId == request.auth.uid`) OR any user where `get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthority == true`.
+  - `update`: only authority users, and only the `status` / `updatedAt` fields.
+  - `delete`: disallowed from clients.
+
 ## Running the App
 - **Dev**: `npm run dev` (runs on port 5000)
 - **Build**: `npm run build`

@@ -38,6 +38,8 @@ export interface Collector extends User {
   role: 'collector';
   collectorType: CollectorType;
   organizationId?: string; // If part of an organization
+  organizationName?: string;
+  orgCode?: string;
   wasteTypesHandled: WasteType[];
   isAvailable: boolean;
   isApproved: boolean; // For organization members
@@ -47,6 +49,9 @@ export interface Collector extends User {
   earnings: number;
   vehicleType?: string;
   maxCapacity?: number;
+  // True for organizations that are public authorities (KMC, BCC, etc.)
+  // and should receive environmental hazard reports from the community.
+  isAuthority?: boolean;
 }
 
 // Organization (waste collection company)
@@ -64,6 +69,25 @@ export interface Organization {
   serviceAreas?: string[];
   rating?: number;
   totalPickups?: number;
+  // True for organizations that are public authorities (KMC, BCC, etc.)
+  // and should receive environmental hazard reports.
+  isAuthority?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Environmental hazard report (community-submitted, acted on by authority orgs)
+export type EnvironmentalReportStatus = 'pending' | 'in_progress' | 'resolved';
+
+export interface EnvironmentalReport {
+  id: string;
+  reporterId: string;
+  reporterName: string;
+  reporterPhone: string;
+  photos: string[]; // base64 data URLs (compressed to fit Firestore 1MB doc limit)
+  note: string;
+  location: { lat: number; lng: number; address: string };
+  status: EnvironmentalReportStatus;
   createdAt: Date;
   updatedAt: Date;
 }

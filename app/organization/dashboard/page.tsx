@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ChevronRight } from 'lucide-react';
 import {
     Building2,
     Users,
@@ -24,6 +26,7 @@ import {
     Navigation,
     Clock,
     Phone,
+    AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -73,6 +76,7 @@ type TabType = 'driver' | 'organization';
 
 export default function OrganizationDashboard() {
     const { user, logout } = useAuth();
+    const router = useRouter();
     const collectorId = user?.id || '';
 
     // Tab state
@@ -519,6 +523,24 @@ export default function OrganizationDashboard() {
                                 </div>
                             </Card>
                         </div>
+
+                        {/* Community Reports (authority orgs only) */}
+                        {(user as { isAuthority?: boolean })?.isAuthority && (
+                            <button
+                                type="button"
+                                onClick={() => router.push('/organization/reports')}
+                                className="w-full p-4 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-left text-white shadow-sm hover:shadow-md transition-shadow flex items-center gap-3"
+                            >
+                                <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                                    <AlertTriangle className="w-5 h-5 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold">Community Reports</p>
+                                    <p className="text-xs text-white/80">Environmental hazards reported by residents</p>
+                                </div>
+                                <ChevronRight className="w-5 h-5 text-white/80 flex-shrink-0" />
+                            </button>
+                        )}
 
                         {/* Pending Approvals */}
                         {pendingMembers.length > 0 && (
