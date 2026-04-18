@@ -1153,32 +1153,46 @@ function AuthPage() {
                                     </button>
                                 </div>
                             ) : (
-                                <DialPad
-                                    value={pinStep === 'create' ? pin : confirmPin}
-                                    onChange={(val) => {
-                                        if (isCreatingAccount) return; // ignore key presses mid-request
-                                        if (pinStep === 'create') {
-                                            setPin(val);
-                                            if (val.length === 6) {
-                                                setTimeout(() => setPinStep('confirm'), 300);
-                                            }
-                                        } else {
-                                            setConfirmPin(val);
-                                            if (val.length === 6) {
-                                                if (val !== pin) {
+                                <div className="w-full flex flex-col">
+                                    <DialPad
+                                        value={pinStep === 'create' ? pin : confirmPin}
+                                        onChange={(val) => {
+                                            if (isCreatingAccount) return; // ignore key presses mid-request
+                                            if (pinStep === 'create') {
+                                                setPin(val);
+                                                if (val.length === 6) {
+                                                    setTimeout(() => setPinStep('confirm'), 300);
+                                                }
+                                            } else {
+                                                setConfirmPin(val);
+                                                // Detect mismatch as soon as the 6th digit is entered,
+                                                // but do NOT auto-submit on match — wait for the
+                                                // explicit Continue tap below.
+                                                if (val.length === 6 && val !== pin) {
                                                     setError('PINs do not match. Please try again.');
                                                     setConfirmPin('');
                                                     setPinStep('create');
                                                     setPin('');
-                                                    return;
                                                 }
-                                                submitCreateAccount();
                                             }
-                                        }
-                                    }}
-                                    maxLength={6}
-                                    showLetters={false}
-                                />
+                                        }}
+                                        maxLength={6}
+                                        showLetters={false}
+                                    />
+
+                                    {/* Explicit Continue button on the confirm step so the user
+                                        sees a clear next action after entering their PIN twice. */}
+                                    {pinStep === 'confirm' && (
+                                        <button
+                                            type="button"
+                                            onClick={submitCreateAccount}
+                                            disabled={confirmPin.length !== 6 || confirmPin !== pin}
+                                            className="w-full py-4 mt-6 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                                        >
+                                            Continue
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </motion.div>
