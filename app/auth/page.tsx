@@ -160,17 +160,27 @@ function AuthPage() {
     useEffect(() => {
         if (!user) return;
         if (user.onboardingComplete === false) {
-            if (user.role === 'collector') {
-                if ('collectorType' in user && user.collectorType === 'organization') {
-                    setRegistrationType('organization');
-                    if ('organizationName' in user && typeof user.organizationName === 'string') {
-                        setOrgName(user.organizationName);
+            // Don't override registrationType if the user is actively in the
+            // middle of a signup flow this session (handleRoleSelect already
+            // set it). Only re-derive from the stored user doc on a fresh
+            // page load where registrationType is still null. Without this
+            // guard, brand-new collector/org stubs (which have no role set
+            // yet and default to role='user' via mapUserDoc) would be
+            // forced into the waste_owner branch and lose their collector/
+            // org-specific onboarding steps (vehicle, waste types, org name).
+            if (registrationType === null) {
+                if (user.role === 'collector') {
+                    if ('collectorType' in user && user.collectorType === 'organization') {
+                        setRegistrationType('organization');
+                        if ('organizationName' in user && typeof user.organizationName === 'string') {
+                            setOrgName(user.organizationName);
+                        }
+                    } else {
+                        setRegistrationType('collector');
                     }
                 } else {
-                    setRegistrationType('collector');
+                    setRegistrationType('waste_owner');
                 }
-            } else {
-                setRegistrationType('waste_owner');
             }
             setMode('signup');
             setStep(3); // PIN already created — jump to profile completion
