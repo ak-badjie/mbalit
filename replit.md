@@ -7,7 +7,7 @@ A Next.js web application for waste collection management, featuring real-time t
 - **Framework**: Next.js 16.1.1 (App Router, Turbopack)
 - **Runtime**: Node.js 20
 - **Styling**: Tailwind CSS v4
-- **Authentication & Database**: Firebase (Auth, Firestore, Realtime DB, Storage)
+- **Authentication & Database**: Firebase — **only Firestore + Realtime Database are used as data stores. Cloud Storage is intentionally NOT used.** Firebase Auth is used solely as the token store backing the custom phone+PIN onboarding flow (dummy email + PIN-as-password). All images (profile, orders, hazard reports) live as compressed base64 inside their owning Firestore document.
 - **Payments**: Modem Pay
 - **Maps**: Google Maps JS API
 

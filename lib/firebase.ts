@@ -1,7 +1,11 @@
+// Mbalit only uses two Firebase data services: Firestore (documents) and
+// Realtime Database (live tracking / payments). Cloud Storage is intentionally
+// NOT used — images are stored as compressed base64 inside Firestore docs.
+// Firebase Auth is kept solely as the underlying token store for the custom
+// phone+PIN onboarding (see lib/auth-context.tsx).
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getDatabase, Database } from 'firebase/database';
 
 // Firebase configuration
@@ -21,7 +25,6 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 let realtimeDb: Database;
-let storage: FirebaseStorage;
 
 function initializeFirebase() {
     if (typeof window !== 'undefined') {
@@ -40,11 +43,10 @@ function initializeFirebase() {
 
         db = getFirestore(app);
         realtimeDb = getDatabase(app);
-        storage = getStorage(app);
     }
 }
 
 // Initialize on import
 initializeFirebase();
 
-export { app, auth, db, realtimeDb, storage, firebaseConfig };
+export { app, auth, db, realtimeDb, firebaseConfig };
