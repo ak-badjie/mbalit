@@ -230,7 +230,20 @@ function AuthPage() {
             }
         } catch (err: unknown) {
             setError(friendlyAuthError(err));
-            setLoginPin(''); // Clear pin on error
+            // Only clear the PIN when the credential itself was wrong.
+            // For transient/config errors (network, operation-not-allowed,
+            // too-many-requests, etc.) the PIN is fine — let the user retry
+            // without retyping it.
+            const code = (err as { code?: string; message?: string })?.code || '';
+            const msg = (err as { message?: string })?.message || '';
+            const haystack = `${code} ${msg}`;
+            const isCredentialError =
+                haystack.includes('user-not-found') ||
+                haystack.includes('wrong-password') ||
+                haystack.includes('invalid-credential');
+            if (isCredentialError) {
+                setLoginPin('');
+            }
         }
     };
 

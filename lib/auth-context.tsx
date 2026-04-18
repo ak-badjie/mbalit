@@ -78,15 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [fetchUserProfile]);
 
     const checkPhoneExists = async (phone: string): Promise<boolean> => {
-        try {
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('phone', '==', phone));
-            const querySnapshot = await getDocs(q);
-            return !querySnapshot.empty;
-        } catch (error) {
-            console.error('Error checking phone:', error);
-            return false;
-        }
+        // Intentionally does NOT swallow errors — callers must distinguish
+        // "no account exists" from "lookup failed" so a network/permission
+        // error never misroutes a real user toward signup.
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('phone', '==', phone));
+        const querySnapshot = await getDocs(q);
+        return !querySnapshot.empty;
     };
 
     const checkOrgCode = async (orgCode: string): Promise<boolean> => {
