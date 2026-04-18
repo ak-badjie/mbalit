@@ -15,8 +15,6 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import TruckLogo from '@/components/ui/truck-logo';
@@ -67,11 +65,11 @@ function AuthPage() {
     const isSignupMode = searchParams.get('signup') === 'true';
     const isCollectorMode = searchParams.get('role') === 'collector';
     const continueOnboarding = searchParams.get('continue') === 'onboarding';
-    const { login, verifySmsCode, completeProfile, checkPhoneExists, checkOrgCode, sendSmsVerification, resetPinWithSms, isLoading, user } = useAuth();
+    const { login, completeProfile, createAccount, checkPhoneExists, checkOrgCode, isLoading, user } = useAuth();
 
     // Flow state
-    const [mode, setMode] = useState<'login' | 'signup' | 'forgot_pin'>(isSignupMode ? 'signup' : 'login');
-    const [step, setStep] = useState(0); // 0 = role select, 1 = phone, 2 = pin, 3 = profile, 4 = vehicle (collectors), 5 = waste types (collectors)
+    const [mode, setMode] = useState<'login' | 'signup'>(isSignupMode ? 'signup' : 'login');
+    const [step, setStep] = useState(0); // 0 = role select, 1 = phone, 3 = profile, 4 = vehicle, 5 = waste types, 6 = pin
     const [registrationType, setRegistrationType] = useState<RegistrationType>(
         isCollectorMode ? 'collector' : null
     );
@@ -89,7 +87,7 @@ function AuthPage() {
     const [pinStep, setPinStep] = useState<'create' | 'confirm'>('create');
     const [fullName, setFullName] = useState('');
     const [profileImage, setProfileImage] = useState<string | null>(null);
-    const [verifiedUid, setVerifiedUid] = useState<string | null>(null); // Temp ID after SMS verify
+    const [createdUid, setCreatedUid] = useState<string | null>(null);
 
 
     // Organization state
@@ -107,11 +105,7 @@ function AuthPage() {
 
         const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // SMS Verification State
-    const [smsCode, setSmsCode] = useState('');
-    const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-    const [isSendingSms, setIsSendingSms] = useState(false);
-    const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+    const [isCreatingAccount, setIsCreatingAccount] = useState(false);
 
     // Auto-continue onboarding for existing users
     useEffect(() => {
@@ -159,8 +153,8 @@ function AuthPage() {
         e?.preventDefault();
         setError(null);
         try {
-            // Phone + PIN login
-            const fullPhone = `+220 ${formatPhone(phoneNumber)}`; // Always Gambia for phone+pin now
+            // Phone + PIN login - use the selected country's dial code (must match signup)
+            const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
             const pinToUse = pinOverride || loginPin;
             if (pinToUse.length !== 6) return;
             
@@ -198,10 +192,10 @@ function AuthPage() {
         const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
 
         try {
-            let userId = user?.id || verifiedUid;
+            let userId = user?.id || createdUid;
 
             if (!userId) {
-                setError('No user found or SMS verification missing. Please try again.');
+                setError('No user account found. Please try again.');
                 return;
             }
 
@@ -312,12 +306,12 @@ function AuthPage() {
                     setPinStep('create');
                     setConfirmPin('');
                 } else {
-                    setStep(2); // Go back to SMS
+                    setStep(1); // Go back to phone
                 }
                 return;
             }
             if (step === 3) {
-                setStep(6);
+                // Profile step - cannot go back since the account is already created
                 return;
             }
             if (step === 1) {
@@ -341,17 +335,27 @@ function AuthPage() {
     };
 
     const getTotalDisplaySteps = () => {
-        if (mode === 'forgot_pin') return 3; // phone, sms, pin
-        if (registrationType === 'waste_owner') return 4; // phone, sms, pin, profile
-        return 7; // org, phone, sms, pin, profile, vehicle, waste types
+        if (registrationType === 'waste_owner') return 3; // phone, pin, profile
+        return 6; // org, phone, pin, profile, vehicle, waste types
     };
 
     const getCurrentDisplayStep = () => {
-        if (mode === 'forgot_pin') return step;
-        if (registrationType === 'waste_owner') return step;
+        // Map internal step numbers (0,1,3,4,5,6) to sequential display positions
+        if (registrationType === 'waste_owner') {
+            // 1=phone, 6=pin, 3=profile
+            if (step === 1) return 1;
+            if (step === 6) return 2;
+            if (step === 3) return 3;
+            return step;
+        }
+        // collector/organization: 1A=org, 1B=phone, 6=pin, 3=profile, 4=vehicle, 5=waste
         if (step === 1 && showOrgDetails) return 1;
         if (step === 1 && !showOrgDetails) return 2;
-        return step + 1;
+        if (step === 6) return 3;
+        if (step === 3) return 4;
+        if (step === 4) return 5;
+        if (step === 5) return 6;
+        return step;
     };
 
     // ==========================================
@@ -440,21 +444,6 @@ function AuthPage() {
                             />
                         </div>
                         
-                        <div className="mt-6 text-center">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setMode('forgot_pin');
-                                    setStep(1);
-                                    setLoginStep(0);
-                                    setLoginPin('');
-                                    setPhoneNumber('');
-                                }}
-                                className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                            >
-                                Forgot PIN?
-                            </button>
-                        </div>
                         <div className="mt-8 text-center">
                             {isLoading && <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-900" />}
                         </div>
@@ -650,13 +639,17 @@ function AuthPage() {
         <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
             {/* Top bar with back button and step dots */}
             <div className="flex items-center justify-between px-6 pt-6 pb-4">
-                <motion.button
-                    whileTap={{ scale: 0.9 }}
-                    onClick={handleBack}
-                    className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5 text-gray-600" />
-                </motion.button>
+                {step === 3 || step === 4 || step === 5 ? (
+                    <div className="w-9" />
+                ) : (
+                    <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={handleBack}
+                        className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5 text-gray-600" />
+                    </motion.button>
+                )}
 
                 {/* Step dots */}
                 <div className="flex items-center gap-2">
@@ -737,7 +730,7 @@ function AuthPage() {
                         className="flex-1 flex flex-col px-6 pb-6"
                     >
                         <h2 className="text-xl font-bold text-gray-900 mb-1">Your phone number</h2>
-                        <p className="text-gray-500 text-sm mb-6">We&apos;ll use this to verify your account</p>
+                        <p className="text-gray-500 text-sm mb-6">We&apos;ll use this as your account ID</p>
 
                         {/* Country + Number display */}
                         <div className="flex items-center gap-3 mb-6">
@@ -765,119 +758,26 @@ function AuthPage() {
                             type="button"
                             onClick={async () => {
                                 setError(null);
-                                setIsSendingSms(true);
                                 try {
                                     const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
                                     if (mode === 'signup') {
                                         const exists = await checkPhoneExists(fullPhone);
                                         if (exists) {
                                             setError('This phone number is already registered. Please log in instead.');
-                                            setIsSendingSms(false);
                                             return;
                                         }
                                     }
-                                    
-                                    // Ensure the container exists completely outside of React's lifecycle
-                                    let rContainer = document.getElementById('recaptcha-container');
-                                    if (!rContainer) {
-                                        rContainer = document.createElement('div');
-                                        rContainer.id = 'recaptcha-container';
-                                        document.body.appendChild(rContainer);
-                                    }
-
-                                    // Make sure we have a clean slate on the window object
-                                    if (!(window as any).recaptchaVerifier) {
-                                        // Explicitly set testing flag right before use (don't rely on module init timing)
-                                        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                                            auth.settings.appVerificationDisabledForTesting = true;
-                                        }
-
-                                        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                                            size: 'invisible'
-                                        });
-                                    }
-                                    
-                                    const verifier = (window as any).recaptchaVerifier;
-                                    const result = await sendSmsVerification(fullPhone, verifier);
-                                    setConfirmationResult(result);
-                                    setStep(2);
+                                    setStep(6);
                                 } catch (err: any) {
                                     console.error(err);
-                                    setError(err.message || 'Failed to send SMS');
-                                    // Clear the verifier on failure
-                                    if ((window as any).recaptchaVerifier) {
-                                        try {
-                                            (window as any).recaptchaVerifier.clear();
-                                        } catch (e) {}
-                                        (window as any).recaptchaVerifier = null;
-                                    }
-                                } finally {
-                                    setIsSendingSms(false);
+                                    setError(err.message || 'Failed to continue');
                                 }
                             }}
-                            disabled={phoneNumber.length < 7 || isSendingSms}
+                            disabled={phoneNumber.length < 7}
                             className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
                         >
-                            {isSendingSms ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Continue'}
+                            Continue
                         </button>
-                    </motion.div>
-                )}
-
-                {/* ==========================================
-                    STEP 2: SMS Code Verification
-                ========================================== */}
-                {step === 2 && (
-                    <motion.div
-                        key="sms"
-                        variants={pageVariants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        transition={{ type: 'tween', duration: 0.25 }}
-                        className="flex-1 flex flex-col px-6 pb-6"
-                    >
-                        <h2 className="text-xl font-bold text-gray-900 mb-1">Enter Verification Code</h2>
-                        <p className="text-gray-500 text-sm mb-6">We sent a 6-digit code to {formatPhone(phoneNumber)}</p>
-
-                        <div className="flex gap-3 justify-center mb-8">
-                            {[0, 1, 2, 3, 4, 5].map((i) => (
-                                <div
-                                    key={i}
-                                    className={`w-12 h-14 rounded-2xl border-2 flex items-center justify-center transition-all text-xl font-bold ${
-                                        smsCode[i] 
-                                            ? 'border-gray-900 bg-white text-gray-900' 
-                                            : error 
-                                                ? 'border-red-300 bg-red-50'
-                                                : 'border-gray-200 bg-gray-50'
-                                    }`}
-                                >
-                                    {smsCode[i] || ''}
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="flex-1 flex items-center">
-                            <DialPad
-                                value={smsCode}
-                                onChange={async (val) => {
-                                    setSmsCode(val);
-                                    setError(null);
-                                    if (val.length === 6) {
-                                        try {
-                                            if (!confirmationResult) throw new Error('No SMS verification found');
-                                            const newUid = await verifySmsCode(confirmationResult, val);
-                                            setVerifiedUid(newUid);
-                                            setStep(6);
-                                        } catch (err: any) {
-                                            console.error('SMS validation failed', err);
-                                            setError(err.message || 'Incorrect verification code');
-                                        }
-                                    }
-                                }}
-                                maxLength={6}
-                                showLetters={false}
-                            />
-                        </div>
                     </motion.div>
                 )}
 
@@ -935,16 +835,27 @@ function AuthPage() {
                                         setConfirmPin(val);
                                         if (val.length === 6) {
                                             if (val === pin) {
-                                                if (mode === 'forgot_pin') {
-                                                    try {
-                                                        if (!confirmationResult) throw new Error('No SMS verification found');
-                                                        await resetPinWithSms(pin, confirmationResult, smsCode);
-                                                        window.location.href = '/dashboard';
-                                                    } catch (err: any) {
-                                                        setError(err.message || 'Failed to reset PIN');
-                                                    }
-                                                } else {
+                                                try {
+                                                    setIsCreatingAccount(true);
+                                                    const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+                                                    const newUid = await createAccount(fullPhone, pin);
+                                                    setCreatedUid(newUid);
                                                     setTimeout(() => setStep(3), 300);
+                                                } catch (err: any) {
+                                                    console.error('Account creation failed', err);
+                                                    const msg = err?.message || 'Failed to create account';
+                                                    if (msg.includes('email-already-in-use')) {
+                                                        setError('This phone number is already registered. Please log in.');
+                                                    } else if (msg.includes('weak-password')) {
+                                                        setError('PIN is too weak. Please choose a different PIN.');
+                                                    } else {
+                                                        setError(msg);
+                                                    }
+                                                    setConfirmPin('');
+                                                    setPinStep('create');
+                                                    setPin('');
+                                                } finally {
+                                                    setIsCreatingAccount(false);
                                                 }
                                             } else {
                                                 setError('PINs do not match. Please try again.');

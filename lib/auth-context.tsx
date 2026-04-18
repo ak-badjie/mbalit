@@ -7,21 +7,18 @@ import {
 import { 
     onAuthStateChanged, 
     signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword,
     signOut,
-    RecaptchaVerifier,
-    signInWithPhoneNumber,
-    ConfirmationResult,
-    updateEmail,
     updatePassword,
 } from 'firebase/auth';
 import { db, auth } from './firebase';
-import { User, UserRole, WasteType, Collector } from '@/types';
+import { User, WasteType, Collector } from '@/types';
 
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    verifySmsCode: (confirmationResult: ConfirmationResult, smsCode: string) => Promise<string>;
+    createAccount: (phone: string, pin: string) => Promise<string>;
     completeProfile: (uid: string, phone: string, pin: string, roleData: any) => Promise<void>;
     login: (phone: string, pin: string) => Promise<void>;
     checkPhoneExists: (phone: string) => Promise<boolean>;
@@ -30,8 +27,6 @@ interface AuthContextType {
     logout: () => Promise<void>;
     updateCollectorWasteTypes: (wasteTypes: WasteType[]) => Promise<void>;
     setCollectorAvailability: (available: boolean) => Promise<void>;
-    sendSmsVerification: (phone: string, appVerifier: RecaptchaVerifier) => Promise<ConfirmationResult>;
-    resetPinWithSms: (newPin: string, confirmationResult: ConfirmationResult, smsCode: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -104,22 +99,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const sendSmsVerification = async (phone: string, appVerifier: RecaptchaVerifier): Promise<ConfirmationResult> => {
-        try {
-            return await signInWithPhoneNumber(auth, phone, appVerifier);
-        } catch (error) {
-            console.error('Error sending SMS:', error);
-            throw error;
-        }
-    };
-
-    const verifySmsCode = async (confirmationResult: ConfirmationResult, smsCode: string): Promise<string> => {
+    const createAccount = async (phone: string, pin: string): Promise<string> => {
         setIsLoading(true);
         try {
-            const credential = await confirmationResult.confirm(smsCode);
-            return credential.user.uid;
+            const dummyEmail = generateDummyEmail(phone);
+            const cred = await createUserWithEmailAndPassword(auth, dummyEmail, pin);
+            // Write a minimal user stub immediately so onAuthStateChanged can hydrate
+            // a user object even if the signup is abandoned before completeProfile().
+            // Without this, an authenticated user with no users/{uid} doc gets treated
+            // as logged out by fetchUserProfile, breaking onboarding continuation.
+            await setDoc(doc(db, 'users', cred.user.uid), {
+                phone,
+                onboardingComplete: false,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            }, { merge: true });
+            return cred.user.uid;
         } catch (error) {
-            console.error('SMS verification error:', error);
+            console.error('Account creation error:', error);
             throw error;
         } finally {
             setIsLoading(false);
@@ -129,15 +126,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const completeProfile = async (uid: string, phone: string, pin: string, roleData: any): Promise<void> => {
         setIsLoading(true);
         try {
-            // Note: We are no longer creating an email/password credential here 
-            // because `auth/operation-not-allowed` means the Email/Password provider isn't enabled.
-            // The user is already authenticated via Phone Auth.
-            // We just store the PIN securely in Firestore for future logins (if wanted) or 
-            // continue relying solely on phone sessions.
-
             const userData = {
                 phone,
-                pin, // Storing PIN for alternative login check later
+                pin,
                 onboardingComplete: true,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
@@ -163,22 +154,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await signInWithEmailAndPassword(auth, dummyEmail, pin);
         } catch (error) {
             console.error('Login error:', error);
-            throw error;
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const resetPinWithSms = async (newPin: string, confirmationResult: ConfirmationResult, smsCode: string) => {
-        setIsLoading(true);
-        try {
-            const credential = await confirmationResult.confirm(smsCode);
-            const firebaseUser = credential.user;
-            await updatePassword(firebaseUser, newPin);
-            const profile = await fetchUserProfile(firebaseUser.uid);
-            setUser(profile);
-        } catch (error) {
-            console.error('Reset PIN error:', error);
             throw error;
         } finally {
             setIsLoading(false);
@@ -246,7 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 user,
                 isLoading,
                 isAuthenticated: !!user,
-                verifySmsCode,
+                createAccount,
                 completeProfile,
                 login,
                 checkPhoneExists,
@@ -255,8 +230,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 logout,
                 updateCollectorWasteTypes,
                 setCollectorAvailability,
-                sendSmsVerification,
-                resetPinWithSms,
             }}
         >
             {children}
@@ -282,4 +255,3 @@ export function useRequireAuth() {
     }, [context.user, context.isLoading, router]);
     return context;
 }
-

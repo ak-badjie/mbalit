@@ -33,14 +33,6 @@ function initializeFirebase() {
 
         auth = getAuth(app);
 
-        // Disable reCAPTCHA verification for localhost (use test phone numbers in Firebase Console)
-        if (window.location.hostname === 'localhost') {
-            auth.settings.appVerificationDisabledForTesting = true;
-        }
-        // Note: For production, reCAPTCHA v2 is handled automatically by RecaptchaVerifier
-        // in the auth page. Do NOT use initializeRecaptchaConfig() unless reCAPTCHA Enterprise
-        // is explicitly enabled in Google Cloud Console for this project.
-        
         // Ensure the session persists across page reloads
         setPersistence(auth, browserLocalPersistence).catch((error) => {
             console.error("Error setting persistence:", error);
