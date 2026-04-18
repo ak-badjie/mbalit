@@ -247,6 +247,67 @@ function AuthPage() {
         }
     };
 
+    // Run the create-account request. Extracted so the PIN-confirm dial pad
+    // and the "Try again" recovery button can both invoke it without making
+    // the user re-enter their 6-digit PIN.
+    const submitCreateAccount = async () => {
+        if (pin.length !== 6 || confirmPin.length !== 6 || pin !== confirmPin) return;
+        const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+        setIsCreatingAccount(true);
+        setError(null);
+        try {
+            const newUid = await createAccount(fullPhone, pin);
+            setCreatedUid(newUid);
+            setTimeout(() => setStep(3), 300);
+        } catch (err: unknown) {
+            const code = (err as { code?: string; message?: string })?.code || '';
+            const msg = (err as { message?: string })?.message || '';
+            const haystack = `${code} ${msg}`;
+            const isDup = haystack.includes('email-already-in-use');
+
+            if (isDup) {
+                // Silent recovery: maybe an abandoned previous signup.
+                // Try to sign in with the same PIN before bothering the user.
+                try {
+                    const uid = await login(fullPhone, pin);
+                    setCreatedUid(uid);
+                    const usersRef = collection(db, 'users');
+                    const lookupSnap = await getDocs(query(usersRef, where('phone', '==', fullPhone)));
+                    const docData = lookupSnap.empty ? null : lookupSnap.docs[0].data();
+                    if (docData && docData.onboardingComplete === true) {
+                        if (docData.role === 'collector' && docData.collectorType === 'organization') {
+                            window.location.href = '/organization/dashboard';
+                        } else if (docData.role === 'collector') {
+                            window.location.href = '/collector/dashboard';
+                        } else {
+                            window.location.href = '/dashboard';
+                        }
+                        return;
+                    }
+                    // Account exists but onboarding incomplete → resume at profile step.
+                    setTimeout(() => setStep(3), 300);
+                    return;
+                } catch {
+                    // Sign-in with same PIN also failed — they have an account but a different PIN.
+                    resetTransientAuthState();
+                    setMode('login');
+                    setLoginStep(1);
+                    setError('This phone is already registered. Please enter your existing PIN.');
+                    return;
+                }
+            }
+
+            // Wrong-PIN-style errors don't apply to account creation, so any
+            // remaining error is transient/config (network, operation-not-allowed,
+            // too-many-requests, weak-password). Keep BOTH pins intact so the
+            // user only re-creates them once — never asked for the PIN more
+            // than twice. The "Try again" button below will re-run this.
+            setError(friendlyAuthError(err));
+        } finally {
+            setIsCreatingAccount(false);
+        }
+    };
+
     // Handle signup completion
     const handleCompleteSignup = async () => {
         setError(null);
@@ -930,17 +991,41 @@ function AuthPage() {
                             })}
                         </div>
 
-                        {/* Dial pad — replaced with loader during account creation */}
+                        {/* Dial pad — replaced with loader during account creation,
+                            or with a "Try again" button after a transient failure
+                            so the user never has to re-enter their PIN. */}
                         <div className="flex-1 flex items-center">
                             {isCreatingAccount ? (
                                 <div className="w-full flex flex-col items-center justify-center gap-4 py-12">
                                     <Loader2 className="w-10 h-10 animate-spin text-gray-900" />
                                     <p className="text-gray-600 font-medium">Creating your account…</p>
                                 </div>
+                            ) : pinStep === 'confirm' && pin.length === 6 && confirmPin.length === 6 && error ? (
+                                <div className="w-full flex flex-col items-center justify-center gap-4 py-8">
+                                    <button
+                                        type="button"
+                                        onClick={submitCreateAccount}
+                                        className="w-full max-w-sm py-4 bg-gray-900 text-white font-semibold rounded-2xl"
+                                    >
+                                        Try again
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setError(null);
+                                            setPin('');
+                                            setConfirmPin('');
+                                            setPinStep('create');
+                                        }}
+                                        className="text-sm text-gray-500 underline"
+                                    >
+                                        Choose a different PIN
+                                    </button>
+                                </div>
                             ) : (
                                 <DialPad
                                     value={pinStep === 'create' ? pin : confirmPin}
-                                    onChange={async (val) => {
+                                    onChange={(val) => {
                                         if (isCreatingAccount) return; // ignore key presses mid-request
                                         if (pinStep === 'create') {
                                             setPin(val);
@@ -957,58 +1042,7 @@ function AuthPage() {
                                                     setPin('');
                                                     return;
                                                 }
-
-                                                const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
-                                                setIsCreatingAccount(true);
-                                                setError(null);
-                                                try {
-                                                    const newUid = await createAccount(fullPhone, pin);
-                                                    setCreatedUid(newUid);
-                                                    setTimeout(() => setStep(3), 300);
-                                                } catch (err: unknown) {
-                                                    const code = (err as { code?: string; message?: string })?.code || '';
-                                                    const msg = (err as { message?: string })?.message || '';
-                                                    const isDup = code.includes('email-already-in-use') || msg.includes('email-already-in-use');
-
-                                                    if (isDup) {
-                                                        // Silent recovery: maybe an abandoned previous signup.
-                                                        // Try to sign in with the same PIN before bothering the user.
-                                                        try {
-                                                            const uid = await login(fullPhone, pin);
-                                                            setCreatedUid(uid);
-                                                            // Look up the existing user doc to decide where to send them.
-                                                            const usersRef = collection(db, 'users');
-                                                            const lookupSnap = await getDocs(query(usersRef, where('phone', '==', fullPhone)));
-                                                            const docData = lookupSnap.empty ? null : lookupSnap.docs[0].data();
-                                                            if (docData && docData.onboardingComplete === true) {
-                                                                if (docData.role === 'collector' && docData.collectorType === 'organization') {
-                                                                    window.location.href = '/organization/dashboard';
-                                                                } else if (docData.role === 'collector') {
-                                                                    window.location.href = '/collector/dashboard';
-                                                                } else {
-                                                                    window.location.href = '/dashboard';
-                                                                }
-                                                                return;
-                                                            }
-                                                            // Account exists but onboarding incomplete → resume at profile step.
-                                                            setTimeout(() => setStep(3), 300);
-                                                            return;
-                                                        } catch {
-                                                            // Sign-in with same PIN also failed — they have an account but a different PIN.
-                                                            resetTransientAuthState();
-                                                            setMode('login');
-                                                            setLoginStep(1);
-                                                            setError('This phone is already registered. Please enter your existing PIN.');
-                                                            return;
-                                                        }
-                                                    }
-
-                                                    // Other failures — keep the create PIN, just clear confirm so user can retry.
-                                                    setError(friendlyAuthError(err));
-                                                    setConfirmPin('');
-                                                } finally {
-                                                    setIsCreatingAccount(false);
-                                                }
+                                                submitCreateAccount();
                                             }
                                         }
                                     }}
