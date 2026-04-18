@@ -83,7 +83,7 @@ export interface RealtimeJob {
     tipAmount?: number;
     paymentStatus: 'pending' | 'paid' | 'failed';
     paymentIntentId?: string;
-    status: 'pending' | 'assigned' | 'accepted' | 'in_progress' | 'awaiting_payment' | 'completed' | 'cancelled';
+    status: 'pending' | 'assigned' | 'accepted' | 'arrived' | 'en_route' | 'in_progress' | 'awaiting_payment' | 'completed' | 'cancelled';
     createdAt: object;
     assignedAt?: object;
     completedAt?: object;

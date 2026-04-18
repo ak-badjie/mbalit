@@ -91,6 +91,9 @@ export function FullScreenNavigation({
     onComplete,
     onCall,
     onMessage,
+    onArrive,
+    isArrived,
+    isPaid,
 }: FullScreenNavigationProps) {
     const [voiceEnabled, setVoiceEnabled] = useState(true);
     const [detailsExpanded, setDetailsExpanded] = useState(false);

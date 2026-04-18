@@ -213,7 +213,7 @@ export const MapView: React.FC<MapViewProps> = ({
             const bounds = new google.maps.LatLngBounds();
             bounds.extend({ lat: customerLocation.lat, lng: customerLocation.lng });
             bounds.extend({ lat: collectorLocation.lat, lng: collectorLocation.lng });
-            mapInstanceRef.current.fitBounds(bounds, { padding: 80 });
+            mapInstanceRef.current.fitBounds(bounds, 80);
         }
     }, [collectorLocation, customerLocation]);
 

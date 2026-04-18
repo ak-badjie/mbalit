@@ -4,9 +4,9 @@ import React, { createContext, useContext } from 'react';
 
 // Simplified theme context - light mode only
 interface ThemeContextType {
-    theme: 'light';
-    resolvedTheme: 'light';
-    setTheme: (theme: 'light') => void;
+    theme: 'light' | 'dark';
+    resolvedTheme: 'light' | 'dark';
+    setTheme: (theme: 'light' | 'dark') => void;
     toggleTheme: () => void;
 }
 
@@ -15,8 +15,8 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Always light mode - no dark mode support
     const value: ThemeContextType = {
-        theme: 'light',
-        resolvedTheme: 'light',
+        theme: 'light' as 'light' | 'dark',
+        resolvedTheme: 'light' as 'light' | 'dark',
         setTheme: () => { }, // No-op, always light
         toggleTheme: () => { }, // No-op, always light
     };

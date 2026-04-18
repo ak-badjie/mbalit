@@ -245,13 +245,13 @@ export function useAuth() {
     return context;
 }
 
-export function useRequireAuth() {
+export function useRequireAuth(redirectTo: string = '/auth') {
     const context = useAuth();
     const router = require('next/navigation').useRouter();
     React.useEffect(() => {
         if (!context.isLoading && !context.user) {
-            router.push('/auth');
+            router.push(redirectTo);
         }
-    }, [context.user, context.isLoading, router]);
+    }, [context.user, context.isLoading, router, redirectTo]);
     return context;
 }

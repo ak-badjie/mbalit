@@ -1,23 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { ref, update, get } from 'firebase/database';
-import { initializeApp, getApps } from 'firebase/app';
+import { ref, update, get, Database } from 'firebase/database';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 
-// Firebase config for server-side
+// Mark this route as fully dynamic so it isn't pre-rendered at build time
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// Firebase config for server-side (with hardcoded fallbacks matching lib/firebase.ts)
 const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyC7mhuZypiBKFmJPk7vdtMGr_IXcKLP1aI",
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "mbalit-490022.firebaseapp.com",
+    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || "https://mbalit-490022-default-rtdb.firebaseio.com",
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "mbalit-490022",
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "mbalit-490022.firebasestorage.app",
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "549954354577",
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:549954354577:web:e0d0f012e7c20831ad2e30",
 };
 
-// Initialize Firebase if not already initialized
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db = getDatabase(app);
+// Lazy-initialize Firebase to avoid running during build/page-data collection
+let _app: FirebaseApp | null = null;
+let _db: Database | null = null;
+function getDb(): Database {
+    if (!_db) {
+        _app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        _db = getDatabase(_app);
+    }
+    return _db;
+}
 
 // Webhook secret for verifying Modem Pay signatures
 const MODEM_PAY_WEBHOOK_SECRET = process.env.MODEM_PAY_WEBHOOK_SECRET || '';
@@ -111,7 +122,7 @@ async function handlePaymentSuccess(data: {
 
     try {
         // Find and update the job with this payment ID
-        const jobsRef = ref(db, 'jobs');
+        const jobsRef = ref(getDb(), 'jobs');
         const snapshot = await get(jobsRef);
 
         if (snapshot.exists()) {
@@ -124,7 +135,7 @@ async function handlePaymentSuccess(data: {
                     jobData.paymentIntentId?.includes(paymentId)) {
 
                     // Update job status
-                    const jobRef = ref(db, `jobs/${jobId}`);
+                    const jobRef = ref(getDb(), `jobs/${jobId}`);
                     await update(jobRef, {
                         paymentStatus: 'paid',
                         transactionId: data.transaction_id || paymentId,
@@ -157,7 +168,7 @@ async function handlePaymentFailed(data: {
 
     try {
         // Find and update the job
-        const jobsRef = ref(db, 'jobs');
+        const jobsRef = ref(getDb(), 'jobs');
         const snapshot = await get(jobsRef);
 
         if (snapshot.exists()) {
@@ -166,7 +177,7 @@ async function handlePaymentFailed(data: {
             for (const [jobId, job] of Object.entries(jobs)) {
                 const jobData = job as { paymentIntentId?: string };
                 if (jobData.paymentIntentId === paymentId) {
-                    const jobRef = ref(db, `jobs/${jobId}`);
+                    const jobRef = ref(getDb(), `jobs/${jobId}`);
                     await update(jobRef, {
                         paymentStatus: 'failed',
                         failureReason: data.reason || 'Payment failed',
