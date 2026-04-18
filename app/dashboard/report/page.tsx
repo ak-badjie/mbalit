@@ -13,7 +13,7 @@ import {
     Check,
     Send,
 } from 'lucide-react';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/lib/auth-context';
 import { db } from '@/lib/firebase';
 import { compressImage } from '@/lib/image-utils';
@@ -111,7 +111,9 @@ export default function ReportHazardPage() {
         setIsSubmitting(true);
         setSubmitError(null);
         try {
+            const reportRef = doc(collection(db, 'environmentalReports'));
             const payload = {
+                id: reportRef.id,
                 reporterId: user.id,
                 reporterName: user.name || 'Community member',
                 reporterPhone: user.phone || '',
@@ -133,7 +135,7 @@ export default function ReportHazardPage() {
                 setIsSubmitting(false);
                 return;
             }
-            await addDoc(collection(db, 'environmentalReports'), payload);
+            await setDoc(reportRef, payload);
             setIsSuccess(true);
             setTimeout(() => router.push('/dashboard'), 2200);
         } catch (err) {
