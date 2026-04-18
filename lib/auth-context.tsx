@@ -1,18 +1,26 @@
 'use client';
 
 /**
- * Mbalit auth context — Firebase Auth FREE.
+ * Mbalit auth context — Firebase Auth FREE, fully client-side.
  *
- * Authentication is handled by our own Next.js route handlers
- * (`/api/auth/{signup,login,logout,me,change-pin}`). The session token lives
- * in an HTTP-only cookie (`mbalit_session`), and the userId is mirrored to
- * `localStorage` so the React tree can subscribe to the Firestore user doc
- * for live profile updates without an extra round-trip on every page load.
+ * The app intentionally uses ONLY Firestore + Realtime Database (no Firebase
+ * Auth, no Cloud Storage, no admin service account). PINs are hashed with
+ * bcryptjs in the browser and stored on the user document as `pinHash`. The
+ * "logged-in" user id is persisted in `localStorage` so the session survives
+ * page reloads.
  *
- * Firestore is still accessed directly from the browser for live data
- * (profile updates, lists, etc.). The Firestore security rules must allow
- * the appropriate reads without depending on `request.auth` — sensitive
- * writes go through API routes that re-verify the session.
+ * SECURITY TRADEOFF
+ * -----------------
+ * Without Firebase Auth there is no `request.auth.uid` for Firestore Security
+ * Rules to key on. The Firestore rules must permit the necessary client
+ * reads/writes directly. Anyone who can read the `users` collection can see
+ * the bcrypt `pinHash` and brute-force a 6-digit PIN offline. This is the
+ * unavoidable consequence of the user-mandated "Firestore + RTDB only,
+ * no service account" architecture; it is documented here so future
+ * maintainers understand why the bcrypt cost factor and PIN length cannot
+ * harden it past a determined attacker. The right long-term fix is to
+ * obtain a Firebase Admin service account and move PIN verification + report
+ * fan-out behind authenticated API routes.
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -24,9 +32,14 @@ import {
     query,
     collection,
     where,
+    orderBy,
+    limit,
     serverTimestamp,
     onSnapshot,
+    Timestamp,
+    addDoc,
 } from 'firebase/firestore';
+import bcrypt from 'bcryptjs';
 import { db } from './firebase';
 import { User, WasteType, Collector } from '@/types';
 
@@ -49,6 +62,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const UID_STORAGE_KEY = 'mbalit_uid';
+const BCRYPT_COST = 10;
+
+// Pin reset throttle (client-side; defense-in-depth only).
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const SEVEN_DAYS_MS = 7 * ONE_DAY_MS;
+const MAX_RESETS_PER_WEEK = 3;
 
 function readStoredUid(): string | null {
     if (typeof window === 'undefined') return null;
@@ -69,22 +88,6 @@ function writeStoredUid(uid: string | null) {
     }
 }
 
-async function postJson(url: string, body: unknown): Promise<{ ok: boolean; status: number; data: any }> {
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify(body),
-    });
-    let data: any = {};
-    try {
-        data = await res.json();
-    } catch {
-        /* tolerate empty body */
-    }
-    return { ok: res.ok, status: res.status, data };
-}
-
 function mapUserDoc(userId: string, data: any): User {
     return {
         id: userId,
@@ -98,52 +101,20 @@ function mapUserDoc(userId: string, data: any): User {
     } as User;
 }
 
+function makeReferenceCode(): string {
+    const seg = () => Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `R-${seg()}-${seg()}`;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [uid, setUid] = useState<string | null>(null);
+    const [uid, setUid] = useState<string | null>(() => readStoredUid());
     const [isLoading, setIsLoading] = useState(true);
 
     /**
-     * Bootstrap: ask the server who we are. The cookie travels automatically
-     * via `credentials: same-origin`. If the server says 401 we fall back to
-     * a clean signed-out state and clear the local uid hint.
-     */
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            try {
-                const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
-                if (cancelled) return;
-                if (res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    if (data?.uid) {
-                        writeStoredUid(data.uid);
-                        setUid(data.uid);
-                        return;
-                    }
-                }
-                // Not authenticated according to the server — clear any stale hint.
-                writeStoredUid(null);
-                setUid(null);
-                setUser(null);
-                setIsLoading(false);
-            } catch {
-                // Network failure: leave the optimistic uid in place if we have one
-                // so cached data still renders, but stop the spinner.
-                if (cancelled) return;
-                const cached = readStoredUid();
-                if (cached) setUid(cached);
-                setIsLoading(false);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    /**
-     * Subscribe to the user doc once we know our uid, so role / availability /
-     * onboarding flags propagate live without a manual refetch.
+     * Subscribe to the user doc whenever we know our uid, so role / availability
+     * / onboarding flags propagate live without a manual refetch. If the
+     * stored uid points at a deleted account, we clean up and sign out.
      */
     useEffect(() => {
         if (!uid) {
@@ -157,6 +128,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (snap.exists()) {
                     setUser(mapUserDoc(uid, snap.data()));
                 } else {
+                    // Stale uid (account deleted) — clear it.
+                    writeStoredUid(null);
+                    setUid(null);
                     setUser(null);
                 }
                 setIsLoading(false);
@@ -190,19 +164,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const createAccount = async (phone: string, pin: string): Promise<string> => {
+        if (!/^\d{6}$/.test(pin)) {
+            throw new Error('PIN must be exactly 6 digits.');
+        }
         setIsLoading(true);
         try {
-            const { ok, data, status } = await postJson('/api/auth/signup', { phone, pin });
-            if (!ok || !data?.success || !data?.uid) {
-                const err: any = new Error(data?.error || 'Could not create account.');
-                err.status = status;
-                throw err;
+            // Hard-fail if a user with this phone already exists, so we never
+            // shadow-create a duplicate (which would leave the original PIN
+            // strandable and confuse the login lookup).
+            const exists = await checkPhoneExists(phone);
+            if (exists) {
+                throw new Error('An account with this phone already exists. Please sign in instead.');
             }
-            writeStoredUid(data.uid);
-            setUid(data.uid);
-            return data.uid;
+
+            const pinHash = await bcrypt.hash(pin, BCRYPT_COST);
+            // Use the standard Firestore "doc(collection)" trick to mint a
+            // collision-resistant 20-char id WITHOUT writing yet, so we can
+            // hand the same id to the snapshot listener.
+            const newRef = doc(collection(db, 'users'));
+            await setDoc(newRef, {
+                id: newRef.id,
+                phone,
+                pinHash,
+                onboardingComplete: false,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+            writeStoredUid(newRef.id);
+            setUid(newRef.id);
+            return newRef.id;
         } catch (error) {
-            console.error('Account creation error:', error);
             setIsLoading(false);
             throw error;
         }
@@ -212,14 +203,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const completeProfile = async (
-        uid: string,
+        targetUid: string,
         phone: string,
         _pin: string,
         roleData: any,
     ): Promise<void> => {
         // The PIN is intentionally NOT written here — it is already hashed and
-        // stored by the signup route. Writing it again as plaintext would
-        // defeat the whole point of the bcrypt migration.
+        // stored by createAccount. Writing it again as plaintext would defeat
+        // the bcrypt protection.
         setIsLoading(true);
         try {
             const userData = {
@@ -228,7 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 updatedAt: serverTimestamp(),
                 ...roleData,
             };
-            await setDoc(doc(db, 'users', uid), userData, { merge: true });
+            await setDoc(doc(db, 'users', targetUid), userData, { merge: true });
             // The snapshot listener will refresh `user` automatically.
         } catch (error) {
             console.error('Profile update error:', error);
@@ -239,17 +230,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const login = async (phone: string, pin: string): Promise<string> => {
+        if (!/^\d{6}$/.test(pin)) {
+            throw new Error('Phone number or PIN is incorrect.');
+        }
         setIsLoading(true);
         try {
-            const { ok, data, status } = await postJson('/api/auth/login', { phone, pin });
-            if (!ok || !data?.success || !data?.uid) {
-                const err: any = new Error(data?.error || 'Phone number or PIN is incorrect.');
-                err.status = status;
-                throw err;
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('phone', '==', phone), limit(1));
+            const snap = await getDocs(q);
+            if (snap.empty) {
+                throw new Error('Phone number or PIN is incorrect.');
             }
-            writeStoredUid(data.uid);
-            setUid(data.uid);
-            return data.uid;
+            const userDoc = snap.docs[0]!;
+            const data = userDoc.data() as { pinHash?: string };
+            if (!data.pinHash) {
+                throw new Error('This account is not fully set up. Please reset your PIN to continue.');
+            }
+            const ok = await bcrypt.compare(pin, data.pinHash);
+            if (!ok) {
+                throw new Error('Phone number or PIN is incorrect.');
+            }
+            writeStoredUid(userDoc.id);
+            setUid(userDoc.id);
+            return userDoc.id;
         } catch (error) {
             setIsLoading(false);
             throw error;
@@ -258,56 +261,108 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const changePin = async (oldPin: string, newPin: string) => {
         if (!user) throw new Error('No user logged in');
-        const { ok, data } = await postJson('/api/auth/change-pin', { oldPin, newPin });
-        if (!ok || !data?.success) {
-            // Surface the stable error code the dialog UI checks for.
-            throw new Error(data?.error || 'change-pin-failed');
+        if (!/^\d{6}$/.test(newPin)) {
+            throw new Error('PIN must be exactly 6 digits.');
         }
+        const userRef = doc(db, 'users', user.id);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) throw new Error('Account not found.');
+        const data = snap.data() as { pinHash?: string };
+        const ok = data.pinHash ? await bcrypt.compare(oldPin, data.pinHash) : false;
+        if (!ok) {
+            // Stable error code the change-pin dialog UI checks for.
+            throw new Error('old-pin-incorrect');
+        }
+        const pinHash = await bcrypt.hash(newPin, BCRYPT_COST);
+        await setDoc(userRef, { pinHash, updatedAt: serverTimestamp() }, { merge: true });
     };
 
     const requestPinReset = async (phone: string): Promise<{ referenceCode: string }> => {
-        // All rate limiting, audit logging, and Firestore writes happen on the
-        // server (see app/api/auth/pin-reset/route.ts) so they are enforced with
-        // admin credentials and cannot be bypassed by a modified client.
-        let res: Response;
+        // Best-effort throttle on the client. A determined attacker can bypass
+        // this; we still write every attempt to `pinResetAuditLog` so support
+        // can spot abuse after the fact.
+        const requestsCol = collection(db, 'pinResetRequests');
+        const sevenDaysAgo = Timestamp.fromMillis(Date.now() - SEVEN_DAYS_MS);
+
         try {
-            res = await fetch('/api/auth/pin-reset', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone }),
+            const recentSnap = await getDocs(
+                query(
+                    requestsCol,
+                    where('phone', '==', phone),
+                    where('createdAt', '>=', sevenDaysAgo),
+                    orderBy('createdAt', 'desc'),
+                    limit(10),
+                ),
+            );
+            const recent = recentSnap.docs.map((d) =>
+                d.data() as { status?: string; createdAt?: Timestamp },
+            );
+            const pending = recent.find((r) => r.status === 'pending');
+            if (pending && pending.createdAt && Date.now() - pending.createdAt.toMillis() < ONE_DAY_MS) {
+                throw new Error(
+                    'A reset request is already in progress for this number. Please wait for our team to contact you.',
+                );
+            }
+            if (recent.length >= MAX_RESETS_PER_WEEK) {
+                throw new Error(
+                    'Too many reset attempts for this number this week. Please contact support directly.',
+                );
+            }
+        } catch (err) {
+            // Re-throw user-facing throttle messages; swallow lookup-only failures
+            // so a broken index doesn't block a legitimate reset request.
+            if (err instanceof Error && /reset|attempt|progress/i.test(err.message)) {
+                throw err;
+            }
+            console.warn('PIN reset throttle lookup failed (continuing):', err);
+        }
+
+        // Look up the user (we still write the request when no account exists,
+        // to avoid leaking which numbers are registered).
+        let userId: string | null = null;
+        try {
+            const usersSnap = await getDocs(
+                query(collection(db, 'users'), where('phone', '==', phone), limit(1)),
+            );
+            if (!usersSnap.empty) userId = usersSnap.docs[0]!.id;
+        } catch (err) {
+            console.warn('User lookup during pin reset failed:', err);
+        }
+
+        const referenceCode = makeReferenceCode();
+        try {
+            const reqRef = await addDoc(requestsCol, {
+                phone,
+                userId,
+                accountExists: !!userId,
+                referenceCode,
+                status: 'pending',
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                source: 'web-client',
+            });
+            await addDoc(collection(db, 'pinResetAuditLog'), {
+                event: 'pin_reset_requested',
+                requestId: reqRef.id,
+                referenceCode,
+                phone,
+                userId,
+                accountExists: !!userId,
+                createdAt: serverTimestamp(),
+                source: 'web-client',
             });
         } catch (err) {
-            console.error('Network error during PIN reset request:', err);
-            throw new Error('Could not start a reset right now. Please check your connection and try again.');
+            console.error('Could not record PIN reset request:', err);
+            throw new Error('Could not start a reset right now. Please try again in a moment.');
         }
 
-        let data: { success?: boolean; referenceCode?: string; error?: string } = {};
-        try {
-            data = await res.json();
-        } catch {
-            /* fall back to status-based message */
-        }
-
-        if (!res.ok || !data.success || !data.referenceCode) {
-            throw new Error(data.error || 'Could not start a reset right now. Please try again in a moment.');
-        }
-
-        return { referenceCode: data.referenceCode };
+        return { referenceCode };
     };
 
     const logout = async () => {
-        try {
-            await fetch('/api/auth/logout', {
-                method: 'POST',
-                credentials: 'same-origin',
-            });
-        } catch (error) {
-            console.error('Logout request failed (clearing client state anyway):', error);
-        } finally {
-            writeStoredUid(null);
-            setUid(null);
-            setUser(null);
-        }
+        writeStoredUid(null);
+        setUid(null);
+        setUser(null);
     };
 
     const updateCollectorWasteTypes = async (wasteTypes: WasteType[]) => {

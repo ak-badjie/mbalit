@@ -14,6 +14,17 @@ import {
     Send,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { db } from '@/lib/firebase';
+import {
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    query,
+    serverTimestamp,
+    where,
+    writeBatch,
+} from 'firebase/firestore';
 import { compressImage } from '@/lib/image-utils';
 import { reverseGeocode } from '@/lib/maps';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -130,35 +141,92 @@ export default function ReportHazardPage() {
                 return;
             }
 
-            // Server-trusted endpoint creates the report AND fans out
-            // notifications to authority orgs in one atomic call. The session
-            // cookie travels automatically with `credentials: same-origin`,
-            // so we no longer need a Bearer header. If this fails we surface
-            // the error so the user can retry — we never silently drop their
-            // report.
-            const res = await fetch('/api/reports/create', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    requestId: requestIdRef.current,
-                    photos,
-                    note: note.trim(),
-                    location,
-                }),
-            });
+            // Mbalit uses ONLY Firestore + RTDB on the client (no admin SDK
+            // available), so the report doc and every authority notification
+            // are written together in a single Firestore WriteBatch — either
+            // the whole thing commits or nothing does, so the user never sees
+            // "report sent" while the alerts silently failed.
+            //
+            // Idempotency: the report doc id is derived from the persisted
+            // requestId, so a retry after a network hiccup re-uses the same
+            // doc id (Firestore set merges) and re-uses the same notification
+            // ids (`notif_{reportId}_{userId}`), preventing duplicates.
+            const reportId = `er_${requestIdRef.current.replace(/[^a-zA-Z0-9]/g, '').slice(0, 28)}`;
+            const reportRef = doc(db, 'environmentalReports', reportId);
 
-            if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
+            // If this exact draft has already produced a report (double-tap
+            // submit, retry after spinner), short-circuit instead of redoing
+            // the batch.
+            const existing = await getDoc(reportRef);
+            if (existing.exists()) {
+                setIsSuccess(true);
+                setTimeout(() => router.push('/dashboard'), 2200);
+                return;
+            }
+
+            // Resolve authority recipients: members + ownerId of every org
+            // flagged isAuthority. Firestore caps a batch at 500 operations,
+            // so we cap recipients at 499 (leaves 1 op for the report doc).
+            const orgsSnap = await getDocs(
+                query(collection(db, 'organizations'), where('isAuthority', '==', true)),
+            );
+            const recipients = new Set<string>();
+            for (const orgDoc of orgsSnap.docs) {
+                const org = orgDoc.data() as { members?: unknown; ownerId?: unknown };
+                if (Array.isArray(org.members)) {
+                    for (const m of org.members) {
+                        if (typeof m === 'string' && m) recipients.add(m);
+                    }
+                }
+                if (typeof org.ownerId === 'string' && org.ownerId) recipients.add(org.ownerId);
+            }
+            if (recipients.size > 499) {
                 setSubmitError(
-                    (data as { error?: string })?.error ||
-                        'Could not send your report. Please try again.'
+                    'Too many authority recipients to notify in one go. Please contact support.',
                 );
                 setIsSubmitting(false);
                 return;
             }
+
+            const photoCount = photos.length;
+            const photoSummary = photoCount === 1 ? '1 photo' : `${photoCount} photos`;
+            const reporterName = user.name || 'A community member';
+            const title = 'New community hazard report';
+            const message = `${reporterName} reported a hazard at ${location.address} (${photoSummary}). Tap to review.`;
+
+            const batch = writeBatch(db);
+            batch.set(reportRef, {
+                id: reportId,
+                requestId: requestIdRef.current,
+                reporterId: user.id,
+                reporterName,
+                reporterPhone: user.phone || '',
+                photos,
+                note: note.trim(),
+                location,
+                status: 'pending' as const,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+            for (const userId of recipients) {
+                const notifRef = doc(db, 'notifications', `notif_${reportId}_${userId}`);
+                batch.set(notifRef, {
+                    userId,
+                    title,
+                    message,
+                    type: 'warning',
+                    read: false,
+                    data: {
+                        kind: 'environmental_report',
+                        reportId,
+                        deepLink: '/organization/reports',
+                        photoCount,
+                        address: location.address,
+                    },
+                    createdAt: serverTimestamp(),
+                });
+            }
+            await batch.commit();
 
             setIsSuccess(true);
             setTimeout(() => router.push('/dashboard'), 2200);

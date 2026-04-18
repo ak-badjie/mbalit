@@ -3,7 +3,7 @@
 // NOT used — images are stored as compressed base64 inside Firestore docs.
 // Firebase Auth is intentionally NOT initialized: authentication is implemented
 // as a custom phone+PIN system with bcrypt hashes stored in Firestore (see
-// lib/auth-server.ts and lib/auth-context.tsx).
+// lib/auth-context.tsx).
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getDatabase, Database } from 'firebase/database';
