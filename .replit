@@ -37,3 +37,8 @@ externalPort = 80
 
 [userenv.shared]
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = "AIzaSyCY6vNoIN_MGZxOl4myjpF8hZK7H1jATwU"
+
+[deployment]
+run = ["npm", "run", "start"]
+deploymentTarget = "autoscale"
+build = ["npm", "run", "build"]
