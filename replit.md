@@ -75,7 +75,15 @@ The server queries on `pinResetRequests` need:
 
 Firestore prints a creation link the first time each query runs in production.
 
+## Firebase project
+- Active project: **`mbalit-8a52f`** (apiKey/appId/etc. live in `lib/firebase.ts` and `app/api/webhooks/modem-pay/route.ts` as fallbacks; canonical values are in the `NEXT_PUBLIC_FIREBASE_*` Replit Secrets).
+- Before the app will work end-to-end on a fresh project, the user must in the Firebase Console:
+  1. Enable **Email/Password** sign-in under Authentication → Sign-in method.
+  2. Create the **Firestore** database (production mode) and paste in the security rules listed below.
+  3. Enable **Realtime Database** in the default region (RTDB is used for live order tracking and payment status); the URL `https://mbalit-8a52f-default-rtdb.firebaseio.com` is assumed — if a different region was chosen, update `NEXT_PUBLIC_FIREBASE_DATABASE_URL`.
+  4. (For PIN reset) Generate a service-account JSON in Project Settings → Service Accounts and replace the `FIREBASE_SERVICE_ACCOUNT` secret. **Until this is replaced, `/api/auth/pin-reset` will return 503.**
+  5. Recreate the Firestore composite indexes listed in "Firestore composite indexes" below.
+
 ## Notes
-- Firebase credentials currently have inline fallback values in `lib/firebase.ts`. These should be moved to environment variables for production.
 - The app uses Modem Pay for mobile money payments.
 - Google Maps is used for waste collection route/location tracking.
