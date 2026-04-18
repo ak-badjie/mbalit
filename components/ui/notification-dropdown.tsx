@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Bell,
@@ -47,6 +48,16 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const router = useRouter();
+
+    const handleNotificationClick = (notification: Notification) => {
+        if (!notification.read) onMarkAsRead(notification.id);
+        const deepLink = (notification.data as { deepLink?: string } | undefined)?.deepLink;
+        if (deepLink && typeof deepLink === 'string') {
+            setIsOpen(false);
+            router.push(deepLink);
+        }
+    };
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -147,7 +158,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: index * 0.05 }}
-                                            onClick={() => !notification.read && onMarkAsRead(notification.id)}
+                                            onClick={() => handleNotificationClick(notification)}
                                             className={`
                                                 px-4 py-3 border-b border-gray-100  last:border-0
                                                 hover:bg-gray-50  transition-colors cursor-pointer

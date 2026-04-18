@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/lib/auth-context';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { compressImage } from '@/lib/image-utils';
 import { reverseGeocode } from '@/lib/maps';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -136,6 +136,28 @@ export default function ReportHazardPage() {
                 return;
             }
             await setDoc(reportRef, payload);
+
+            // Fan out an in-app notification to every authority user so they
+            // see the report immediately. Fire-and-forget — we never want a
+            // notification hiccup to block the reporter's success screen, and
+            // the report itself is already safely persisted at this point.
+            void (async () => {
+                try {
+                    const idToken = (await auth.currentUser?.getIdToken()) || '';
+                    if (!idToken) return;
+                    await fetch('/api/reports/notify', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${idToken}`,
+                        },
+                        body: JSON.stringify({ reportId: reportRef.id }),
+                    });
+                } catch (err) {
+                    console.warn('Could not notify authorities (report still saved):', err);
+                }
+            })();
+
             setIsSuccess(true);
             setTimeout(() => router.push('/dashboard'), 2200);
         } catch (err) {
