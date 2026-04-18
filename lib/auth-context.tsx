@@ -89,7 +89,11 @@ function writeStoredUid(uid: string | null) {
 }
 
 function mapUserDoc(userId: string, data: any): User {
+    // Spread `data` FIRST, then layer the explicit fields on top. The previous
+    // ordering ran the spread last, which overwrote the converted Date objects
+    // with raw Firestore Timestamps and could resurrect stale field values.
     return {
+        ...data,
         id: userId,
         email: data.email || '',
         name: data.name || '',
@@ -97,7 +101,6 @@ function mapUserDoc(userId: string, data: any): User {
         role: data.role || 'user',
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date(),
-        ...data,
     } as User;
 }
 

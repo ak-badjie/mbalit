@@ -188,13 +188,20 @@ function AuthPage() {
             if (user.profileImage) setProfileImage(user.profileImage);
         } else if (user.onboardingComplete === true) {
             // Already onboarded — don't keep them stuck on /auth.
+            // Use Next.js client-side navigation (router.replace) instead of
+            // window.location.href so the AuthProvider stays mounted and keeps
+            // its live user state. A hard navigation re-mounts AuthProvider on
+            // the destination, where Firestore's onSnapshot fires from the
+            // local cache FIRST with stale data — which made the dashboard
+            // layout's onboardingComplete gate bounce back to /auth and trap
+            // users in a loop on the profile-picture step.
             const isOrg = user.role === 'collector' && 'collectorType' in user && user.collectorType === 'organization';
             if (isOrg) {
-                window.location.href = '/organization/dashboard';
+                router.replace('/organization/dashboard');
             } else if (user.role === 'collector') {
-                window.location.href = '/collector/dashboard';
+                router.replace('/collector/dashboard');
             } else {
-                window.location.href = '/dashboard';
+                router.replace('/dashboard');
             }
         }
     }, [user]);
@@ -236,14 +243,14 @@ function AuthPage() {
             if (!loginSnap.empty) {
                 const userData = loginSnap.docs[0].data();
                 if (userData.role === 'collector' && userData.collectorType === 'organization') {
-                    window.location.href = '/organization/dashboard';
+                    router.replace('/organization/dashboard');
                 } else if (userData.role === 'collector') {
-                    window.location.href = '/collector/dashboard';
+                    router.replace('/collector/dashboard');
                 } else {
-                    window.location.href = '/dashboard';
+                    router.replace('/dashboard');
                 }
             } else {
-                window.location.href = '/dashboard';
+                router.replace('/dashboard');
             }
         } catch (err: unknown) {
             setError(friendlyAuthError(err));
@@ -293,11 +300,11 @@ function AuthPage() {
                     const docData = lookupSnap.empty ? null : lookupSnap.docs[0].data();
                     if (docData && docData.onboardingComplete === true) {
                         if (docData.role === 'collector' && docData.collectorType === 'organization') {
-                            window.location.href = '/organization/dashboard';
+                            router.replace('/organization/dashboard');
                         } else if (docData.role === 'collector') {
-                            window.location.href = '/collector/dashboard';
+                            router.replace('/collector/dashboard');
                         } else {
-                            window.location.href = '/dashboard';
+                            router.replace('/dashboard');
                         }
                         return;
                     }
@@ -345,9 +352,17 @@ function AuthPage() {
                     role: 'user',
                 });
                 setIsSignupSuccess(true);
+                // Navigate immediately via Next.js router so AuthProvider stays
+                // mounted with the freshly merged onboardingComplete=true user
+                // state. A hard window.location navigation re-mounts the
+                // provider and Firestore's cache-first snapshot delivers stale
+                // data, which the dashboard layout interprets as
+                // "still onboarding" and bounces back to /auth — looping the
+                // user on the profile step. The success animation can play
+                // briefly before the route transition completes.
                 setTimeout(() => {
-                    window.location.href = '/dashboard';
-                }, 3500);
+                    router.replace('/dashboard');
+                }, 600);
             } else if (registrationType === 'collector' || registrationType === 'organization') {
                 const collectorData: Record<string, unknown> = {
                     name: registrationType === 'organization' ? orgName : fullName,
@@ -415,11 +430,11 @@ function AuthPage() {
                 setIsSignupSuccess(true);
                 setTimeout(() => {
                     if (registrationType === 'organization') {
-                        window.location.href = '/organization/dashboard';
+                        router.replace('/organization/dashboard');
                     } else {
-                        window.location.href = '/collector/dashboard';
+                        router.replace('/collector/dashboard');
                     }
-                }, 3500);
+                }, 600);
             }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to complete signup');
