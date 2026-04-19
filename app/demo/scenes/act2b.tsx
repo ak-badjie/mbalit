@@ -350,7 +350,7 @@ export function Act2Scene9() {
                     >
                         <div className="w-32 h-32 rounded-full bg-white p-3 shadow-2xl flex items-center justify-center relative">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src="https://i0.wp.com/kanifing.gm/wp-content/uploads/2020/04/KMC-Logo1.png" alt="KMC" className="w-full h-full object-contain" />
+                            <img src="/kmc-logo.png" alt="KMC" className="w-full h-full object-contain" />
                             {phase === 'received' && (
                                 <motion.div
                                     initial={{ scale: 0 }}
@@ -390,7 +390,7 @@ export function Act2Scene10() {
                 <div className="flex items-center justify-between px-6 py-4 border-b">
                     <div className="flex items-center gap-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="https://i0.wp.com/kanifing.gm/wp-content/uploads/2020/04/KMC-Logo1.png" alt="KMC" className="w-10 h-10 object-contain" />
+                        <img src="/kmc-logo.png" alt="KMC" className="w-10 h-10 object-contain" />
                         <div>
                             <div className="font-bold">KMC Hazard Inbox</div>
                             <div className="text-xs text-gray-500">Live · 1 new report</div>

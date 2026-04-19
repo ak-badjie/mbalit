@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 
 export const BRAND = {
@@ -154,7 +154,7 @@ export function SwipeIn({
     delay?: number;
     className?: string;
 }) {
-    const init: Record<string, any> = {
+    const init: Record<'left' | 'right' | 'top' | 'bottom', { x?: number; y?: number; opacity: number }> = {
         left: { x: -80, opacity: 0 },
         right: { x: 80, opacity: 0 },
         top: { y: -80, opacity: 0 },
@@ -204,11 +204,19 @@ export function ParticleBurst({
     count?: number;
     delay?: number;
 }) {
+    // Deterministic particle distribution — no Math.random in render path
+    // so re-renders never re-shuffle the burst.
+    const particles = useMemo(
+        () =>
+            Array.from({ length: count }).map((_, i) => ({
+                angle: (i / count) * Math.PI * 2,
+                dist: 80 + ((i * 53) % 80),
+            })),
+        [count]
+    );
     return (
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            {Array.from({ length: count }).map((_, i) => {
-                const angle = (i / count) * Math.PI * 2;
-                const dist = 80 + Math.random() * 80;
+            {particles.map(({ angle, dist }, i) => {
                 return (
                     <motion.span
                         key={i}

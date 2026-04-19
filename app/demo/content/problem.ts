@@ -78,6 +78,6 @@ export const problem = {
         headline: 'And then there\'s corporate dumping.',
         callout: 'Trucks unload at night where no one\'s watching. Citizens see it. Authorities don\'t — until it\'s too late.',
         authority: 'Kanifing Municipal Council',
-        authorityLogo: 'https://i0.wp.com/kanifing.gm/wp-content/uploads/2020/04/KMC-Logo1.png',
+        authorityLogo: '/kmc-logo.png',
     } as ProblemScene6,
 };
