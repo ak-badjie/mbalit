@@ -21,7 +21,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion, useMotionValue, useSpring } from 'framer-motion';
+import { motion, useMotionValue, useSpring, useReducedMotion } from 'framer-motion';
 import { BRAND, SceneEyebrow, SceneTitle } from './primitives';
 
 /* =====================================================================
@@ -35,6 +35,7 @@ export function MeshBackdrop({
     palette?: string[];
     intensity?: number;
 }) {
+    const reduceMotion = useReducedMotion();
     return (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {palette.map((c, i) => (
@@ -49,11 +50,11 @@ export function MeshBackdrop({
                         background: `radial-gradient(circle, ${c}${Math.round(intensity * 255).toString(16).padStart(2, '0')}, transparent 70%)`,
                         filter: 'blur(60px)',
                     }}
-                    animate={{
+                    animate={reduceMotion ? undefined : {
                         x: [0, 60, -40, 0],
                         y: [0, -50, 40, 0],
                     }}
-                    transition={{
+                    transition={reduceMotion ? undefined : {
                         duration: 18 + i * 4,
                         repeat: Infinity,
                         ease: 'easeInOut',
@@ -122,6 +123,7 @@ export function OrbField({
             })),
         [palette]
     );
+    const reduceMotion = useReducedMotion();
     return (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {orbs.map((o, i) => (
@@ -136,12 +138,12 @@ export function OrbField({
                         background: `radial-gradient(circle, ${o.color}, transparent 65%)`,
                         filter: 'blur(40px)',
                     }}
-                    animate={{
+                    animate={reduceMotion ? undefined : {
                         x: [0, 80, -60, 0],
                         y: [0, -60, 50, 0],
                         scale: [1, 1.08, 0.95, 1],
                     }}
-                    transition={{ duration: o.dur, repeat: Infinity, ease: 'easeInOut' }}
+                    transition={reduceMotion ? undefined : { duration: o.dur, repeat: Infinity, ease: 'easeInOut' }}
                 />
             ))}
         </div>
@@ -295,6 +297,8 @@ export function FloatingCard({
 }
 
 export function ShimmerSweep({ delay = 0 }: { delay?: number }) {
+    const reduceMotion = useReducedMotion();
+    if (reduceMotion) return null;
     return (
         <motion.div
             initial={{ x: '-120%' }}

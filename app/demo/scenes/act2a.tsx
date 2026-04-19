@@ -395,6 +395,8 @@ export function Act2Scene3() {
 /* ============================================================
    Scene 4 — Map + Plus Code (real Banjul zoom dolly)
    ============================================================ */
+const PLUS_CODE_TARGET = '7XGM+JX Serrekunda';
+
 export function Act2Scene4() {
     const [phase, setPhase] = React.useState<'wide' | 'zoom' | 'pin' | 'code'>('wide');
     const [code, setCode] = React.useState('');
@@ -406,12 +408,11 @@ export function Act2Scene4() {
         let typeId: ReturnType<typeof setInterval> | null = null;
         const t3 = setTimeout(() => {
             setPhase('code');
-            const target = '7XGM+JX Serrekunda';
             let i = 0;
             typeId = setInterval(() => {
                 i++;
-                setCode(target.slice(0, i));
-                if (i >= target.length && typeId) clearInterval(typeId);
+                setCode(PLUS_CODE_TARGET.slice(0, i));
+                if (i >= PLUS_CODE_TARGET.length && typeId) clearInterval(typeId);
             }, 65);
         }, 3100);
         return () => {
@@ -453,7 +454,7 @@ export function Act2Scene4() {
                             <div className="text-[10px] text-gray-500 uppercase tracking-[0.25em] mb-1">Plus Code</div>
                             <div className="font-mono text-base font-bold text-gray-900 min-h-[24px]">
                                 {code}
-                                {phase === 'code' && code.length < 'X7GM+JX Serrekunda'.length && (
+                                {phase === 'code' && code.length < PLUS_CODE_TARGET.length && (
                                     <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.7, repeat: Infinity }} className="inline-block w-[2px] h-4 bg-gray-900 ml-0.5 align-middle" />
                                 )}
                             </div>
