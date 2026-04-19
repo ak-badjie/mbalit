@@ -88,10 +88,10 @@ export const S2 = {
     line: 'And the smoke never really clears.',
     images: [STORY_IMAGES.smokeRoad, STORY_IMAGES.fireActive],
     stats: [
-        { label: 'Tonnes of waste arriving every day at Bakoteh', value: 460, decimals: 0, suffix: '' },
-        { label: 'Hectares of open, mostly burning dumpsite', value: 17.8, decimals: 1, suffix: ' ha' },
-        { label: 'Of national municipal waste left untreated', value: 90, decimals: 0, suffix: '%' },
-    ] as { label: string; value: number; decimals: number; suffix: string }[],
+        { label: 'Tonnes of waste arriving every day at Bakoteh', value: 460, decimals: 0, prefix: '', suffix: '' },
+        { label: 'Hectares of open, mostly burning dumpsite', value: 17.8, decimals: 1, prefix: '', suffix: ' ha' },
+        { label: 'Of national municipal waste left untreated', value: 90, decimals: 0, prefix: '~', suffix: '%' },
+    ] as { label: string; value: number; decimals: number; prefix: string; suffix: string }[],
 };
 
 /* ----- Scene 3 — 15 pence a bag ----- */

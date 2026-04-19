@@ -135,6 +135,7 @@ export function Act1Scene2() {
                     {S2.stats.map((s, i) => (
                         <SwipeIn key={s.label} from="right" delay={0.5 + i * 0.4} className="bg-black/60 backdrop-blur rounded-2xl p-5 border border-white/10">
                             <div className="text-5xl font-bold tabular-nums text-amber-400">
+                                {s.prefix}
                                 <DecimalCounter
                                     to={s.value}
                                     decimals={s.decimals}
@@ -274,11 +275,13 @@ export function Act1Scene4() {
                                     opacity: beat > i ? 1 : 0,
                                     x: beat > i ? 0 : -16,
                                 }}
-                                transition={{ duration: 0.5 }}
+                                transition={{ duration: 0.4 }}
                                 className="flex gap-3"
                             >
                                 <span className="text-emerald-400 font-mono text-sm pt-1">·</span>
-                                <span>{b}</span>
+                                <span>
+                                    {beat > i ? <Typewriter text={b} delay={0} speed={22} /> : null}
+                                </span>
                             </motion.li>
                         ))}
                     </ul>
