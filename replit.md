@@ -127,3 +127,10 @@ Firestore prints a creation link the first time each query runs in production.
 ## Notes
 - The app uses Modem Pay for mobile money payments.
 - Google Maps is used for waste collection route/location tracking.
+
+## /demo presentation
+- Code-driven motion-graphics deck at `/demo` for live pitch use.
+- Manual control: Space / → / click advances; ← prev; Esc opens scene-picker.
+- Structure: Act I (6 problem scenes), Act II (10 feature scenes, ~12s each), Act III (live-demo handoff).
+- Files: `app/demo/{layout,page}.tsx`, `app/demo/primitives.tsx` (motion vocabulary), `app/demo/scenes/{act1,act2a,act2b}.tsx`, `app/demo/content/problem.ts` (Act I copy config — drop real numbers/headlines here without code changes).
+- KMC logo loaded from `https://i0.wp.com/kanifing.gm/wp-content/uploads/2020/04/KMC-Logo1.png` as the authority figure in scenes 6 (problem), 9 and 10 (features).
