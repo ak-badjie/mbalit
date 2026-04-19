@@ -50,6 +50,8 @@ import {
     subscribeToPendingJobs,
     assignCollectorToJob,
     updateJobStatus,
+    createPaymentRequest,
+    subscribeToPaymentRequest,
     RealtimeJob,
 } from '@/lib/realtime';
 
@@ -100,6 +102,15 @@ export default function OrganizationDashboard() {
 
     // Navigation state
     const [showFullScreenNav, setShowFullScreenNav] = useState(false);
+
+    // Finish Trip / Payment request state
+    const [showPaymentRequestModal, setShowPaymentRequestModal] = useState(false);
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentAdjustmentReason, setPaymentAdjustmentReason] = useState('');
+    const [isRequestingPayment, setIsRequestingPayment] = useState(false);
+    const [paymentRequestSent, setPaymentRequestSent] = useState(false);
+    const [pendingPaymentRequestId, setPendingPaymentRequestId] = useState<string | null>(null);
+    const [paymentRequestDeclined, setPaymentRequestDeclined] = useState(false);
 
     // Withdraw state
     const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -182,6 +193,75 @@ export default function OrganizationDashboard() {
             if (newStatus && currentLocation) {
                 await updateCollectorLocation(collectorId, currentLocation);
             }
+        }
+    };
+
+    const handleCompleteJob = useCallback(async () => {
+        if (!activeJob) return;
+        try {
+            await updateJobStatus(activeJob.id, 'completed');
+            setActiveJob(null);
+            setPendingPaymentRequestId(null);
+            setPaymentRequestSent(false);
+            setPaymentRequestDeclined(false);
+            setShowFullScreenNav(false);
+        } catch (err) {
+            console.error('Failed to complete job:', err);
+        }
+    }, [activeJob]);
+
+    // Auto-complete the trip the moment the customer confirms payment
+    useEffect(() => {
+        if (!pendingPaymentRequestId || !activeJob) return;
+        const unsub = subscribeToPaymentRequest(
+            activeJob.customerId,
+            pendingPaymentRequestId,
+            (req) => {
+                if (!req) return;
+                if (req.status === 'confirmed') {
+                    handleCompleteJob();
+                } else if (req.status === 'cancelled') {
+                    setPaymentRequestSent(false);
+                    setPaymentRequestDeclined(true);
+                    setPendingPaymentRequestId(null);
+                }
+            }
+        );
+        return () => unsub();
+    }, [pendingPaymentRequestId, activeJob, handleCompleteJob]);
+
+    const openFinishTripModal = () => {
+        if (!activeJob) return;
+        setPaymentAmount(activeJob.amount.toString());
+        setPaymentAdjustmentReason('');
+        setPaymentRequestDeclined(false);
+        setShowFullScreenNav(false);
+        setShowPaymentRequestModal(true);
+    };
+
+    const sendFinishTripRequest = async () => {
+        if (!activeJob) return;
+        setIsRequestingPayment(true);
+        try {
+            const reqId = await createPaymentRequest(
+                collectorId,
+                org?.name || user?.name || 'Driver',
+                activeJob.customerId,
+                activeJob.amount,
+                parseFloat(paymentAmount) || activeJob.amount,
+                paymentAdjustmentReason || undefined,
+                undefined,
+                activeJob.id,
+            );
+            setPendingPaymentRequestId(reqId);
+            setPaymentRequestSent(true);
+            setPaymentRequestDeclined(false);
+            setShowPaymentRequestModal(false);
+        } catch (err) {
+            console.error('Payment request failed:', err);
+            alert('Failed to send payment request');
+        } finally {
+            setIsRequestingPayment(false);
         }
     };
 
@@ -404,36 +484,47 @@ export default function OrganizationDashboard() {
                                     </Button>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    {activeJob.customerPhone && (
-                                        <a href={`tel:${activeJob.customerPhone}`}>
-                                            <Button
-                                                variant="secondary"
-                                                fullWidth
-                                                leftIcon={<Phone size={18} />}
-                                            >
-                                                Call
-                                            </Button>
-                                        </a>
-                                    )}
+                                {activeJob.customerPhone && (
+                                    <a href={`tel:${activeJob.customerPhone}`} className="block mb-3">
+                                        <Button
+                                            variant="secondary"
+                                            fullWidth
+                                            leftIcon={<Phone size={18} />}
+                                        >
+                                            Call Customer
+                                        </Button>
+                                    </a>
+                                )}
+
+                                {paymentRequestSent ? (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                                        <div className="flex items-center gap-3">
+                                            <Loader2 className="w-5 h-5 text-amber-600 animate-spin flex-shrink-0" />
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-amber-900">Awaiting customer confirmation</p>
+                                                <p className="text-xs text-amber-700 mt-0.5">
+                                                    Trip will auto-complete the moment they tap Confirm &amp; Pay.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
                                     <Button
                                         variant="primary"
                                         fullWidth
-                                        onClick={async () => {
-                                            try {
-                                                await updateJobStatus(activeJob.id, 'completed');
-                                                setActiveJob(null);
-                                            } catch (err) {
-                                                console.error('Failed to complete job:', err);
-                                                alert('Could not complete this pickup. Please try again.');
-                                            }
-                                        }}
+                                        onClick={openFinishTripModal}
                                         leftIcon={<CheckCircle size={18} />}
                                         className="bg-emerald-600 hover:bg-emerald-700"
                                     >
-                                        Complete
+                                        Finish Trip
                                     </Button>
-                                </div>
+                                )}
+
+                                {paymentRequestDeclined && (
+                                    <div className="mt-2 bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
+                                        Customer declined the payment request. You can request again or contact them.
+                                    </div>
+                                )}
 
                                 <div className="mt-3 p-3 bg-emerald-50 rounded-xl">
                                     <p className="text-xs text-gray-600">You'll Earn</p>
@@ -841,6 +932,97 @@ export default function OrganizationDashboard() {
                 )}
             </AnimatePresence>
 
+            {/* Finish Trip / Payment Request Modal */}
+            <AnimatePresence>
+                {showPaymentRequestModal && activeJob && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end"
+                        onClick={() => !isRequestingPayment && setShowPaymentRequestModal(false)}
+                    >
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="w-full bg-white rounded-t-3xl p-6"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-6" />
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Finish Trip &amp; Request Payment</h2>
+                            <p className="text-sm text-gray-500 mb-6">
+                                The customer will get a notification to confirm. As soon as they tap Confirm &amp; Pay, your trip is marked complete and the wallet is credited automatically.
+                            </p>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 mb-1 block">Amount (GMD)</label>
+                                    <input
+                                        type="number"
+                                        value={paymentAmount}
+                                        onChange={(e) => setPaymentAmount(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-lg font-bold text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    />
+                                    {parseFloat(paymentAmount) !== activeJob.amount && (
+                                        <p className="text-xs text-amber-600 mt-1">
+                                            Original: {formatPrice(activeJob.amount)} → Adjusted: {formatPrice(parseFloat(paymentAmount) || 0)}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {parseFloat(paymentAmount) !== activeJob.amount && (
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">Adjustment Reason (optional)</label>
+                                        <input
+                                            type="text"
+                                            value={paymentAdjustmentReason}
+                                            onChange={(e) => setPaymentAdjustmentReason(e.target.value)}
+                                            placeholder="e.g. More waste than expected"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="bg-gray-50 rounded-xl p-4">
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span className="text-gray-500">Customer pays</span>
+                                        <span className="font-bold text-gray-900">{formatPrice(parseFloat(paymentAmount) || 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span className="text-gray-500">You receive (70%)</span>
+                                        <span className="font-bold text-emerald-600">{formatPrice(Math.round((parseFloat(paymentAmount) || 0) * 0.7 * 100) / 100)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-500">Platform fee (30%)</span>
+                                        <span className="text-gray-400">{formatPrice(Math.round((parseFloat(paymentAmount) || 0) * 0.3 * 100) / 100)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => setShowPaymentRequestModal(false)}
+                                        className="flex-1"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        variant="primary"
+                                        onClick={sendFinishTripRequest}
+                                        disabled={isRequestingPayment || !paymentAmount}
+                                        className="flex-1"
+                                    >
+                                        {isRequestingPayment ? 'Sending...' : 'Send & Finish Trip'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Full Screen Navigation */}
             {activeJob && (
                 <FullScreenNavigation
@@ -872,14 +1054,9 @@ export default function OrganizationDashboard() {
                     }}
                     isArrived={activeJob.status === 'arrived' || activeJob.status === 'awaiting_payment'}
                     isPaid={activeJob.paymentStatus === 'paid'}
-                    onComplete={async () => {
-                        try {
-                            await updateJobStatus(activeJob.id, 'completed');
-                            setActiveJob(null);
-                            setShowFullScreenNav(false);
-                        } catch (err) {
-                            console.error('Failed to complete job:', err);
-                        }
+                    onComplete={() => {
+                        if (paymentRequestSent) return;
+                        openFinishTripModal();
                     }}
                     onCall={() => activeJob.customerPhone && window.open(`tel:${activeJob.customerPhone}`, '_self')}
                     onMessage={() => activeJob.customerPhone && window.open(`sms:${activeJob.customerPhone}`, '_self')}

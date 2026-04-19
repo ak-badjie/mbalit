@@ -375,6 +375,26 @@ export function subscribeToPaymentRequests(
     return () => off(requestsRef);
 }
 
+// Subscribe to a single payment request (used by collector/org to detect
+// when the customer confirms or declines, so the trip auto-completes).
+export function subscribeToPaymentRequest(
+    customerId: string,
+    requestId: string,
+    callback: (request: PaymentRequest | null) => void
+): () => void {
+    const requestRef = ref(realtimeDb, `paymentRequests/${customerId}/${requestId}`);
+
+    const unsubscribe = onValue(requestRef, (snapshot) => {
+        if (snapshot.exists()) {
+            callback(snapshot.val() as PaymentRequest);
+        } else {
+            callback(null);
+        }
+    });
+
+    return () => off(requestRef);
+}
+
 // Customer confirms payment
 export async function confirmPaymentRequest(
     customerId: string,
