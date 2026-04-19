@@ -1,0 +1,73 @@
+Here is the raw transcript from the audio you provided, formatted into logical paragraphs and conversational turns for easier reading while maintaining the exact spoken words and natural flow of the dialogue:
+
+Transcript:
+
+"So for me, I think the number one is pretty much regarding the waste dumping, public dumping, illegal dumping thing. People ending up dumping their stuff because they have nowhere to dump it. They don't know how to get in contact with all these guys that normally come to collect or pick up trash. They just dump them in water bodies, rivers, and that covers the rivers, affects aquatic life and the quality of our water supply and all that. They are fishing and a ton of other things as well.
+
+He mentioned forests, basically. Air quality, where people live closer to the forest, but that's where most people that don't have access to the CAMC and stuff, yeah, they just go and dump it. It affects the ecosystem, the forest, and all that, the environment. It's very, very bad. And you're anti, um... passed away.
+
+Okay, okay, yeah. Burn, um, yeah, plastics, and it polluted the entire environment. So yeah, that's another one we could do. So there are different situations here.
+
+Even though they are animals, like some of them are like very like process... they are honest. So when you dump something outside, like the dogs or the cats, they go and like feed on it, and then some of them die from it.
+
+Yes, yes, yes. They die from it. Yes. I have a dog that died from it.
+
+Your dog died? Wow. Who are you talking, bro?
+
+One of our contestants—oh, sorry, our teammate, yeah. Her dog died from basically waste collection, and she mourned the dog for I think a year. It was very devastating actually, heartbreaking, heartbreaking stuff. Are you guys sure? Really think, like, grandparents, great-grandparents, nobody died from like public dumping and shit? Do you guys not know anyone that died from like malaria? Just malaria?
+
+Malaria? Yeah. I don't know someone, but like, someone has died.
+
+You know we have the culture, outsiders, when it comes to people's sickness, what they died of. So like, even the hospitals, they don't tell you what happened. We can actually add to that... How many people died last year? We found out that most of them actually was because of this public dumping.
+
+Okay, then you can configure that data for us to get.
+
+I'm kidding, don't say that. That's terrible.
+
+Lung damage? Long damage, thank you. Dude, you're a science girl. See, she has done biology, bro, you know the stuff. That's what I'm saying. If you had done it, you'd know lung damage and shit. She has the skills. No, we are talking, we are talking.
+
+Okay, any other thing you'd like to add? But this is like the sub-story part. We've not even gotten to the... you know, this is a sub-story. We can make them cry. To be honest.
+
+So people actually resort to burning some of this stuff at home, and that would like, you know, cause pollution, that would release carbon dioxide that is going to also increase global warming. That's also a very big problem. We'll find ways to like, you know, add these up to just like create a bigger case of why this is a big problem. I'm going to actually do a lot of research, bro, and we'll create like, bringing in very, very nice statistics. Yeah.
+
+Are you sure? I think grandparents, great-grandparents... from waste dumping? Alright, I'm actually... I'm gonna say that. I got a friend of mine, actually, he lost his mom. Doesn't matter, most of these things, they don't matter. Who cares? Your dog... yeah, her dog also died actually. So a friend of mine also lost his, uh, both of his parents actually, from um, presently, there was this illegal dump site beside their compound and there were lots of mosquitoes. The waste belonged to us. I accidentally killed my dog.
+
+Yeah, yeah. Add it on, right there. Yeah, the waste and stuff.
+
+So now we're done with the sub-story, this is the solution. This is pre-software features and solutions, so more like in general what we are trying to do. So if I may go to the software, now we have been doing this stuff. Sort of like, connecting waste collectors with people living in these remote areas, and we use GPS to help make it easier for them to track each other, and also give them more access. And in the case of people dumping publicly and recklessly, we can easily have a tool where people can report this very easily. So the necessary required authorities will come in and take care of the thing at hand. I think those are the two, the main things actually, yeah. Just reporting and stuff, very, very simple.
+
+Then we now put down the UI. That's what I'll build. Show different visualizations and different parts, and cities, and how they analyze.
+
+How many tools do you use?
+
+I did, actually, I did. I did it locally.
+
+Are you sure you just used level book?
+
+Sorry about that. You sure? Let me just calm down, take a sec.
+
+Oh, the other one. Okay. Oh my days.
+
+Yeah, different people that actually are there are different choices with waste collection, right? But most of them are the authorities. That is why I said they'll be added here. Because they are very, very key in this situation. In a sense, there are people who can make you accountable when it comes to the environment. It's very key.
+
+Like, one of the presentations right, you can have a 30-minute section, 30 seconds sorry, where you like show what effect it brings or how they treat it. Just to show the judges that we have done our research.
+
+Too much? Nothing is too much. It's only 3 minutes.
+
+If we can add the 30 seconds video, that will let us go like... let me catch it. We are going there. Let me see. I'll shoot a video of all of us in the morning when you're coming to class, record a video. Yes, yes, use that. I'm going to... I'll check it out.
+
+I can just Google some things and take some pictures, face defacing things. Show people in the hospital, how they suffer from this. Show the different side effects. There are different ways. This is really...
+
+So yeah, yeah. I think, question? What question? What was the first question? Someone asked how it works. How would they be put on the platform?
+
+So like she said, NAA and different authorities will be on the platform, and like when you're signing up as a waste collector, you can either sign up as an authority, an authority figure, or as a normal waste collector. So if somebody does make a report, you get it in your dashboard. You can easily half a minute...
+
+How are they gonna...
+
+Yeah, they will just, it's very simple. They log in, exactly the same way you signed up, very, very easy steps. We can just easily create a mockup. Because it's a business.
+
+We don't give the riches to all... the more impact the collectors make. Depending...
+
+Are you a charity? If it was free, they will not value it. So we miss you... you will not be here. Nothing is free. They send you a message, they verify, you're done. You just tap one. You need a collector. You need to report, you tap one.
+
+Because it's just an MVP. Because if we create all those features, we won't have time. Pay a subscription. Yes. That's why..."
