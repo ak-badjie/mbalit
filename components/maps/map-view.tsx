@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Navigation, Loader2, Maximize2, Minimize2, Layers } from 'lucide-react';
+import { MapPin, Navigation, Loader2, Maximize2, Minimize2, Layers, AlertTriangle } from 'lucide-react';
 import { loadGoogleMaps, calculateDistance, formatDistance, estimateTime } from '@/lib/maps';
 import { GeoLocation } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,38 @@ export const MapView: React.FC<MapViewProps> = ({
     const [isSatellite, setIsSatellite] = useState(false);
     const [distance, setDistance] = useState<string | null>(null);
     const [eta, setEta] = useState<string | null>(null);
+    const [fallbackLocation, setFallbackLocation] = useState<GeoLocation | null>(null);
+    const [permissionDenied, setPermissionDenied] = useState(false);
+    const [routeError, setRouteError] = useState<string | null>(null);
+
+    // If route is requested but no driver location was provided, request one-shot geolocation
+    useEffect(() => {
+        if (!showRoute) return;
+        if (collectorLocation) return;
+        if (fallbackLocation) return;
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+            setPermissionDenied(true);
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setFallbackLocation({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                    formattedAddress: `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
+                });
+                setPermissionDenied(false);
+            },
+            (err) => {
+                console.warn('MapView geolocation fallback failed:', err);
+                if (err.code === err.PERMISSION_DENIED) setPermissionDenied(true);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+        );
+    }, [showRoute, collectorLocation, fallbackLocation]);
+
+    // Resolve which driver location to actually render the route from
+    const effectiveCollectorLocation = collectorLocation ?? fallbackLocation ?? undefined;
 
     // Initialize map
     useEffect(() => {
@@ -169,18 +201,18 @@ export const MapView: React.FC<MapViewProps> = ({
 
     // Update collector marker and calculate distance
     useEffect(() => {
-        if (!mapInstanceRef.current || !collectorLocation) return;
+        if (!mapInstanceRef.current || !effectiveCollectorLocation) return;
 
         const google = window.google;
         if (!google) return;
 
         if (collectorMarkerRef.current) {
             // Animate marker position
-            collectorMarkerRef.current.setPosition({ lat: collectorLocation.lat, lng: collectorLocation.lng });
+            collectorMarkerRef.current.setPosition({ lat: effectiveCollectorLocation.lat, lng: effectiveCollectorLocation.lng });
         } else {
             // Create collector marker with truck icon
             collectorMarkerRef.current = new google.maps.Marker({
-                position: { lat: collectorLocation.lat, lng: collectorLocation.lng },
+                position: { lat: effectiveCollectorLocation.lat, lng: effectiveCollectorLocation.lng },
                 map: mapInstanceRef.current,
                 title: 'Collector',
                 icon: {
@@ -203,8 +235,8 @@ export const MapView: React.FC<MapViewProps> = ({
             const dist = calculateDistance(
                 customerLocation.lat,
                 customerLocation.lng,
-                collectorLocation.lat,
-                collectorLocation.lng
+                effectiveCollectorLocation.lat,
+                effectiveCollectorLocation.lng
             );
             setDistance(formatDistance(dist));
             setEta(estimateTime(dist));
@@ -212,14 +244,14 @@ export const MapView: React.FC<MapViewProps> = ({
             // Fit bounds to show both markers
             const bounds = new google.maps.LatLngBounds();
             bounds.extend({ lat: customerLocation.lat, lng: customerLocation.lng });
-            bounds.extend({ lat: collectorLocation.lat, lng: collectorLocation.lng });
+            bounds.extend({ lat: effectiveCollectorLocation.lat, lng: effectiveCollectorLocation.lng });
             mapInstanceRef.current.fitBounds(bounds, 80);
         }
-    }, [collectorLocation, customerLocation]);
+    }, [effectiveCollectorLocation, customerLocation]);
 
     // Draw route between customer and collector
     useEffect(() => {
-        if (!mapInstanceRef.current || !showRoute || !customerLocation || !collectorLocation) return;
+        if (!mapInstanceRef.current || !showRoute || !customerLocation || !effectiveCollectorLocation) return;
 
         const google = window.google;
         if (!google) return;
@@ -240,17 +272,21 @@ export const MapView: React.FC<MapViewProps> = ({
 
         directionsService.route(
             {
-                origin: { lat: collectorLocation.lat, lng: collectorLocation.lng },
+                origin: { lat: effectiveCollectorLocation.lat, lng: effectiveCollectorLocation.lng },
                 destination: { lat: customerLocation.lat, lng: customerLocation.lng },
                 travelMode: google.maps.TravelMode.DRIVING,
             },
             (result, status) => {
                 if (status === 'OK' && result && routeRendererRef.current) {
+                    setRouteError(null);
                     routeRendererRef.current.setDirections(result);
+                } else {
+                    console.warn('Directions request failed:', status);
+                    setRouteError('Could not compute route — open in Google Maps for directions.');
                 }
             }
         );
-    }, [showRoute, customerLocation, collectorLocation]);
+    }, [showRoute, customerLocation, effectiveCollectorLocation]);
 
     // Center on user's current location
     const handleCenterOnUser = useCallback(() => {
@@ -305,6 +341,22 @@ export const MapView: React.FC<MapViewProps> = ({
 
             {/* Map Container */}
             <div ref={mapRef} className="w-full h-full" />
+
+            {/* Permission denied hint */}
+            {showRoute && permissionDenied && !effectiveCollectorLocation && (
+                <div className="absolute top-4 left-4 right-20 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 shadow-md flex items-start gap-2 z-20">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>Allow location access to see the route to the pickup.</span>
+                </div>
+            )}
+
+            {/* Directions API failure banner */}
+            {showRoute && routeError && (
+                <div className="absolute top-4 left-4 right-20 bg-red-50 border border-red-200 text-red-800 text-xs rounded-lg px-3 py-2 shadow-md flex items-start gap-2 z-20">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>{routeError}</span>
+                </div>
+            )}
 
             {/* Controls Overlay */}
             <div className="absolute top-4 right-4 flex flex-col gap-2">

@@ -778,7 +778,30 @@ function DashboardContent() {
                                                 </p>
                                             </div>
 
-                                            <div className="flex gap-3">
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Button
+                                                    variant="primary"
+                                                    fullWidth
+                                                    onClick={() => setShowFullScreenNav(true)}
+                                                    leftIcon={<Navigation size={18} />}
+                                                    className="bg-blue-600 hover:bg-blue-700"
+                                                >
+                                                    Navigate
+                                                </Button>
+                                                <Button
+                                                    variant="secondary"
+                                                    fullWidth
+                                                    onClick={() => {
+                                                        const { lat, lng } = activeJob.pickupLocation;
+                                                        window.open(
+                                                            `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+                                                            '_blank'
+                                                        );
+                                                    }}
+                                                    leftIcon={<Navigation size={18} />}
+                                                >
+                                                    Open in Google Maps
+                                                </Button>
                                                 <Button
                                                     variant="secondary"
                                                     fullWidth
@@ -798,7 +821,7 @@ function DashboardContent() {
                                                     fullWidth
                                                     onClick={handleCompleteJob}
                                                     leftIcon={<CheckCircle size={18} />}
-                                                    className="bg-blue-600 hover:bg-blue-700"
+                                                    className="bg-emerald-600 hover:bg-emerald-700"
                                                 >
                                                     Complete
                                                 </Button>

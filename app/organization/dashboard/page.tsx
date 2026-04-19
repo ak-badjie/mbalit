@@ -34,6 +34,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapView } from '@/components/maps/map-view';
 import { ProfileLocationMap } from '@/components/maps/profile-location-map';
+import { FullScreenNavigation } from '@/components/ui/full-screen-navigation';
 import { formatPrice, WASTE_TYPES } from '@/lib/waste-config';
 import { GeoLocation } from '@/types';
 import {
@@ -96,6 +97,9 @@ export default function OrganizationDashboard() {
     const [currentLocation, setCurrentLocation] = useState<GeoLocation | null>(null);
     const [pendingJobs, setPendingJobs] = useState<RealtimeJob[]>([]);
     const [activeJob, setActiveJob] = useState<RealtimeJob | null>(null);
+
+    // Navigation state
+    const [showFullScreenNav, setShowFullScreenNav] = useState(false);
 
     // Withdraw state
     const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -357,11 +361,82 @@ export default function OrganizationDashboard() {
                                         <p className="text-sm text-gray-500">{getContainerSummary(activeJob)}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
                                     <MapPin className="w-4 h-4" />
                                     <span>{activeJob.pickupLocation.formattedAddress}</span>
                                 </div>
+
+                                {/* Route Map */}
+                                <Card variant="default" padding="none" className="overflow-hidden h-[260px] mb-3">
+                                    <MapView
+                                        center={activeJob.pickupLocation}
+                                        customerLocation={activeJob.pickupLocation}
+                                        collectorLocation={currentLocation || undefined}
+                                        showRoute
+                                        isTracking
+                                        height="100%"
+                                    />
+                                </Card>
+
+                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                    <Button
+                                        variant="primary"
+                                        fullWidth
+                                        onClick={() => setShowFullScreenNav(true)}
+                                        leftIcon={<Navigation size={18} />}
+                                        className="bg-blue-600 hover:bg-blue-700"
+                                    >
+                                        Navigate
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        fullWidth
+                                        onClick={() => {
+                                            const { lat, lng } = activeJob.pickupLocation;
+                                            window.open(
+                                                `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+                                                '_blank'
+                                            );
+                                        }}
+                                        leftIcon={<Navigation size={18} />}
+                                    >
+                                        Open in Google Maps
+                                    </Button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    {activeJob.customerPhone && (
+                                        <a href={`tel:${activeJob.customerPhone}`}>
+                                            <Button
+                                                variant="secondary"
+                                                fullWidth
+                                                leftIcon={<Phone size={18} />}
+                                            >
+                                                Call
+                                            </Button>
+                                        </a>
+                                    )}
+                                    <Button
+                                        variant="primary"
+                                        fullWidth
+                                        onClick={async () => {
+                                            try {
+                                                await updateJobStatus(activeJob.id, 'completed');
+                                                setActiveJob(null);
+                                            } catch (err) {
+                                                console.error('Failed to complete job:', err);
+                                                alert('Could not complete this pickup. Please try again.');
+                                            }
+                                        }}
+                                        leftIcon={<CheckCircle size={18} />}
+                                        className="bg-emerald-600 hover:bg-emerald-700"
+                                    >
+                                        Complete
+                                    </Button>
+                                </div>
+
                                 <div className="mt-3 p-3 bg-emerald-50 rounded-xl">
+                                    <p className="text-xs text-gray-600">You'll Earn</p>
                                     <p className="text-2xl font-bold text-emerald-600">{formatPrice(activeJob.amount)}</p>
                                 </div>
                             </Card>
@@ -765,6 +840,52 @@ export default function OrganizationDashboard() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Full Screen Navigation */}
+            {activeJob && (
+                <FullScreenNavigation
+                    isOpen={showFullScreenNav}
+                    onClose={() => setShowFullScreenNav(false)}
+                    pickup={{
+                        id: activeJob.id,
+                        customerName: (activeJob as any).customerName || 'Customer',
+                        customerPhone: activeJob.customerPhone || '',
+                        pickupLocation: activeJob.pickupLocation,
+                        wasteType: getWasteTypeInfo(activeJob.wasteType, activeJob.wasteTypes).name,
+                        wasteSize: getContainerSummary(activeJob),
+                        amount: activeJob.amount || 0,
+                        estimatedDistance: currentLocation
+                            ? formatDistance(haversineDistance(currentLocation.lat, currentLocation.lng, activeJob.pickupLocation.lat, activeJob.pickupLocation.lng))
+                            : undefined,
+                        estimatedTime: currentLocation
+                            ? estimateTravelTime(haversineDistance(currentLocation.lat, currentLocation.lng, activeJob.pickupLocation.lat, activeJob.pickupLocation.lng))
+                            : undefined,
+                        notes: (activeJob as any).notes,
+                    }}
+                    collectorLocation={currentLocation || undefined}
+                    onArrive={async () => {
+                        try {
+                            await updateJobStatus(activeJob.id, 'arrived');
+                            setActiveJob({ ...activeJob, status: 'arrived' });
+                        } catch (err) {
+                            console.error('Failed to mark arrived:', err);
+                        }
+                    }}
+                    isArrived={activeJob.status === 'arrived' || activeJob.status === 'awaiting_payment'}
+                    isPaid={activeJob.paymentStatus === 'paid'}
+                    onComplete={async () => {
+                        try {
+                            await updateJobStatus(activeJob.id, 'completed');
+                            setActiveJob(null);
+                            setShowFullScreenNav(false);
+                        } catch (err) {
+                            console.error('Failed to complete job:', err);
+                        }
+                    }}
+                    onCall={() => activeJob.customerPhone && window.open(`tel:${activeJob.customerPhone}`, '_self')}
+                    onMessage={() => activeJob.customerPhone && window.open(`sms:${activeJob.customerPhone}`, '_self')}
+                />
+            )}
         </div>
     );
 }
