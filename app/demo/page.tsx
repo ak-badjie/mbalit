@@ -2,10 +2,11 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Grid3x3, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Grid3x3, Volume2, VolumeX, X } from 'lucide-react';
 import { Act1Scene1, Act1Scene2, Act1Scene3, Act1Scene4, Act1Scene5, Act1Scene6 } from './scenes/act1';
 import { Act2Scene1, Act2Scene2, Act2Scene3, Act2Scene4, Act2Scene5 } from './scenes/act2a';
 import { Act2Scene6, Act2Scene7, Act2Scene8, Act2Scene9, Act2Scene10, Act3Handoff } from './scenes/act2b';
+import { DemoAudioProvider, useDemoAudio } from './audio';
 
 type Scene = {
     id: string;
@@ -35,11 +36,32 @@ const SCENES: Scene[] = [
 ];
 
 export default function DemoPage() {
+    return (
+        <DemoAudioProvider>
+            <DemoDeck />
+        </DemoAudioProvider>
+    );
+}
+
+function DemoDeck() {
     const [index, setIndex] = useState(0);
     const [pickerOpen, setPickerOpen] = useState(false);
+    const { enabled: audioEnabled, setEnabled: setAudioEnabled, playCue } = useDemoAudio();
 
-    const next = useCallback(() => setIndex((i) => Math.min(SCENES.length - 1, i + 1)), []);
-    const prev = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
+    const next = useCallback(() => {
+        setIndex((i) => {
+            const n = Math.min(SCENES.length - 1, i + 1);
+            if (n !== i) playCue('whoosh');
+            return n;
+        });
+    }, [playCue]);
+    const prev = useCallback(() => {
+        setIndex((i) => {
+            const n = Math.max(0, i - 1);
+            if (n !== i) playCue('whoosh');
+            return n;
+        });
+    }, [playCue]);
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -100,6 +122,13 @@ export default function DemoPage() {
 
             {/* Top-right controls */}
             <div className="absolute top-6 right-6 z-30 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <button
+                    onClick={() => setAudioEnabled(!audioEnabled)}
+                    title={audioEnabled ? 'Mute' : 'Enable sound'}
+                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur flex items-center justify-center transition-colors"
+                >
+                    {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4 text-white/50" />}
+                </button>
                 <button
                     onClick={() => setPickerOpen(true)}
                     className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur text-xs font-medium flex items-center gap-2 transition-colors"

@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Truck, MapPin, Camera, Send, AlertTriangle, Mail } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { BRAND, PhoneFrame, SceneEyebrow, SceneTitle, ParticleBurst, Typewriter } from '../primitives';
 
 /* ====== Scene 6: Atomic accept (race-safe) ====== */
@@ -218,9 +219,11 @@ export function Act2Scene8() {
                                                     initial={{ scale: 0 }}
                                                     animate={{ scale: 1 }}
                                                     transition={{ type: 'spring', stiffness: 200 }}
-                                                    className="w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center"
+                                                    className="w-24 h-24 rounded-full bg-white/20 backdrop-blur flex items-center justify-center overflow-hidden"
                                                 >
-                                                    <Check className="w-12 h-12 text-white" strokeWidth={4} />
+                                                    <div className="w-20 h-20 -m-1">
+                                                        <DotLottieReact src="/success.lottie" autoplay loop={false} />
+                                                    </div>
                                                 </motion.div>
                                             ) : (
                                                 <div className="text-white text-3xl">💳</div>
