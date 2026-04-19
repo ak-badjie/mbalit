@@ -57,7 +57,13 @@ export default function DemoPage() {
 }
 
 function DemoDeck() {
-    const [index, setIndex] = useState(0);
+    const [index, setIndex] = useState(() => {
+        if (typeof window === 'undefined') return 0;
+        const s = new URLSearchParams(window.location.search).get('s');
+        const n = s ? parseInt(s, 10) - 1 : 0;
+        if (!Number.isFinite(n)) return 0;
+        return Math.max(0, Math.min(SCENES.length - 1, n));
+    });
     const [pickerOpen, setPickerOpen] = useState(false);
     const { enabled: audioEnabled, setEnabled: setAudioEnabled, playCue } = useDemoAudio();
 
@@ -115,10 +121,10 @@ function DemoDeck() {
             <AnimatePresence mode="wait">
                 <motion.div
                     key={scene.id}
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 1.02 }}
-                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                    initial={{ opacity: 0, scale: 1.04, filter: 'blur(12px)' }}
+                    animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, scale: 0.97, filter: 'blur(8px)' }}
+                    transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                     className="absolute inset-0"
                 >
                     <Scene />
