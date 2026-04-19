@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Truck, MapPin, Camera, Send, AlertTriangle, X, Activity, Hash, FileText, Wifi, MousePointer2, Sparkles, Wallet } from 'lucide-react';
+import { Check, Truck, MapPin, Camera, Send, AlertTriangle, Activity, Hash, FileText, Wifi, MousePointer2, Sparkles, Wallet } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { BRAND, Typewriter } from '../primitives';
 import {
@@ -792,8 +792,6 @@ export function Act3Handoff() {
                 </motion.div>
             </div>
 
-            {/* unused so the linter is happy */}
-            <span className="hidden"><X className="w-1 h-1" /></span>
         </div>
     );
 }

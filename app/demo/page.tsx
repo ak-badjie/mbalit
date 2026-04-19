@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Grid3x3, Volume2, VolumeX, X } from 'lucide-react';
 import {
     Act1Fields,
@@ -57,6 +57,7 @@ export default function DemoPage() {
 }
 
 function DemoDeck() {
+    const reduceMotion = useReducedMotion();
     const [index, setIndex] = useState(() => {
         if (typeof window === 'undefined') return 0;
         const s = new URLSearchParams(window.location.search).get('s');
@@ -121,10 +122,10 @@ function DemoDeck() {
             <AnimatePresence mode="wait">
                 <motion.div
                     key={scene.id}
-                    initial={{ opacity: 0, scale: 1.04, filter: 'blur(12px)' }}
-                    animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                    exit={{ opacity: 0, scale: 0.97, filter: 'blur(8px)' }}
-                    transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                    initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.04, filter: 'blur(12px)' }}
+                    animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                    exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.97, filter: 'blur(8px)' }}
+                    transition={reduceMotion ? { duration: 0.18 } : { duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                     className="absolute inset-0"
                 >
                     <Scene />

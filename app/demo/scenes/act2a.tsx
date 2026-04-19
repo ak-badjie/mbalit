@@ -6,6 +6,7 @@ import { Phone, Check, MapPin, Plus, Minus, Truck, Clock, Sparkles, Zap } from '
 import { BRAND, CounterTicker } from '../primitives';
 import {
     DeviceFrame,
+    FrameCounter,
     SceneStage,
     FloatingCard,
     ShimmerSweep,
@@ -547,20 +548,21 @@ export function Act2Scene5() {
                 <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/15 to-black/70 pointer-events-none" />
             </div>
 
+            {/* Act II frame chrome */}
+            <FrameCounter n={5} total={10} label="Live broadcast" />
+
+            {/* watermark */}
+            <div className="absolute bottom-12 left-8 z-20 text-[10px] font-mono uppercase tracking-[0.5em] text-white/20 pointer-events-none">
+                MBALIT · /demo
+            </div>
+
             {/* Top chrome */}
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 text-center max-w-3xl px-6">
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-[10px] uppercase tracking-[0.4em] text-emerald-300 font-semibold"
-                >
-                    Feature 05 · Live broadcast
-                </motion.div>
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 text-center max-w-3xl px-6 pointer-events-none">
                 <motion.h2
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="mt-2 text-4xl font-bold leading-tight"
+                    className="text-3xl md:text-4xl font-bold leading-tight"
                 >
                     Jobs broadcast straight to <span className="text-emerald-400">nearby drivers</span>.
                 </motion.h2>
