@@ -205,6 +205,55 @@ export async function withdrawFromWallet(
     return { success: true, transactionId };
 }
 
+// Withdraw from organization wallet (decrements org doc walletBalance)
+export async function withdrawFromOrgWallet(
+    orgId: string,
+    amount: number,
+    paymentMethod: string,
+    phoneNumber: string
+): Promise<{ success: boolean; error?: string; transactionId?: string }> {
+    const orgRef = doc(db, 'organizations', orgId);
+    const orgDoc = await getDoc(orgRef);
+
+    if (!orgDoc.exists()) {
+        return { success: false, error: 'Organization not found' };
+    }
+
+    const currentBalance = orgDoc.data().walletBalance || 0;
+
+    if (amount < 50) {
+        return { success: false, error: 'Minimum withdrawal is 50 GMD' };
+    }
+    if (amount > currentBalance) {
+        return { success: false, error: 'Insufficient balance' };
+    }
+
+    const newBalance = currentBalance - amount;
+
+    await updateDoc(orgRef, {
+        walletBalance: newBalance,
+        updatedAt: serverTimestamp(),
+    });
+
+    const transRef = doc(collection(db, 'walletTransactions'));
+    const transactionId = transRef.id;
+
+    await setDoc(transRef, {
+        walletId: orgId,
+        walletType: 'organization',
+        type: 'withdraw',
+        amount: -amount,
+        description: `Org withdrawal to ${paymentMethod} (${phoneNumber})`,
+        paymentMethod,
+        phoneNumber,
+        status: 'pending',
+        balanceAfter: newBalance,
+        createdAt: serverTimestamp(),
+    });
+
+    return { success: true, transactionId };
+}
+
 // Get wallet transactions
 export async function getWalletTransactions(collectorId: string, limitCount: number = 20) {
     const q = query(

@@ -41,6 +41,7 @@ import {
     getOrganizationMembers,
     approveMember,
     removeMember,
+    withdrawFromOrgWallet,
 } from '@/lib/firestore';
 import {
     updateCollectorLocation,
@@ -95,6 +96,46 @@ export default function OrganizationDashboard() {
     const [currentLocation, setCurrentLocation] = useState<GeoLocation | null>(null);
     const [pendingJobs, setPendingJobs] = useState<RealtimeJob[]>([]);
     const [activeJob, setActiveJob] = useState<RealtimeJob | null>(null);
+
+    // Withdraw state
+    const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+    const [withdrawAmount, setWithdrawAmount] = useState('');
+    const [withdrawPhone, setWithdrawPhone] = useState('');
+    const [isWithdrawing, setIsWithdrawing] = useState(false);
+
+    const handleWithdraw = async () => {
+        if (!org?.id) {
+            alert('Organization not loaded');
+            return;
+        }
+        const amount = parseFloat(withdrawAmount);
+        if (isNaN(amount) || amount <= 0) {
+            alert('Please enter a valid amount');
+            return;
+        }
+        if (!withdrawPhone || withdrawPhone.length < 7) {
+            alert('Please enter a valid phone number');
+            return;
+        }
+        setIsWithdrawing(true);
+        try {
+            const result = await withdrawFromOrgWallet(org.id, amount, 'wave', withdrawPhone);
+            if (result.success) {
+                setOrg((prev: any) => prev ? { ...prev, walletBalance: (prev.walletBalance || 0) - amount } : prev);
+                setShowWithdrawModal(false);
+                setWithdrawAmount('');
+                setWithdrawPhone('');
+                alert('Withdrawal request submitted! You will receive your funds shortly.');
+            } else {
+                alert(result.error || 'Withdrawal failed');
+            }
+        } catch (err) {
+            console.error('Withdraw failed:', err);
+            alert('Failed to process withdrawal');
+        } finally {
+            setIsWithdrawing(false);
+        }
+    };
 
     // Load org data
     useEffect(() => {
@@ -217,14 +258,14 @@ export default function OrganizationDashboard() {
 
     if (isLoading) {
         return (
-            <div className="h-[100dvh] overflow-hidden bg-gray-50 flex items-center justify-center">
+            <div className="min-h-[100dvh] bg-gray-50 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
             </div>
         );
     }
 
     return (
-        <div className="h-[100dvh] overflow-hidden bg-gradient-to-br from-gray-50 via-white to-amber-50">
+        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-50 via-white to-amber-50">
             {/* Header */}
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200">
                 <div className="max-w-4xl mx-auto px-4 py-3">
@@ -478,6 +519,7 @@ export default function OrganizationDashboard() {
                                     <Button
                                         variant="secondary"
                                         size="sm"
+                                        onClick={() => setShowWithdrawModal(true)}
                                         leftIcon={<ArrowDownToLine size={16} />}
                                         className="bg-white/20 hover:bg-white/30 border-0 text-white text-xs"
                                     >
@@ -644,6 +686,85 @@ export default function OrganizationDashboard() {
                     </>
                 )}
             </main>
+
+            {/* Withdraw Modal */}
+            <AnimatePresence>
+                {showWithdrawModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                        onClick={() => setShowWithdrawModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">
+                                Withdraw Funds
+                            </h2>
+
+                            <div className="mb-4 p-4 bg-amber-50 rounded-xl">
+                                <p className="text-xs text-gray-600">Available Balance</p>
+                                <p className="text-2xl font-bold text-amber-700">
+                                    {formatPrice(org?.walletBalance || 0)}
+                                </p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Amount (GMD)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={withdrawAmount}
+                                        onChange={e => setWithdrawAmount(e.target.value)}
+                                        placeholder="Enter amount (min 50 GMD)"
+                                        min="50"
+                                        max={org?.walletBalance || 0}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white text-gray-900"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Wave Phone Number
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        value={withdrawPhone}
+                                        onChange={e => setWithdrawPhone(e.target.value)}
+                                        placeholder="+220 XXXXXXXX"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white text-gray-900"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setShowWithdrawModal(false)}
+                                    className="flex-1"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleWithdraw}
+                                    disabled={isWithdrawing || !withdrawAmount || parseFloat(withdrawAmount) > (org?.walletBalance || 0)}
+                                    className="flex-1"
+                                >
+                                    {isWithdrawing ? 'Processing...' : 'Withdraw'}
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
