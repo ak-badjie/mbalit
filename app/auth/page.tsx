@@ -368,7 +368,13 @@ function AuthPage() {
     // Handle signup completion
     const handleCompleteSignup = async () => {
         setError(null);
-        const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+        // When the user resumes onboarding after being bounced from the dashboard
+        // (e.g. the dashboard layout detected onboardingComplete:false and sent
+        // them back to /auth?continue=onboarding), phoneNumber state is empty
+        // because they never went through step 1 in this page-load. Fall back to
+        // the phone already stored on their Firestore document so completeProfile
+        // never overwrites the correct phone with a blank/malformed value.
+        const fullPhone = user?.phone || `${country.dialCode} ${formatPhone(phoneNumber)}`;
 
         try {
             let userId = user?.id || createdUid;
@@ -1509,7 +1515,7 @@ function AuthPage() {
 
                         <button
                             type="button"
-                            onClick={() => setStep(6)}
+                            onClick={() => setStep(5)}
                             disabled={!vehicleType}
                             className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
                         >
