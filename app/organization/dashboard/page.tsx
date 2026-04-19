@@ -848,7 +848,7 @@ export default function OrganizationDashboard() {
                     onClose={() => setShowFullScreenNav(false)}
                     pickup={{
                         id: activeJob.id,
-                        customerName: (activeJob as any).customerName || 'Customer',
+                        customerName: activeJob.customerName || 'Customer',
                         customerPhone: activeJob.customerPhone || '',
                         pickupLocation: activeJob.pickupLocation,
                         wasteType: getWasteTypeInfo(activeJob.wasteType, activeJob.wasteTypes).name,
@@ -860,7 +860,6 @@ export default function OrganizationDashboard() {
                         estimatedTime: currentLocation
                             ? estimateTravelTime(haversineDistance(currentLocation.lat, currentLocation.lng, activeJob.pickupLocation.lat, activeJob.pickupLocation.lng))
                             : undefined,
-                        notes: (activeJob as any).notes,
                     }}
                     collectorLocation={currentLocation || undefined}
                     onArrive={async () => {
