@@ -131,6 +131,9 @@ Firestore prints a creation link the first time each query runs in production.
 ## /demo presentation
 - Code-driven motion-graphics deck at `/demo` for live pitch use.
 - Manual control: Space / → / click advances; ← prev; Esc opens scene-picker.
-- Structure: Act I (6 problem scenes), Act II (10 feature scenes, ~12s each), Act III (live-demo handoff).
-- Files: `app/demo/{layout,page}.tsx`, `app/demo/primitives.tsx` (motion vocabulary), `app/demo/scenes/{act1,act2a,act2b}.tsx`, `app/demo/content/problem.ts` (Act I copy config — drop real numbers/headlines here without code changes).
-- KMC logo loaded from `https://i0.wp.com/kanifing.gm/wp-content/uploads/2020/04/KMC-Logo1.png` as the authority figure in scenes 6 (problem), 9 and 10 (features).
+- Structure: 20 scenes total — Act I (9 scenes, real-people story arc), Act II (10 feature scenes, ~12s each), Act III (1 live-demo handoff).
+- **Act I order**: 01 The fields → 02 Problem 1 · Water bodies → 03 Problem 2 · Streets → 04 Problem 3 · Open burning → 05 Problem 4 · Forests & wildlife → 06 The human cost (£0.15 wage crash + sick-child photos + 93% coliform stat) → 07 Neneh's story → 08 The voices (5 named testimonies) → 09 The vision (COLLECT → SORT → RECYCLE → GOODS).
+- All Act I copy, photos, stats and source citations live in **`app/demo/content/stories.ts`** as a single registry (`STORY_IMAGES`, `SCENE_FIELDS`, `PROBLEM_WATER`, `PROBLEM_STREETS`, `PROBLEM_BURNING`, `PROBLEM_FORESTS`, `HUMAN_COST`, `NENEH`, `VOICES` + `TESTIMONIES`, `VISION`). The four problem scenes share a single `ProblemScene` component fed by `ProblemBlock` data — to retitle, restat or re-cite a scene, edit the registry only.
+- Photos live in `public/story/` (17 files; sources include Child Aid Gambia, Bolong Fenyo lab analysis 2017, Brufut/Alamy, Foroyaa, Voice Gambia, Getty). Each `StoryImage` carries `alt` + `credit`; credits render as a corner overlay.
+- Scene file: `app/demo/scenes/act1.tsx`. Motion vocabulary: `app/demo/primitives.tsx`. Audio cues (silent until presenter toggles): `app/demo/audio.tsx`.
+- KMC logo loaded from `https://i0.wp.com/kanifing.gm/wp-content/uploads/2020/04/KMC-Logo1.png` as the authority figure in Act II hazard-report and authority-dashboard scenes.
