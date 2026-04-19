@@ -187,14 +187,18 @@ function AuthPage() {
     useEffect(() => {
         if (!user) return;
         if (user.onboardingComplete === false) {
-            // Don't override registrationType if the user is actively in the
-            // middle of a signup flow this session (handleRoleSelect already
-            // set it). Only re-derive from the stored user doc on a fresh
-            // page load where registrationType is still null. Without this
-            // guard, brand-new collector/org stubs (which have no role set
-            // yet and default to role='user' via mapUserDoc) would be
-            // forced into the waste_owner branch and lose their collector/
-            // org-specific onboarding steps (vehicle, waste types, org name).
+            // Only intervene when registrationType is null, which means this is
+            // a fresh page load with no active signup session in progress.
+            //
+            // Firestore's onSnapshot fires TWICE for every write: once from the
+            // local cache immediately, then again from the server once
+            // serverTimestamp fields resolve. If we called setMode/setStep
+            // unconditionally here, both fires would reset the user back to step
+            // 3 (profile/picture) even while they are advancing through the
+            // org/collector-specific steps (vehicle type → waste types). Moving
+            // setMode/setStep INSIDE this guard means subsequent snapshot
+            // re-fires during an active signup are no-ops and cannot interrupt
+            // the user's progress.
             if (registrationType === null) {
                 if (user.role === 'collector') {
                     if ('collectorType' in user && user.collectorType === 'organization') {
@@ -208,11 +212,13 @@ function AuthPage() {
                 } else {
                     setRegistrationType('waste_owner');
                 }
+                // Resume at the profile step. submitCreateAccount also schedules
+                // this via setTimeout so both paths converge correctly.
+                setMode('signup');
+                setStep(3);
+                if (user.name) setFullName(user.name);
+                if (user.profileImage) setProfileImage(user.profileImage);
             }
-            setMode('signup');
-            setStep(3); // PIN already created — jump to profile completion
-            if (user.name) setFullName(user.name);
-            if (user.profileImage) setProfileImage(user.profileImage);
         } else if (user.onboardingComplete === true) {
             // Already onboarded — don't keep them stuck on /auth.
             // Use Next.js client-side navigation (router.replace) instead of
