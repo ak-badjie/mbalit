@@ -142,11 +142,21 @@ export default function OrganizationDashboard() {
 
     const handleAcceptJob = async (job: RealtimeJob) => {
         try {
-            await assignCollectorToJob(job.id, collectorId);
+            const claimed = await assignCollectorToJob(
+                job.id,
+                collectorId,
+                org?.name || user?.name,
+                user?.phone,
+            );
+            if (!claimed) {
+                alert('This pickup was just claimed by another collector.');
+                return;
+            }
             await updateJobStatus(job.id, 'accepted');
             setActiveJob({ ...job, collectorId, status: 'accepted' });
         } catch (err) {
             console.error('Failed to accept job:', err);
+            alert('Could not accept this pickup. Please try again.');
         }
     };
 

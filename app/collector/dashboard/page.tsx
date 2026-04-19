@@ -303,7 +303,7 @@ function DashboardContent() {
     // Subscribe to collector's active job
     useEffect(() => {
         const unsubscribe = subscribeToCollectorActiveJob(collectorId, (job) => {
-            if (job && job.status !== 'completed') {
+            if (job && job.status !== 'completed' && job.status !== 'cancelled') {
                 setActiveJob(job);
             } else {
                 setActiveJob(null);
@@ -312,6 +312,18 @@ function DashboardContent() {
 
         return () => unsubscribe();
     }, [collectorId]);
+
+    // Auto-clear incomingJob if a real-time update shows another collector
+    // already claimed it (or it is otherwise no longer available).
+    useEffect(() => {
+        if (!incomingJob) return;
+        const stillAvailable = pendingJobs.some(j => j.id === incomingJob.id);
+        if (!stillAvailable) {
+            setIncomingJob(null);
+            setShowDynamicIslandNotif(false);
+            setTimeout(() => setSize('compact'), 0);
+        }
+    }, [pendingJobs, incomingJob, setSize]);
 
     // Auto-dismiss Dynamic Island notification after 3 seconds
     useEffect(() => {
@@ -338,21 +350,38 @@ function DashboardContent() {
 
     const handleAcceptJob = async (jobOverride?: RealtimeJob) => {
         const job = jobOverride || incomingJob;
-        if (job) {
-            try {
-                await assignCollectorToJob(job.id, collectorId);
-                await updateJobStatus(job.id, 'accepted');
-                setActiveJob({ ...job, collectorId, status: 'accepted' });
-                setIncomingJob(null);
-                setTimeout(() => setSize('long'), 0);
+        if (!job) return;
+        try {
+            const claimed = await assignCollectorToJob(
+                job.id,
+                collectorId,
+                user?.name,
+                user?.phone,
+            );
 
-                // Show full-screen navigation on mobile
-                if (window.innerWidth < 768) {
-                    setShowFullScreenNav(true);
-                }
-            } catch (err) {
-                console.error('Failed to accept job:', err);
+            if (!claimed) {
+                // Another collector got there first — surface that to the user
+                // and mark this job as declined so it doesn't keep popping up.
+                setDeclinedJobIds(prev => new Set(prev).add(job.id));
+                setIncomingJob(null);
+                setShowDynamicIslandNotif(false);
+                setTimeout(() => setSize('compact'), 0);
+                alert('This pickup was just claimed by another collector.');
+                return;
             }
+
+            await updateJobStatus(job.id, 'accepted');
+            setActiveJob({ ...job, collectorId, status: 'accepted' });
+            setIncomingJob(null);
+            setTimeout(() => setSize('long'), 0);
+
+            // Show full-screen navigation on mobile
+            if (window.innerWidth < 768) {
+                setShowFullScreenNav(true);
+            }
+        } catch (err) {
+            console.error('Failed to accept job:', err);
+            alert('Could not accept this pickup. Please try again.');
         }
     };
 
