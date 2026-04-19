@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Grid3x3, Volume2, VolumeX, X } from 'lucide-react';
+import { Act1Scene1, Act1Scene2, Act1Scene3, Act1Scene4, Act1Scene5, Act1Scene6 } from './scenes/act1';
 import { Act2Scene1, Act2Scene2, Act2Scene3, Act2Scene4, Act2Scene5 } from './scenes/act2a';
 import { Act2Scene6, Act2Scene7, Act2Scene8, Act2Scene9, Act2Scene10, Act3Handoff } from './scenes/act2b';
 import { DemoAudioProvider, useDemoAudio } from './audio';
@@ -15,6 +16,12 @@ type Scene = {
 };
 
 const SCENES: Scene[] = [
+    { id: 's1', act: 'I', label: '01 · The fields', Component: Act1Scene1 },
+    { id: 's2', act: 'I', label: '02 · The smoke', Component: Act1Scene2 },
+    { id: 's3', act: 'I', label: '03 · 15 pence a bag', Component: Act1Scene3 },
+    { id: 's4', act: 'I', label: "04 · Neneh's story", Component: Act1Scene4 },
+    { id: 's5', act: 'I', label: '05 · The voices', Component: Act1Scene5 },
+    { id: 's6', act: 'I', label: '06 · The bridge', Component: Act1Scene6 },
     { id: 'f1', act: 'II', label: '01 · Phone + PIN onboarding', Component: Act2Scene1 },
     { id: 'f2', act: 'II', label: '02 · Waste-type grid', Component: Act2Scene2 },
     { id: 'f3', act: 'II', label: '03 · Booking + price ticker', Component: Act2Scene3 },
