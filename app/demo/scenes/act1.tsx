@@ -11,14 +11,43 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     BlurFocus,
-    CounterTicker,
     SceneEyebrow,
     SceneTitle,
     SwipeIn,
     Typewriter,
 } from '../primitives';
 import { useSceneCue } from '../audio';
-import { S1, S2, S3, S4, S5_TESTIMONIES, S6, type StoryImage } from '../content/stories';
+import { S1, S2, S3, S4, S5, S5_TESTIMONIES, S6, type StoryImage } from '../content/stories';
+
+/** Decimal-aware counter (CounterTicker only handles integers). */
+function DecimalCounter({
+    to,
+    decimals,
+    suffix = '',
+    duration = 1.6,
+    delay = 0,
+}: {
+    to: number;
+    decimals: number;
+    suffix?: string;
+    duration?: number;
+    delay?: number;
+}) {
+    const [v, setV] = React.useState(0);
+    React.useEffect(() => {
+        let raf = 0;
+        const start = performance.now() + delay * 1000;
+        const tick = (now: number) => {
+            const t = Math.min(1, Math.max(0, (now - start) / (duration * 1000)));
+            const eased = 1 - Math.pow(1 - t, 3);
+            setV(eased * to);
+            if (t < 1) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+    }, [to, duration, delay]);
+    return <>{v.toFixed(decimals)}{suffix}</>;
+}
 
 /* --- shared helpers -------------------------------------------------- */
 
@@ -106,8 +135,9 @@ export function Act1Scene2() {
                     {S2.stats.map((s, i) => (
                         <SwipeIn key={s.label} from="right" delay={0.5 + i * 0.4} className="bg-black/60 backdrop-blur rounded-2xl p-5 border border-white/10">
                             <div className="text-5xl font-bold tabular-nums text-amber-400">
-                                <CounterTicker
+                                <DecimalCounter
                                     to={s.value}
+                                    decimals={s.decimals}
                                     duration={1.6}
                                     delay={0.6 + i * 0.4}
                                     suffix={s.suffix}
@@ -207,7 +237,7 @@ export function Act1Scene4() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/60" />
                     <div className="absolute bottom-3 left-4 text-[10px] uppercase tracking-widest text-white/40 font-mono">
-                        Before · {S4.before.credit}
+                        {S4.beforeLabel} · {S4.before.credit}
                     </div>
                 </div>
                 <div className="relative overflow-hidden">
@@ -221,7 +251,7 @@ export function Act1Scene4() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-l from-black/30 via-transparent to-black/60" />
                     <div className="absolute bottom-3 right-4 text-[10px] uppercase tracking-widest text-white/40 font-mono">
-                        After · {S4.after.credit}
+                        {S4.afterLabel} · {S4.after.credit}
                     </div>
                 </div>
             </div>
@@ -271,11 +301,15 @@ export function Act1Scene5() {
     }, []);
 
     return (
-        <div className="absolute inset-0 bg-gradient-to-b from-neutral-950 via-neutral-900 to-black">
+        <div className="absolute inset-0">
+            <FullBleedPhoto
+                image={S5.backdrop}
+                overlay="linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.92) 100%)"
+            />
             <div className="absolute inset-0 px-12 pt-20 pb-16 flex flex-col items-center">
-                <SceneEyebrow>And these are the voices</SceneEyebrow>
+                <SceneEyebrow>{S5.eyebrow}</SceneEyebrow>
                 <div className="mt-3 mb-10 max-w-3xl text-center">
-                    <SceneTitle>People living next to it have names.</SceneTitle>
+                    <SceneTitle>{S5.title}</SceneTitle>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl w-full overflow-hidden">
                     {S5_TESTIMONIES.map((t, i) => (
@@ -312,13 +346,12 @@ export function Act1Scene5() {
 /* --- Scene 6: The bridge -------------------------------------------- */
 export function Act1Scene6() {
     useSceneCue('story-bridge');
-    const [phase, setPhase] = React.useState(0);
+    const [phase, setPhase] = React.useState<0 | 1>(0);
     React.useEffect(() => {
         setPhase(0);
-        const id = setInterval(() => {
-            setPhase((p) => (p + 1) % S6.images.length);
-        }, 2200);
-        return () => clearInterval(id);
+        // single crossfade: problem photo → proof photo, no loop
+        const t = setTimeout(() => setPhase(1), 3500);
+        return () => clearTimeout(t);
     }, []);
 
     return (

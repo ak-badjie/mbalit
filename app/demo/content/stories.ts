@@ -88,10 +88,10 @@ export const S2 = {
     line: 'And the smoke never really clears.',
     images: [STORY_IMAGES.smokeRoad, STORY_IMAGES.fireActive],
     stats: [
-        { label: 'Tonnes of waste arriving every day at Bakoteh', value: 460, suffix: '' },
-        { label: 'Hectares of open, mostly burning dumpsite', value: 18, suffix: ' ha' },
-        { label: 'Of national municipal waste left untreated', value: 90, suffix: '%' },
-    ] as { label: string; value: number; suffix: string }[],
+        { label: 'Tonnes of waste arriving every day at Bakoteh', value: 460, decimals: 0, suffix: '' },
+        { label: 'Hectares of open, mostly burning dumpsite', value: 17.8, decimals: 1, suffix: ' ha' },
+        { label: 'Of national municipal waste left untreated', value: 90, decimals: 0, suffix: '%' },
+    ] as { label: string; value: number; decimals: number; suffix: string }[],
 };
 
 /* ----- Scene 3 — 15 pence a bag ----- */
@@ -107,7 +107,9 @@ export const S4 = {
     eyebrow: "Neneh's Story",
     title: 'One sponsorship. One school. One whole life rewritten.',
     before: STORY_IMAGES.nenehScavenging,
+    beforeLabel: 'Before',
     after: STORY_IMAGES.nenehAfter,
+    afterLabel: 'After',
     beats: [
         'Neneh was twelve. The third of nine children.',
         'She had not been to school in four years.',
@@ -124,6 +126,12 @@ export type Testimony = {
     role: string;
     quote: string;
     source: string;
+};
+
+export const S5 = {
+    eyebrow: 'And these are the voices',
+    title: 'People living next to it have names.',
+    backdrop: STORY_IMAGES.fieldChildren,
 };
 
 export const S5_TESTIMONIES: Testimony[] = [
@@ -164,5 +172,8 @@ export const S6 = {
     eyebrow: 'But what if…',
     line: 'What if collecting it became their job — and their kids went to school?',
     sub: 'That is what mbalit is for.',
-    images: [STORY_IMAGES.marketBins, STORY_IMAGES.waterTesting, STORY_IMAGES.truckOnDump],
+    /** Crossfade pair: the problem (overflowing market bins) → the proof
+     *  (NGO field testing). The truck-on-dump shot is intentionally not
+     *  used here — it lives in the registry for future scenes. */
+    images: [STORY_IMAGES.marketBins, STORY_IMAGES.waterTesting] as const,
 };
