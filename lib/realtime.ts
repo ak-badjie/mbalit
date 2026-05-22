@@ -1,5 +1,5 @@
 // Firebase Realtime Database utilities for live tracking
-import { ref, set, onValue, off, update, get, push, serverTimestamp } from 'firebase/database';
+import { ref, set, onValue, off, update, get, push, serverTimestamp, runTransaction } from 'firebase/database';
 import { realtimeDb } from './firebase';
 import { GeoLocation } from '@/types';
 
@@ -83,7 +83,7 @@ export interface RealtimeJob {
     tipAmount?: number;
     paymentStatus: 'pending' | 'paid' | 'failed';
     paymentIntentId?: string;
-    status: 'pending' | 'assigned' | 'accepted' | 'in_progress' | 'awaiting_payment' | 'completed' | 'cancelled';
+    status: 'pending' | 'assigned' | 'accepted' | 'arrived' | 'en_route' | 'in_progress' | 'awaiting_payment' | 'completed' | 'cancelled';
     createdAt: object;
     assignedAt?: object;
     completedAt?: object;
@@ -131,21 +131,47 @@ export async function updateJobStatus(
     });
 }
 
-// Assign collector to job
+// Assign collector to job — uses an atomic transaction so that if two
+// collectors hit "Accept" simultaneously, exactly one wins.
+// Returns true on successful claim, false if another collector got there first.
 export async function assignCollectorToJob(
     jobId: string,
-    collectorId: string
-): Promise<void> {
+    collectorId: string,
+    collectorName?: string,
+    collectorPhone?: string
+): Promise<boolean> {
     const jobRef = ref(realtimeDb, `jobs/${jobId}`);
-    await update(jobRef, {
-        collectorId,
-        status: 'assigned',
-        assignedAt: serverTimestamp(),
+
+    const result = await runTransaction(jobRef, (currentJob) => {
+        if (!currentJob) {
+            // Job doesn't exist (or already removed) — abort by returning undefined
+            return;
+        }
+        // If already claimed by someone else, abort the transaction
+        if (currentJob.collectorId && currentJob.collectorId !== collectorId) {
+            return;
+        }
+        // If status has moved past 'pending'/'assigned' (e.g., cancelled, completed), abort
+        if (currentJob.status !== 'pending' && currentJob.status !== 'assigned') {
+            return;
+        }
+
+        currentJob.collectorId = collectorId;
+        if (collectorName) currentJob.collectorName = collectorName;
+        if (collectorPhone) currentJob.collectorPhone = collectorPhone;
+        currentJob.status = 'assigned';
+        currentJob.assignedAt = serverTimestamp();
+        return currentJob;
     });
 
-    // Also update collector's active job
+    if (!result.committed) {
+        return false;
+    }
+
+    // Set collector's active-job pointer only if we actually won the claim
     const collectorRef = ref(realtimeDb, `collectors/${collectorId}/activeJob`);
     await set(collectorRef, jobId);
+    return true;
 }
 
 // ============================================
@@ -172,25 +198,44 @@ export function subscribeToPendingJobs(
     return () => off(jobsRef);
 }
 
-// Subscribe to collector's assigned job
+// Subscribe to collector's assigned job — keeps a live subscription on the
+// nested job ref so changes (status updates, customer cancellation, etc.)
+// propagate to the collector's UI in real time.
 export function subscribeToCollectorActiveJob(
     collectorId: string,
     callback: (job: RealtimeJob | null) => void
 ): () => void {
     const activeJobRef = ref(realtimeDb, `collectors/${collectorId}/activeJob`);
+    let currentJobRef: ReturnType<typeof ref> | null = null;
 
-    const unsubscribe = onValue(activeJobRef, async (snapshot) => {
-        const jobId = snapshot.val();
-        if (jobId) {
-            const jobRef = ref(realtimeDb, `jobs/${jobId}`);
-            const jobSnapshot = await get(jobRef);
-            callback(jobSnapshot.val());
-        } else {
-            callback(null);
+    const detachJobListener = () => {
+        if (currentJobRef) {
+            off(currentJobRef);
+            currentJobRef = null;
         }
+    };
+
+    onValue(activeJobRef, (snapshot) => {
+        const jobId = snapshot.val();
+        // Tear down any prior nested job listener before attaching a new one
+        detachJobListener();
+
+        if (!jobId) {
+            callback(null);
+            return;
+        }
+
+        const jobRef = ref(realtimeDb, `jobs/${jobId}`);
+        currentJobRef = jobRef;
+        onValue(jobRef, (jobSnap) => {
+            callback(jobSnap.val());
+        });
     });
 
-    return () => off(activeJobRef);
+    return () => {
+        off(activeJobRef);
+        detachJobListener();
+    };
 }
 
 // Clear collector's active job (after completion)
@@ -328,6 +373,26 @@ export function subscribeToPaymentRequests(
     });
 
     return () => off(requestsRef);
+}
+
+// Subscribe to a single payment request (used by collector/org to detect
+// when the customer confirms or declines, so the trip auto-completes).
+export function subscribeToPaymentRequest(
+    customerId: string,
+    requestId: string,
+    callback: (request: PaymentRequest | null) => void
+): () => void {
+    const requestRef = ref(realtimeDb, `paymentRequests/${customerId}/${requestId}`);
+
+    const unsubscribe = onValue(requestRef, (snapshot) => {
+        if (snapshot.exists()) {
+            callback(snapshot.val() as PaymentRequest);
+        } else {
+            callback(null);
+        }
+    });
+
+    return () => off(requestRef);
 }
 
 // Customer confirms payment

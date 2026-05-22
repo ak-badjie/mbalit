@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ChevronRight } from 'lucide-react';
 import {
     Building2,
     Users,
@@ -24,6 +26,7 @@ import {
     Navigation,
     Clock,
     Phone,
+    AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -31,6 +34,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapView } from '@/components/maps/map-view';
 import { ProfileLocationMap } from '@/components/maps/profile-location-map';
+import { FullScreenNavigation } from '@/components/ui/full-screen-navigation';
 import { formatPrice, WASTE_TYPES } from '@/lib/waste-config';
 import { GeoLocation } from '@/types';
 import {
@@ -38,6 +42,7 @@ import {
     getOrganizationMembers,
     approveMember,
     removeMember,
+    withdrawFromOrgWallet,
 } from '@/lib/firestore';
 import {
     updateCollectorLocation,
@@ -45,6 +50,8 @@ import {
     subscribeToPendingJobs,
     assignCollectorToJob,
     updateJobStatus,
+    createPaymentRequest,
+    subscribeToPaymentRequest,
     RealtimeJob,
 } from '@/lib/realtime';
 
@@ -73,6 +80,7 @@ type TabType = 'driver' | 'organization';
 
 export default function OrganizationDashboard() {
     const { user, logout } = useAuth();
+    const router = useRouter();
     const collectorId = user?.id || '';
 
     // Tab state
@@ -91,6 +99,58 @@ export default function OrganizationDashboard() {
     const [currentLocation, setCurrentLocation] = useState<GeoLocation | null>(null);
     const [pendingJobs, setPendingJobs] = useState<RealtimeJob[]>([]);
     const [activeJob, setActiveJob] = useState<RealtimeJob | null>(null);
+
+    // Navigation state
+    const [showFullScreenNav, setShowFullScreenNav] = useState(false);
+
+    // Finish Trip / Payment request state
+    const [showPaymentRequestModal, setShowPaymentRequestModal] = useState(false);
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentAdjustmentReason, setPaymentAdjustmentReason] = useState('');
+    const [isRequestingPayment, setIsRequestingPayment] = useState(false);
+    const [paymentRequestSent, setPaymentRequestSent] = useState(false);
+    const [pendingPaymentRequestId, setPendingPaymentRequestId] = useState<string | null>(null);
+    const [paymentRequestDeclined, setPaymentRequestDeclined] = useState(false);
+
+    // Withdraw state
+    const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+    const [withdrawAmount, setWithdrawAmount] = useState('');
+    const [withdrawPhone, setWithdrawPhone] = useState('');
+    const [isWithdrawing, setIsWithdrawing] = useState(false);
+
+    const handleWithdraw = async () => {
+        if (!org?.id) {
+            alert('Organization not loaded');
+            return;
+        }
+        const amount = parseFloat(withdrawAmount);
+        if (isNaN(amount) || amount <= 0) {
+            alert('Please enter a valid amount');
+            return;
+        }
+        if (!withdrawPhone || withdrawPhone.length < 7) {
+            alert('Please enter a valid phone number');
+            return;
+        }
+        setIsWithdrawing(true);
+        try {
+            const result = await withdrawFromOrgWallet(org.id, amount, 'wave', withdrawPhone);
+            if (result.success) {
+                setOrg((prev: any) => prev ? { ...prev, walletBalance: (prev.walletBalance || 0) - amount } : prev);
+                setShowWithdrawModal(false);
+                setWithdrawAmount('');
+                setWithdrawPhone('');
+                alert('Withdrawal request submitted! You will receive your funds shortly.');
+            } else {
+                alert(result.error || 'Withdrawal failed');
+            }
+        } catch (err) {
+            console.error('Withdraw failed:', err);
+            alert('Failed to process withdrawal');
+        } finally {
+            setIsWithdrawing(false);
+        }
+    };
 
     // Load org data
     useEffect(() => {
@@ -136,13 +196,92 @@ export default function OrganizationDashboard() {
         }
     };
 
+    const handleCompleteJob = useCallback(async () => {
+        if (!activeJob) return;
+        try {
+            await updateJobStatus(activeJob.id, 'completed');
+            setActiveJob(null);
+            setPendingPaymentRequestId(null);
+            setPaymentRequestSent(false);
+            setPaymentRequestDeclined(false);
+            setShowFullScreenNav(false);
+        } catch (err) {
+            console.error('Failed to complete job:', err);
+        }
+    }, [activeJob]);
+
+    // Auto-complete the trip the moment the customer confirms payment
+    useEffect(() => {
+        if (!pendingPaymentRequestId || !activeJob) return;
+        const unsub = subscribeToPaymentRequest(
+            activeJob.customerId,
+            pendingPaymentRequestId,
+            (req) => {
+                if (!req) return;
+                if (req.status === 'confirmed') {
+                    handleCompleteJob();
+                } else if (req.status === 'cancelled') {
+                    setPaymentRequestSent(false);
+                    setPaymentRequestDeclined(true);
+                    setPendingPaymentRequestId(null);
+                }
+            }
+        );
+        return () => unsub();
+    }, [pendingPaymentRequestId, activeJob, handleCompleteJob]);
+
+    const openFinishTripModal = () => {
+        if (!activeJob) return;
+        setPaymentAmount(activeJob.amount.toString());
+        setPaymentAdjustmentReason('');
+        setPaymentRequestDeclined(false);
+        setShowFullScreenNav(false);
+        setShowPaymentRequestModal(true);
+    };
+
+    const sendFinishTripRequest = async () => {
+        if (!activeJob) return;
+        setIsRequestingPayment(true);
+        try {
+            const reqId = await createPaymentRequest(
+                collectorId,
+                org?.name || user?.name || 'Driver',
+                activeJob.customerId,
+                activeJob.amount,
+                parseFloat(paymentAmount) || activeJob.amount,
+                paymentAdjustmentReason || undefined,
+                undefined,
+                activeJob.id,
+            );
+            setPendingPaymentRequestId(reqId);
+            setPaymentRequestSent(true);
+            setPaymentRequestDeclined(false);
+            setShowPaymentRequestModal(false);
+        } catch (err) {
+            console.error('Payment request failed:', err);
+            alert('Failed to send payment request');
+        } finally {
+            setIsRequestingPayment(false);
+        }
+    };
+
     const handleAcceptJob = async (job: RealtimeJob) => {
         try {
-            await assignCollectorToJob(job.id, collectorId);
+            const claimed = await assignCollectorToJob(
+                job.id,
+                collectorId,
+                org?.name || user?.name,
+                user?.phone,
+            );
+            if (!claimed) {
+                alert('This pickup was just claimed by another collector.');
+                return;
+            }
             await updateJobStatus(job.id, 'accepted');
             setActiveJob({ ...job, collectorId, status: 'accepted' });
         } catch (err) {
             console.error('Failed to accept job:', err);
+            alert('Could not accept this pickup. Please try again.');
         }
     };
 
@@ -203,14 +342,14 @@ export default function OrganizationDashboard() {
 
     if (isLoading) {
         return (
-            <div className="h-[100dvh] overflow-hidden bg-gray-50 flex items-center justify-center">
+            <div className="min-h-[100dvh] bg-gray-50 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
             </div>
         );
     }
 
     return (
-        <div className="h-[100dvh] overflow-hidden bg-gradient-to-br from-gray-50 via-white to-amber-50">
+        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-50 via-white to-amber-50">
             {/* Header */}
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200">
                 <div className="max-w-4xl mx-auto px-4 py-3">
@@ -302,11 +441,93 @@ export default function OrganizationDashboard() {
                                         <p className="text-sm text-gray-500">{getContainerSummary(activeJob)}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
                                     <MapPin className="w-4 h-4" />
                                     <span>{activeJob.pickupLocation.formattedAddress}</span>
                                 </div>
+
+                                {/* Route Map */}
+                                <Card variant="default" padding="none" className="overflow-hidden h-[260px] mb-3">
+                                    <MapView
+                                        center={activeJob.pickupLocation}
+                                        customerLocation={activeJob.pickupLocation}
+                                        collectorLocation={currentLocation || undefined}
+                                        showRoute
+                                        isTracking
+                                        height="100%"
+                                    />
+                                </Card>
+
+                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                    <Button
+                                        variant="primary"
+                                        fullWidth
+                                        onClick={() => setShowFullScreenNav(true)}
+                                        leftIcon={<Navigation size={18} />}
+                                        className="bg-blue-600 hover:bg-blue-700"
+                                    >
+                                        Navigate
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        fullWidth
+                                        onClick={() => {
+                                            const { lat, lng } = activeJob.pickupLocation;
+                                            window.open(
+                                                `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+                                                '_blank'
+                                            );
+                                        }}
+                                        leftIcon={<Navigation size={18} />}
+                                    >
+                                        Open in Google Maps
+                                    </Button>
+                                </div>
+
+                                {activeJob.customerPhone && (
+                                    <a href={`tel:${activeJob.customerPhone}`} className="block mb-3">
+                                        <Button
+                                            variant="secondary"
+                                            fullWidth
+                                            leftIcon={<Phone size={18} />}
+                                        >
+                                            Call Customer
+                                        </Button>
+                                    </a>
+                                )}
+
+                                {paymentRequestSent ? (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                                        <div className="flex items-center gap-3">
+                                            <Loader2 className="w-5 h-5 text-amber-600 animate-spin flex-shrink-0" />
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-amber-900">Awaiting customer confirmation</p>
+                                                <p className="text-xs text-amber-700 mt-0.5">
+                                                    Trip will auto-complete the moment they tap Confirm &amp; Pay.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <Button
+                                        variant="primary"
+                                        fullWidth
+                                        onClick={openFinishTripModal}
+                                        leftIcon={<CheckCircle size={18} />}
+                                        className="bg-emerald-600 hover:bg-emerald-700"
+                                    >
+                                        Finish Trip
+                                    </Button>
+                                )}
+
+                                {paymentRequestDeclined && (
+                                    <div className="mt-2 bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
+                                        Customer declined the payment request. You can request again or contact them.
+                                    </div>
+                                )}
+
                                 <div className="mt-3 p-3 bg-emerald-50 rounded-xl">
+                                    <p className="text-xs text-gray-600">You'll Earn</p>
                                     <p className="text-2xl font-bold text-emerald-600">{formatPrice(activeJob.amount)}</p>
                                 </div>
                             </Card>
@@ -464,6 +685,7 @@ export default function OrganizationDashboard() {
                                     <Button
                                         variant="secondary"
                                         size="sm"
+                                        onClick={() => setShowWithdrawModal(true)}
                                         leftIcon={<ArrowDownToLine size={16} />}
                                         className="bg-white/20 hover:bg-white/30 border-0 text-white text-xs"
                                     >
@@ -519,6 +741,24 @@ export default function OrganizationDashboard() {
                                 </div>
                             </Card>
                         </div>
+
+                        {/* Community Reports (authority orgs only) */}
+                        {(user as { isAuthority?: boolean })?.isAuthority && (
+                            <button
+                                type="button"
+                                onClick={() => router.push('/organization/reports')}
+                                className="w-full p-4 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-left text-white shadow-sm hover:shadow-md transition-shadow flex items-center gap-3"
+                            >
+                                <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                                    <AlertTriangle className="w-5 h-5 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold">Community Reports</p>
+                                    <p className="text-xs text-white/80">Environmental hazards reported by residents</p>
+                                </div>
+                                <ChevronRight className="w-5 h-5 text-white/80 flex-shrink-0" />
+                            </button>
+                        )}
 
                         {/* Pending Approvals */}
                         {pendingMembers.length > 0 && (
@@ -612,6 +852,216 @@ export default function OrganizationDashboard() {
                     </>
                 )}
             </main>
+
+            {/* Withdraw Modal */}
+            <AnimatePresence>
+                {showWithdrawModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                        onClick={() => setShowWithdrawModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">
+                                Withdraw Funds
+                            </h2>
+
+                            <div className="mb-4 p-4 bg-amber-50 rounded-xl">
+                                <p className="text-xs text-gray-600">Available Balance</p>
+                                <p className="text-2xl font-bold text-amber-700">
+                                    {formatPrice(org?.walletBalance || 0)}
+                                </p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Amount (GMD)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={withdrawAmount}
+                                        onChange={e => setWithdrawAmount(e.target.value)}
+                                        placeholder="Enter amount (min 50 GMD)"
+                                        min="50"
+                                        max={org?.walletBalance || 0}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white text-gray-900"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Wave Phone Number
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        value={withdrawPhone}
+                                        onChange={e => setWithdrawPhone(e.target.value)}
+                                        placeholder="+220 XXXXXXXX"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white text-gray-900"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setShowWithdrawModal(false)}
+                                    className="flex-1"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleWithdraw}
+                                    disabled={isWithdrawing || !withdrawAmount || parseFloat(withdrawAmount) > (org?.walletBalance || 0)}
+                                    className="flex-1"
+                                >
+                                    {isWithdrawing ? 'Processing...' : 'Withdraw'}
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Finish Trip / Payment Request Modal */}
+            <AnimatePresence>
+                {showPaymentRequestModal && activeJob && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end"
+                        onClick={() => !isRequestingPayment && setShowPaymentRequestModal(false)}
+                    >
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="w-full bg-white rounded-t-3xl p-6"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-6" />
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Finish Trip &amp; Request Payment</h2>
+                            <p className="text-sm text-gray-500 mb-6">
+                                The customer will get a notification to confirm. As soon as they tap Confirm &amp; Pay, your trip is marked complete and the wallet is credited automatically.
+                            </p>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 mb-1 block">Amount (GMD)</label>
+                                    <input
+                                        type="number"
+                                        value={paymentAmount}
+                                        onChange={(e) => setPaymentAmount(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-lg font-bold text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    />
+                                    {parseFloat(paymentAmount) !== activeJob.amount && (
+                                        <p className="text-xs text-amber-600 mt-1">
+                                            Original: {formatPrice(activeJob.amount)} → Adjusted: {formatPrice(parseFloat(paymentAmount) || 0)}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {parseFloat(paymentAmount) !== activeJob.amount && (
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">Adjustment Reason (optional)</label>
+                                        <input
+                                            type="text"
+                                            value={paymentAdjustmentReason}
+                                            onChange={(e) => setPaymentAdjustmentReason(e.target.value)}
+                                            placeholder="e.g. More waste than expected"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="bg-gray-50 rounded-xl p-4">
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span className="text-gray-500">Customer pays</span>
+                                        <span className="font-bold text-gray-900">{formatPrice(parseFloat(paymentAmount) || 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span className="text-gray-500">You receive (70%)</span>
+                                        <span className="font-bold text-emerald-600">{formatPrice(Math.round((parseFloat(paymentAmount) || 0) * 0.7 * 100) / 100)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-500">Platform fee (30%)</span>
+                                        <span className="text-gray-400">{formatPrice(Math.round((parseFloat(paymentAmount) || 0) * 0.3 * 100) / 100)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => setShowPaymentRequestModal(false)}
+                                        className="flex-1"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        variant="primary"
+                                        onClick={sendFinishTripRequest}
+                                        disabled={isRequestingPayment || !paymentAmount}
+                                        className="flex-1"
+                                    >
+                                        {isRequestingPayment ? 'Sending...' : 'Send & Finish Trip'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Full Screen Navigation */}
+            {activeJob && (
+                <FullScreenNavigation
+                    isOpen={showFullScreenNav}
+                    onClose={() => setShowFullScreenNav(false)}
+                    pickup={{
+                        id: activeJob.id,
+                        customerName: activeJob.customerName || 'Customer',
+                        customerPhone: activeJob.customerPhone || '',
+                        pickupLocation: activeJob.pickupLocation,
+                        wasteType: getWasteTypeInfo(activeJob.wasteType, activeJob.wasteTypes).name,
+                        wasteSize: getContainerSummary(activeJob),
+                        amount: activeJob.amount || 0,
+                        estimatedDistance: currentLocation
+                            ? formatDistance(haversineDistance(currentLocation.lat, currentLocation.lng, activeJob.pickupLocation.lat, activeJob.pickupLocation.lng))
+                            : undefined,
+                        estimatedTime: currentLocation
+                            ? estimateTravelTime(haversineDistance(currentLocation.lat, currentLocation.lng, activeJob.pickupLocation.lat, activeJob.pickupLocation.lng))
+                            : undefined,
+                    }}
+                    collectorLocation={currentLocation || undefined}
+                    onArrive={async () => {
+                        try {
+                            await updateJobStatus(activeJob.id, 'arrived');
+                            setActiveJob({ ...activeJob, status: 'arrived' });
+                        } catch (err) {
+                            console.error('Failed to mark arrived:', err);
+                        }
+                    }}
+                    isArrived={activeJob.status === 'arrived' || activeJob.status === 'awaiting_payment'}
+                    isPaid={activeJob.paymentStatus === 'paid'}
+                    onComplete={() => {
+                        if (paymentRequestSent) return;
+                        openFinishTripModal();
+                    }}
+                    onCall={() => activeJob.customerPhone && window.open(`tel:${activeJob.customerPhone}`, '_self')}
+                    onMessage={() => activeJob.customerPhone && window.open(`sms:${activeJob.customerPhone}`, '_self')}
+                />
+            )}
         </div>
     );
 }

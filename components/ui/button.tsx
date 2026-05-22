@@ -72,7 +72,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                     <span className="flex-shrink-0">{leftIcon}</span>
                 ) : null}
 
-                <span>{children}</span>
+                <span>{children as React.ReactNode}</span>
 
                 {!isLoading && rightIcon && (
                     <span className="flex-shrink-0">{rightIcon}</span>

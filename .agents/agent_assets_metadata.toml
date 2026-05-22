@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "n8zmOHzXj1xQvhWPMt54x"
+uri = "file://PITCH_SCRIPT.md"
+type = "text"
+title = "mbalit — Pitch Script (v2 — emotional)"

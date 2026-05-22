@@ -24,6 +24,7 @@ import {
     LogOut,
     Settings,
     Building2,
+    Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -45,6 +46,7 @@ import {
     updateJobStatus,
     clearCollectorActiveJob,
     createPaymentRequest,
+    subscribeToPaymentRequest,
     RealtimeJob,
 } from '@/lib/realtime';
 import {
@@ -143,6 +145,8 @@ function DashboardContent() {
     const [paymentAdjustmentReason, setPaymentAdjustmentReason] = useState('');
     const [isRequestingPayment, setIsRequestingPayment] = useState(false);
     const [paymentRequestSent, setPaymentRequestSent] = useState(false);
+    const [pendingPaymentRequestId, setPendingPaymentRequestId] = useState<string | null>(null);
+    const [paymentRequestDeclined, setPaymentRequestDeclined] = useState(false);
 
     // PROTECT DASHBOARD: Redirect if onboarding not complete
     useEffect(() => {
@@ -303,7 +307,7 @@ function DashboardContent() {
     // Subscribe to collector's active job
     useEffect(() => {
         const unsubscribe = subscribeToCollectorActiveJob(collectorId, (job) => {
-            if (job && job.status !== 'completed') {
+            if (job && job.status !== 'completed' && job.status !== 'cancelled') {
                 setActiveJob(job);
             } else {
                 setActiveJob(null);
@@ -312,6 +316,18 @@ function DashboardContent() {
 
         return () => unsubscribe();
     }, [collectorId]);
+
+    // Auto-clear incomingJob if a real-time update shows another collector
+    // already claimed it (or it is otherwise no longer available).
+    useEffect(() => {
+        if (!incomingJob) return;
+        const stillAvailable = pendingJobs.some(j => j.id === incomingJob.id);
+        if (!stillAvailable) {
+            setIncomingJob(null);
+            setShowDynamicIslandNotif(false);
+            setTimeout(() => setSize('compact'), 0);
+        }
+    }, [pendingJobs, incomingJob, setSize]);
 
     // Auto-dismiss Dynamic Island notification after 3 seconds
     useEffect(() => {
@@ -338,21 +354,38 @@ function DashboardContent() {
 
     const handleAcceptJob = async (jobOverride?: RealtimeJob) => {
         const job = jobOverride || incomingJob;
-        if (job) {
-            try {
-                await assignCollectorToJob(job.id, collectorId);
-                await updateJobStatus(job.id, 'accepted');
-                setActiveJob({ ...job, collectorId, status: 'accepted' });
-                setIncomingJob(null);
-                setTimeout(() => setSize('long'), 0);
+        if (!job) return;
+        try {
+            const claimed = await assignCollectorToJob(
+                job.id,
+                collectorId,
+                user?.name,
+                user?.phone,
+            );
 
-                // Show full-screen navigation on mobile
-                if (window.innerWidth < 768) {
-                    setShowFullScreenNav(true);
-                }
-            } catch (err) {
-                console.error('Failed to accept job:', err);
+            if (!claimed) {
+                // Another collector got there first — surface that to the user
+                // and mark this job as declined so it doesn't keep popping up.
+                setDeclinedJobIds(prev => new Set(prev).add(job.id));
+                setIncomingJob(null);
+                setShowDynamicIslandNotif(false);
+                setTimeout(() => setSize('compact'), 0);
+                alert('This pickup was just claimed by another collector.');
+                return;
             }
+
+            await updateJobStatus(job.id, 'accepted');
+            setActiveJob({ ...job, collectorId, status: 'accepted' });
+            setIncomingJob(null);
+            setTimeout(() => setSize('long'), 0);
+
+            // Show full-screen navigation on mobile
+            if (window.innerWidth < 768) {
+                setShowFullScreenNav(true);
+            }
+        } catch (err) {
+            console.error('Failed to accept job:', err);
+            alert('Could not accept this pickup. Please try again.');
         }
     };
 
@@ -386,7 +419,7 @@ function DashboardContent() {
         }
     };
 
-    const handleCompleteJob = async () => {
+    const handleCompleteJob = useCallback(async () => {
         if (activeJob) {
             try {
                 await updateJobStatus(activeJob.id, 'completed');
@@ -394,12 +427,35 @@ function DashboardContent() {
                 setWalletBalance(prev => prev + activeJob.amount);
                 setRemainingCapacity(prev => Math.max(0, prev - 20));
                 setActiveJob(null);
+                setPendingPaymentRequestId(null);
+                setPaymentRequestSent(false);
+                setPaymentRequestDeclined(false);
                 setTimeout(() => setSize('compact'), 0);
             } catch (err) {
                 console.error('Failed to complete job:', err);
             }
         }
-    };
+    }, [activeJob, collectorId]);
+
+    // Auto-complete trip the moment the customer confirms the payment request
+    useEffect(() => {
+        if (!pendingPaymentRequestId || !activeJob) return;
+        const unsub = subscribeToPaymentRequest(
+            activeJob.customerId,
+            pendingPaymentRequestId,
+            (req) => {
+                if (!req) return;
+                if (req.status === 'confirmed') {
+                    handleCompleteJob();
+                } else if (req.status === 'cancelled') {
+                    setPaymentRequestSent(false);
+                    setPaymentRequestDeclined(true);
+                    setPendingPaymentRequestId(null);
+                }
+            }
+        );
+        return () => unsub();
+    }, [pendingPaymentRequestId, activeJob, handleCompleteJob]);
 
     const handleUpdateCapacity = (newCapacity: number) => {
         setRemainingCapacity(newCapacity);
@@ -749,31 +805,66 @@ function DashboardContent() {
                                                 </p>
                                             </div>
 
-                                            <div className="flex gap-3">
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Button
+                                                    variant="primary"
+                                                    fullWidth
+                                                    onClick={() => setShowFullScreenNav(true)}
+                                                    leftIcon={<Navigation size={18} />}
+                                                    className="bg-blue-600 hover:bg-blue-700"
+                                                >
+                                                    Navigate
+                                                </Button>
                                                 <Button
                                                     variant="secondary"
                                                     fullWidth
                                                     onClick={() => {
-                                                        setPaymentAmount(activeJob.amount.toString());
-                                                        setPaymentAdjustmentReason('');
-                                                        setShowPaymentRequestModal(true);
+                                                        const { lat, lng } = activeJob.pickupLocation;
+                                                        window.open(
+                                                            `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+                                                            '_blank'
+                                                        );
                                                     }}
-                                                    leftIcon={<DollarSign size={18} />}
-                                                    disabled={paymentRequestSent}
-                                                    className={paymentRequestSent ? 'bg-green-50 text-green-600 border-green-200' : ''}
+                                                    leftIcon={<Navigation size={18} />}
                                                 >
-                                                    {paymentRequestSent ? 'Payment Requested ✓' : 'Request Payment'}
+                                                    Open in Google Maps
                                                 </Button>
+                                            </div>
+
+                                            {paymentRequestSent ? (
+                                                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <Loader2 className="w-5 h-5 text-amber-600 animate-spin flex-shrink-0" />
+                                                        <div className="flex-1">
+                                                            <p className="text-sm font-bold text-amber-900">Awaiting customer confirmation</p>
+                                                            <p className="text-xs text-amber-700 mt-0.5">
+                                                                Trip will auto-complete the moment they tap Confirm &amp; Pay.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
                                                 <Button
                                                     variant="primary"
                                                     fullWidth
-                                                    onClick={handleCompleteJob}
+                                                    onClick={() => {
+                                                        setPaymentAmount(activeJob.amount.toString());
+                                                        setPaymentAdjustmentReason('');
+                                                        setPaymentRequestDeclined(false);
+                                                        setShowPaymentRequestModal(true);
+                                                    }}
                                                     leftIcon={<CheckCircle size={18} />}
-                                                    className="bg-blue-600 hover:bg-blue-700"
+                                                    className="bg-emerald-600 hover:bg-emerald-700"
                                                 >
-                                                    Complete
+                                                    Finish Trip
                                                 </Button>
-                                            </div>
+                                            )}
+
+                                            {paymentRequestDeclined && (
+                                                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
+                                                    Customer declined the payment request. You can request again or contact them.
+                                                </div>
+                                            )}
                                         </div>
 
                                         <Card variant="default" padding="none" className="overflow-hidden h-[300px]">
@@ -1125,9 +1216,9 @@ function DashboardContent() {
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-6" />
-                            <h2 className="text-xl font-bold text-gray-900 mb-2">Request Payment</h2>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Finish Trip &amp; Request Payment</h2>
                             <p className="text-sm text-gray-500 mb-6">
-                                The customer will receive a notification to confirm payment.
+                                The customer will get a notification to confirm. As soon as they tap Confirm &amp; Pay, your trip is marked complete and your wallet is credited automatically.
                             </p>
 
                             <div className="space-y-4">
@@ -1187,7 +1278,7 @@ function DashboardContent() {
                                         onClick={async () => {
                                             setIsRequestingPayment(true);
                                             try {
-                                                await createPaymentRequest(
+                                                const reqId = await createPaymentRequest(
                                                     collectorId,
                                                     user?.name || 'Collector',
                                                     activeJob.customerId,
@@ -1197,7 +1288,9 @@ function DashboardContent() {
                                                     undefined,
                                                     activeJob.id
                                                 );
+                                                setPendingPaymentRequestId(reqId);
                                                 setPaymentRequestSent(true);
+                                                setPaymentRequestDeclined(false);
                                                 setShowPaymentRequestModal(false);
                                             } catch (err) {
                                                 console.error('Payment request failed:', err);
@@ -1240,8 +1333,12 @@ function DashboardContent() {
                     isArrived={activeJob.status === 'arrived' || activeJob.status === 'awaiting_payment'}
                     isPaid={activeJob.paymentStatus === 'paid'}
                     onComplete={() => {
-                        handleCompleteJob();
+                        if (paymentRequestSent) return;
+                        setPaymentAmount(activeJob.amount.toString());
+                        setPaymentAdjustmentReason('');
+                        setPaymentRequestDeclined(false);
                         setShowFullScreenNav(false);
+                        setShowPaymentRequestModal(true);
                     }}
                     onCall={() => window.open(`tel:${activeJob.customerPhone}`, '_self')}
                     onMessage={() => window.open(`sms:${activeJob.customerPhone}`, '_self')}

@@ -8,31 +8,24 @@ import {
     Loader2,
     Camera,
     Check,
+    Trash2,
     Truck,
     Building2,
-    User as UserIcon,
-    Shield,
+    User,
     ChevronRight,
-    Clock,
-    ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import TruckLogo from '@/components/ui/truck-logo';
 import { DialPad } from '@/components/ui/dial-pad';
+import { JigsawBlock } from '@/components/ui/jigsaw-block';
 import { CountrySelector, DEFAULT_COUNTRY } from '@/components/ui/country-selector';
 import type { Country } from '@/components/ui/country-selector';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { WASTE_TYPES } from '@/lib/waste-config';
 import { WasteType, CollectorType } from '@/types';
 import { compressImage } from '@/lib/image-utils';
-import { RoleCard } from '@/components/ui/role-card';
-import { OtpInput } from '@/components/ui/otp-input';
-import { MbButton } from '@/components/ui/mb-button';
-import { SecureFooter } from '@/components/ui/secure-footer';
 
 // Vehicle sizes (Lucide icons, no emojis)
 const VEHICLE_TYPES = [
@@ -55,7 +48,7 @@ export default function AuthPageWrapper() {
         <Suspense fallback={
             <div className="h-[100dvh] overflow-hidden flex items-center justify-center bg-white">
                 <div className="text-center">
-                    <div className="w-10 h-10 border-[3px] border-[#0E7A3B] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <div className="w-10 h-10 border-3 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 </div>
             </div>
         }>
@@ -64,27 +57,62 @@ export default function AuthPageWrapper() {
     );
 }
 
-type RegistrationType = 'waste_owner' | 'collector' | 'organization' | 'government' | null;
+type RegistrationType = 'waste_owner' | 'collector' | 'organization' | null;
 
 function AuthPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const isSignupMode = searchParams.get('signup') === 'true';
     const isCollectorMode = searchParams.get('role') === 'collector';
-    const continueOnboarding = searchParams.get('continue') === 'onboarding';
-    const { login, verifySmsCode, completeProfile, checkPhoneExists, checkOrgCode, sendSmsVerification, resetPinWithSms, isLoading, user } = useAuth();
+    const { login, completeProfile, createAccount, checkPhoneExists, checkOrgCode, requestPinReset, lookupRecoveryEmailForPhone, sendPinResetEmail, isLoading, user } = useAuth();
+
+    // Map any auth error (Firebase or otherwise) to a friendly, actionable message.
+    const friendlyAuthError = (err: unknown): string => {
+        const anyErr = err as { code?: string; message?: string } | null;
+        const code = anyErr?.code || '';
+        const msg = anyErr?.message || (typeof err === 'string' ? err : '');
+        const haystack = `${code} ${msg}`;
+        if (haystack.includes('operation-not-allowed')) {
+            return 'Sign-in is currently disabled for this account type. Please contact support.';
+        }
+        if (haystack.includes('network-request-failed')) {
+            return 'Network error — check your connection and try again.';
+        }
+        if (haystack.includes('too-many-requests')) {
+            return 'Too many attempts. Please wait a minute and try again.';
+        }
+        if (haystack.includes('user-not-found') || haystack.includes('wrong-password') || haystack.includes('invalid-credential')) {
+            return 'Invalid phone number or PIN.';
+        }
+        if (haystack.includes('email-already-in-use')) {
+            return 'This phone number is already registered.';
+        }
+        if (haystack.includes('weak-password')) {
+            return 'PIN is too weak. Please choose a different 6-digit PIN.';
+        }
+        return msg || 'Something went wrong. Please try again.';
+    };
 
     // Flow state
-    const [mode, setMode] = useState<'login' | 'signup' | 'forgot_pin'>(isSignupMode ? 'signup' : 'login');
-    const [step, setStep] = useState(0); // 0 = role select, 1 = phone, 2 = pin, 3 = profile, 4 = vehicle (collectors), 5 = waste types (collectors)
+    const [mode, setMode] = useState<'login' | 'signup'>(isSignupMode ? 'signup' : 'login');
+    const [step, setStep] = useState(0); // 0 = role select, 1 = phone, 3 = profile, 4 = vehicle, 5 = waste types, 6 = pin
     const [registrationType, setRegistrationType] = useState<RegistrationType>(
         isCollectorMode ? 'collector' : null
     );
 
     // Login state
     const [loginPin, setLoginPin] = useState('');
-    const [loginStep, setLoginStep] = useState(0); // 0 = phone, 1 = pin entry
+    const [loginStep, setLoginStep] = useState(0); // 0 = phone, 1 = pin entry, 2 = forgot pin recovery
     const [error, setError] = useState<string | null>(null);
+
+    // Forgot-PIN recovery state
+    const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+    const [resetReference, setResetReference] = useState<string | null>(null);
+    // Self-service email reset (when user has a verified recovery email).
+    const [recoveryEmailOnFile, setRecoveryEmailOnFile] = useState<{ email: string; verified: boolean } | null>(null);
+    const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+    const [resetEmailSentTo, setResetEmailSentTo] = useState<string | null>(null);
+    const [isCheckingRecovery, setIsCheckingRecovery] = useState(false);
 
     // Registration shared state
     const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
@@ -94,7 +122,7 @@ function AuthPage() {
     const [pinStep, setPinStep] = useState<'create' | 'confirm'>('create');
     const [fullName, setFullName] = useState('');
     const [profileImage, setProfileImage] = useState<string | null>(null);
-    const [verifiedUid, setVerifiedUid] = useState<string | null>(null); // Temp ID after SMS verify
+    const [createdUid, setCreatedUid] = useState<string | null>(null);
 
 
     // Organization state
@@ -102,6 +130,9 @@ function AuthPage() {
     const [joinOrgCode, setJoinOrgCode] = useState('');
     const [isJoiningOrg, setIsJoiningOrg] = useState(false);
     const [showOrgDetails, setShowOrgDetails] = useState(false);
+    // Public-authority flag (KMC, BCC, etc.) — only meaningful when registering
+    // a new organization. Drives access to the community Reports inbox.
+    const [isAuthority, setIsAuthority] = useState(false);
 
     // Success State
     const [isSignupSuccess, setIsSignupSuccess] = useState(false);
@@ -112,50 +143,101 @@ function AuthPage() {
 
         const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // SMS Verification State
-    const [smsCode, setSmsCode] = useState('');
-    const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-    const [isSendingSms, setIsSendingSms] = useState(false);
-    const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-    const [otpSecondsLeft, setOtpSecondsLeft] = useState(119); // 1:59
+    const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+    const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+    const [noAccountFound, setNoAccountFound] = useState(false);
 
-    // Reset & run OTP timer whenever entering step 2
-    useEffect(() => {
-        if (step !== 2) return;
-        setOtpSecondsLeft(119);
-        const id = setInterval(() => {
-            setOtpSecondsLeft((s) => (s > 0 ? s - 1 : 0));
-        }, 1000);
-        return () => clearInterval(id);
-    }, [step]);
-
-    const formatOtpTime = (total: number) => {
-        const m = Math.floor(total / 60).toString().padStart(2, '0');
-        const s = (total % 60).toString().padStart(2, '0');
-        return `${m}:${s}`;
+    // Reset all transient PIN/error state — used when switching mode or recovering.
+    const resetTransientAuthState = () => {
+        setPin('');
+        setConfirmPin('');
+        setPinStep('create');
+        setLoginPin('');
+        setError(null);
+        setCreatedUid(null);
+        setNoAccountFound(false);
+        setIsCheckingPhone(false);
+        setIsCreatingAccount(false);
+        setRecoveryEmailOnFile(null);
+        setResetEmailSentTo(null);
     };
 
-    // Auto-continue onboarding for existing users
+    // When the user enters the Forgot PIN view, look up whether the account
+    // has a verified recovery email so we can offer self-service reset.
     useEffect(() => {
-        if (continueOnboarding && user && user.onboardingComplete === false) {
-            if (user.role === 'collector') {
-                if ('collectorType' in user && user.collectorType === 'organization') {
-                    setRegistrationType('organization');
-                    if ('organizationName' in user && typeof user.organizationName === 'string') {
-                        setOrgName(user.organizationName);
+        if (loginStep !== 2) return;
+        let cancelled = false;
+        const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+        if (!phoneNumber) return;
+        setIsCheckingRecovery(true);
+        setRecoveryEmailOnFile(null);
+        lookupRecoveryEmailForPhone(fullPhone)
+            .then((res) => {
+                if (cancelled) return;
+                setRecoveryEmailOnFile(res);
+            })
+            .finally(() => {
+                if (!cancelled) setIsCheckingRecovery(false);
+            });
+        return () => { cancelled = true; };
+    }, [loginStep, phoneNumber, country.dialCode, lookupRecoveryEmailForPhone]);
+
+    // Auto-resume onboarding for any authenticated user with an incomplete profile,
+    // or redirect to the appropriate dashboard if onboarding is already complete.
+    useEffect(() => {
+        if (!user) return;
+        if (user.onboardingComplete === false) {
+            // Only intervene when registrationType is null, which means this is
+            // a fresh page load with no active signup session in progress.
+            //
+            // Firestore's onSnapshot fires TWICE for every write: once from the
+            // local cache immediately, then again from the server once
+            // serverTimestamp fields resolve. If we called setMode/setStep
+            // unconditionally here, both fires would reset the user back to step
+            // 3 (profile/picture) even while they are advancing through the
+            // org/collector-specific steps (vehicle type → waste types). Moving
+            // setMode/setStep INSIDE this guard means subsequent snapshot
+            // re-fires during an active signup are no-ops and cannot interrupt
+            // the user's progress.
+            if (registrationType === null) {
+                if (user.role === 'collector') {
+                    if ('collectorType' in user && user.collectorType === 'organization') {
+                        setRegistrationType('organization');
+                        if ('organizationName' in user && typeof user.organizationName === 'string') {
+                            setOrgName(user.organizationName);
+                        }
+                    } else {
+                        setRegistrationType('collector');
                     }
                 } else {
-                    setRegistrationType('collector');
+                    setRegistrationType('waste_owner');
                 }
-                setStep(1);
-            } else {
-                setRegistrationType('waste_owner');
-                setStep(1);
+                // Resume at the profile step. submitCreateAccount also schedules
+                // this via setTimeout so both paths converge correctly.
+                setMode('signup');
+                setStep(3);
+                if (user.name) setFullName(user.name);
+                if (user.profileImage) setProfileImage(user.profileImage);
             }
-            if (user.name) setFullName(user.name);
-            if (user.profileImage) setProfileImage(user.profileImage);
+        } else if (user.onboardingComplete === true) {
+            // Already onboarded — don't keep them stuck on /auth.
+            // Use Next.js client-side navigation (router.replace) instead of
+            // window.location.href so the AuthProvider stays mounted and keeps
+            // its live user state. A hard navigation re-mounts AuthProvider on
+            // the destination, where Firestore's onSnapshot fires from the
+            // local cache FIRST with stale data — which made the dashboard
+            // layout's onboardingComplete gate bounce back to /auth and trap
+            // users in a loop on the profile-picture step.
+            const isOrg = user.role === 'collector' && 'collectorType' in user && user.collectorType === 'organization';
+            if (isOrg) {
+                router.replace('/organization/dashboard');
+            } else if (user.role === 'collector') {
+                router.replace('/collector/dashboard');
+            } else {
+                router.replace('/dashboard');
+            }
         }
-    }, [continueOnboarding, user]);
+    }, [user]);
 
     // Format phone display
     const formatPhone = (num: string) => {
@@ -181,8 +263,8 @@ function AuthPage() {
         e?.preventDefault();
         setError(null);
         try {
-            // Phone + PIN login
-            const fullPhone = `+220 ${formatPhone(phoneNumber)}`; // Always Gambia for phone+pin now
+            // Phone + PIN login - use the selected country's dial code (must match signup)
+            const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
             const pinToUse = pinOverride || loginPin;
             if (pinToUse.length !== 6) return;
             
@@ -194,36 +276,111 @@ function AuthPage() {
             if (!loginSnap.empty) {
                 const userData = loginSnap.docs[0].data();
                 if (userData.role === 'collector' && userData.collectorType === 'organization') {
-                    window.location.href = '/organization/dashboard';
+                    router.replace('/organization/dashboard');
                 } else if (userData.role === 'collector') {
-                    window.location.href = '/collector/dashboard';
+                    router.replace('/collector/dashboard');
                 } else {
-                    window.location.href = '/dashboard';
+                    router.replace('/dashboard');
                 }
             } else {
-                window.location.href = '/dashboard';
+                router.replace('/dashboard');
             }
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Login failed';
-            if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential')) {
-                setError('Invalid phone number or PIN');
-            } else {
-                setError(msg);
+            setError(friendlyAuthError(err));
+            // Only clear the PIN when the credential itself was wrong.
+            // For transient/config errors (network, operation-not-allowed,
+            // too-many-requests, etc.) the PIN is fine — let the user retry
+            // without retyping it.
+            const code = (err as { code?: string; message?: string })?.code || '';
+            const msg = (err as { message?: string })?.message || '';
+            const haystack = `${code} ${msg}`;
+            const isCredentialError =
+                haystack.includes('user-not-found') ||
+                haystack.includes('wrong-password') ||
+                haystack.includes('invalid-credential');
+            if (isCredentialError) {
+                setLoginPin('');
             }
-            setLoginPin(''); // Clear pin on error
+        }
+    };
+
+    // Run the create-account request. Extracted so the PIN-confirm dial pad
+    // and the "Try again" recovery button can both invoke it without making
+    // the user re-enter their 6-digit PIN.
+    const submitCreateAccount = async () => {
+        if (pin.length !== 6 || confirmPin.length !== 6 || pin !== confirmPin) return;
+        const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+        setIsCreatingAccount(true);
+        setError(null);
+        try {
+            const newUid = await createAccount(fullPhone, pin);
+            setCreatedUid(newUid);
+            setTimeout(() => setStep(3), 300);
+        } catch (err: unknown) {
+            const code = (err as { code?: string; message?: string })?.code || '';
+            const msg = (err as { message?: string })?.message || '';
+            const haystack = `${code} ${msg}`;
+            const isDup = haystack.includes('email-already-in-use');
+
+            if (isDup) {
+                // Silent recovery: maybe an abandoned previous signup.
+                // Try to sign in with the same PIN before bothering the user.
+                try {
+                    const uid = await login(fullPhone, pin);
+                    setCreatedUid(uid);
+                    const usersRef = collection(db, 'users');
+                    const lookupSnap = await getDocs(query(usersRef, where('phone', '==', fullPhone)));
+                    const docData = lookupSnap.empty ? null : lookupSnap.docs[0].data();
+                    if (docData && docData.onboardingComplete === true) {
+                        if (docData.role === 'collector' && docData.collectorType === 'organization') {
+                            router.replace('/organization/dashboard');
+                        } else if (docData.role === 'collector') {
+                            router.replace('/collector/dashboard');
+                        } else {
+                            router.replace('/dashboard');
+                        }
+                        return;
+                    }
+                    // Account exists but onboarding incomplete → resume at profile step.
+                    setTimeout(() => setStep(3), 300);
+                    return;
+                } catch {
+                    // Sign-in with same PIN also failed — they have an account but a different PIN.
+                    resetTransientAuthState();
+                    setMode('login');
+                    setLoginStep(1);
+                    setError('This phone is already registered. Please enter your existing PIN.');
+                    return;
+                }
+            }
+
+            // Wrong-PIN-style errors don't apply to account creation, so any
+            // remaining error is transient/config (network, operation-not-allowed,
+            // too-many-requests, weak-password). Keep BOTH pins intact so the
+            // user only re-creates them once — never asked for the PIN more
+            // than twice. The "Try again" button below will re-run this.
+            setError(friendlyAuthError(err));
+        } finally {
+            setIsCreatingAccount(false);
         }
     };
 
     // Handle signup completion
     const handleCompleteSignup = async () => {
         setError(null);
-        const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+        // When the user resumes onboarding after being bounced from the dashboard
+        // (e.g. the dashboard layout detected onboardingComplete:false and sent
+        // them back to /auth?continue=onboarding), phoneNumber state is empty
+        // because they never went through step 1 in this page-load. Fall back to
+        // the phone already stored on their Firestore document so completeProfile
+        // never overwrites the correct phone with a blank/malformed value.
+        const fullPhone = user?.phone || `${country.dialCode} ${formatPhone(phoneNumber)}`;
 
         try {
-            let userId = user?.id || verifiedUid;
+            let userId = user?.id || createdUid;
 
             if (!userId) {
-                setError('No user found or SMS verification missing. Please try again.');
+                setError('No user account found. Please try again.');
                 return;
             }
 
@@ -234,9 +391,17 @@ function AuthPage() {
                     role: 'user',
                 });
                 setIsSignupSuccess(true);
+                // Navigate immediately via Next.js router so AuthProvider stays
+                // mounted with the freshly merged onboardingComplete=true user
+                // state. A hard window.location navigation re-mounts the
+                // provider and Firestore's cache-first snapshot delivers stale
+                // data, which the dashboard layout interprets as
+                // "still onboarding" and bounces back to /auth — looping the
+                // user on the profile step. The success animation can play
+                // briefly before the route transition completes.
                 setTimeout(() => {
-                    window.location.href = '/dashboard';
-                }, 3500);
+                    router.replace('/dashboard');
+                }, 600);
             } else if (registrationType === 'collector' || registrationType === 'organization') {
                 const collectorData: Record<string, unknown> = {
                     name: registrationType === 'organization' ? orgName : fullName,
@@ -254,6 +419,7 @@ function AuthPage() {
                 if (registrationType === 'organization') {
                     collectorData.collectorType = 'organization';
                     collectorData.organizationName = orgName;
+                    collectorData.isAuthority = isAuthority;
                     const orgCode = orgName.toLowerCase().replace(/\s+/g, '-').slice(0, 12) + '-' + Math.random().toString(36).slice(2, 6);
                     collectorData.orgCode = orgCode;
 
@@ -266,6 +432,7 @@ function AuthPage() {
                         totalEarnings: 0,
                         walletBalance: 0,
                         isActive: true,
+                        isAuthority,
                         createdAt: serverTimestamp(),
                         updatedAt: serverTimestamp(),
                     });
@@ -302,11 +469,11 @@ function AuthPage() {
                 setIsSignupSuccess(true);
                 setTimeout(() => {
                     if (registrationType === 'organization') {
-                        window.location.href = '/organization/dashboard';
+                        router.replace('/organization/dashboard');
                     } else {
-                        window.location.href = '/collector/dashboard';
+                        router.replace('/collector/dashboard');
                     }
-                }, 3500);
+                }, 600);
             }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to complete signup');
@@ -334,12 +501,12 @@ function AuthPage() {
                     setPinStep('create');
                     setConfirmPin('');
                 } else {
-                    setStep(2); // Go back to SMS
+                    setStep(1); // Go back to phone
                 }
                 return;
             }
             if (step === 3) {
-                setStep(6);
+                // Profile step - cannot go back since the account is already created
                 return;
             }
             if (step === 1) {
@@ -363,17 +530,27 @@ function AuthPage() {
     };
 
     const getTotalDisplaySteps = () => {
-        if (mode === 'forgot_pin') return 3; // phone, sms, pin
-        if (registrationType === 'waste_owner') return 4; // phone, sms, pin, profile
-        return 7; // org, phone, sms, pin, profile, vehicle, waste types
+        if (registrationType === 'waste_owner') return 3; // phone, pin, profile
+        return 6; // org, phone, pin, profile, vehicle, waste types
     };
 
     const getCurrentDisplayStep = () => {
-        if (mode === 'forgot_pin') return step;
-        if (registrationType === 'waste_owner') return step;
+        // Map internal step numbers (0,1,3,4,5,6) to sequential display positions
+        if (registrationType === 'waste_owner') {
+            // 1=phone, 6=pin, 3=profile
+            if (step === 1) return 1;
+            if (step === 6) return 2;
+            if (step === 3) return 3;
+            return step;
+        }
+        // collector/organization: 1A=org, 1B=phone, 6=pin, 3=profile, 4=vehicle, 5=waste
         if (step === 1 && showOrgDetails) return 1;
         if (step === 1 && !showOrgDetails) return 2;
-        return step + 1;
+        if (step === 6) return 3;
+        if (step === 3) return 4;
+        if (step === 4) return 5;
+        if (step === 5) return 6;
+        return step;
     };
 
     // ==========================================
@@ -433,9 +610,9 @@ function AuthPage() {
                                 <div
                                     key={i}
                                     className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center transition-all ${
-                                        loginPin[i]
-                                            ? 'border-[#0E7A3B] bg-[#0E7A3B]'
-                                            : error
+                                        loginPin[i] 
+                                            ? 'border-gray-900 bg-gray-900' 
+                                            : error 
                                                 ? 'border-red-300 bg-red-50'
                                                 : 'border-gray-200 bg-gray-50'
                                     }`}
@@ -462,24 +639,218 @@ function AuthPage() {
                             />
                         </div>
                         
-                        <div className="mt-6 text-center">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setMode('forgot_pin');
-                                    setStep(1);
-                                    setLoginStep(0);
-                                    setLoginPin('');
-                                    setPhoneNumber('');
-                                }}
-                                className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                            >
-                                Forgot PIN?
-                            </button>
-                        </div>
                         <div className="mt-8 text-center">
                             {isLoading && <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-900" />}
                         </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setError(null);
+                                setLoginPin('');
+                                setResetReference(null);
+                                setLoginStep(2);
+                            }}
+                            className="mt-4 text-sm font-medium text-gray-700 underline underline-offset-4"
+                        >
+                            Forgot PIN?
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Step 2: Forgot-PIN recovery flow
+        if (loginStep === 2) {
+            const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+            const obscureEmail = (e: string) => {
+                const [user, domain] = e.split('@');
+                if (!user || !domain) return e;
+                const head = user.length <= 2 ? user[0] || '' : user.slice(0, 2);
+                return `${head}${'•'.repeat(Math.max(1, user.length - 2))}@${domain}`;
+            };
+            return (
+                <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
+                    <div className="flex items-center pt-16 px-6 mb-8">
+                        <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => {
+                                setLoginStep(1);
+                                setError(null);
+                                setResetReference(null);
+                            }}
+                            className="p-2 -ml-2 rounded-full hover:bg-gray-100"
+                        >
+                            <ArrowLeft className="w-6 h-6 text-gray-900" />
+                        </motion.button>
+                        <div className="flex-1 text-center font-semibold text-gray-900 pr-8">
+                            Reset PIN
+                        </div>
+                    </div>
+
+                    <div className="flex-1 px-6 flex flex-col items-center pb-safe overflow-y-auto">
+                        {resetEmailSentTo ? (
+                            <div className="w-full max-w-sm mt-6">
+                                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
+                                    <Check className="w-8 h-8 text-emerald-600" />
+                                </div>
+                                <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                                    Check your email
+                                </h1>
+                                <p className="text-gray-500 text-center mb-6">
+                                    We sent a reset link to{' '}
+                                    <span className="font-medium text-gray-900">{resetEmailSentTo}</span>.
+                                    Open it from this device and you&apos;ll be able to set a new 6-digit PIN.
+                                </p>
+                                <p className="text-xs text-gray-500 text-center mb-6">
+                                    The link expires in about an hour. Check your spam folder if you don&apos;t see it.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setResetEmailSentTo(null);
+                                        setError(null);
+                                        setLoginStep(0);
+                                        setPhoneNumber('');
+                                    }}
+                                    className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl"
+                                >
+                                    Back to sign in
+                                </button>
+                            </div>
+                        ) : resetReference ? (
+                            <div className="w-full max-w-sm mt-6">
+                                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
+                                    <Check className="w-8 h-8 text-emerald-600" />
+                                </div>
+                                <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                                    Request received
+                                </h1>
+                                <p className="text-gray-500 text-center mb-6">
+                                    Our support team will contact you on{' '}
+                                    <span className="font-medium text-gray-900">{fullPhone}</span>{' '}
+                                    within 24 hours to verify your identity. Once verified you&apos;ll be issued a temporary PIN that you can change after signing in.
+                                </p>
+                                <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl mb-6">
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Reference</p>
+                                    <p className="font-mono font-semibold text-gray-900 text-lg">{resetReference}</p>
+                                    <p className="text-xs text-gray-500 mt-2">Quote this code when our team calls you.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setResetReference(null);
+                                        setError(null);
+                                        setLoginStep(0);
+                                        setPhoneNumber('');
+                                    }}
+                                    className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl"
+                                >
+                                    Back to sign in
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="w-full max-w-sm mt-6">
+                                <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                                    Forgot your PIN?
+                                </h1>
+                                <p className="text-gray-500 text-center mb-6">
+                                    For your security we don&apos;t reset PINs based on a phone number alone. Submit a reset request and our support team will verify your identity before issuing a temporary PIN.
+                                </p>
+
+                                <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl mb-6">
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Account phone</p>
+                                    <p className="font-semibold text-gray-900">{fullPhone}</p>
+                                </div>
+
+                                {error && (
+                                    <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl">
+                                        <p className="text-sm text-red-600 text-center">{error}</p>
+                                    </div>
+                                )}
+
+                                {/* Self-service: only shown when the account has a verified
+                                    recovery email on file. */}
+                                {recoveryEmailOnFile && recoveryEmailOnFile.verified && (
+                                    <div className="mb-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
+                                        <p className="text-sm text-emerald-800">
+                                            A recovery email is on file:{' '}
+                                            <span className="font-medium">{obscureEmail(recoveryEmailOnFile.email)}</span>
+                                        </p>
+                                    </div>
+                                )}
+
+                                {recoveryEmailOnFile && recoveryEmailOnFile.verified && (
+                                    <button
+                                        type="button"
+                                        disabled={isSendingResetEmail}
+                                        onClick={async () => {
+                                            setError(null);
+                                            setIsSendingResetEmail(true);
+                                            try {
+                                                const { email } = await sendPinResetEmail(fullPhone);
+                                                setResetEmailSentTo(email);
+                                            } catch (err: unknown) {
+                                                const msg = err instanceof Error ? err.message : friendlyAuthError(err);
+                                                setError(msg);
+                                            } finally {
+                                                setIsSendingResetEmail(false);
+                                            }
+                                        }}
+                                        className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-50 flex items-center justify-center mb-3"
+                                    >
+                                        {isSendingResetEmail ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Email me a reset link'}
+                                    </button>
+                                )}
+
+                                <button
+                                    type="button"
+                                    disabled={isSubmittingReset}
+                                    onClick={async () => {
+                                        setError(null);
+                                        setIsSubmittingReset(true);
+                                        try {
+                                            const result = await requestPinReset(fullPhone);
+                                            setResetReference(result.referenceCode);
+                                        } catch (err: unknown) {
+                                            const msg = err instanceof Error ? err.message : friendlyAuthError(err);
+                                            setError(msg);
+                                        } finally {
+                                            setIsSubmittingReset(false);
+                                        }
+                                    }}
+                                    className={`w-full py-4 font-semibold rounded-2xl disabled:opacity-50 flex items-center justify-center ${
+                                        recoveryEmailOnFile && recoveryEmailOnFile.verified
+                                            ? 'bg-white border-2 border-gray-900 text-gray-900'
+                                            : 'bg-gray-900 text-white'
+                                    }`}
+                                >
+                                    {isSubmittingReset
+                                        ? <Loader2 className="w-5 h-5 animate-spin" />
+                                        : recoveryEmailOnFile && recoveryEmailOnFile.verified
+                                            ? 'Use support-assisted reset instead'
+                                            : 'Submit reset request'}
+                                </button>
+
+                                {isCheckingRecovery && (
+                                    <p className="text-xs text-center text-gray-400 mt-3">
+                                        Checking for a recovery email…
+                                    </p>
+                                )}
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setError(null);
+                                        setResetReference(null);
+                                        setLoginStep(1);
+                                    }}
+                                    className="w-full py-3 mt-3 text-sm text-gray-500"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
@@ -534,21 +905,59 @@ function AuthPage() {
                         />
                     </div>
 
-                    {/* Continue button */}
+                    {/* Continue button — checks if account exists before asking for PIN */}
                     <button
                         type="button"
-                        onClick={() => { setLoginStep(1); setError(null); }}
-                        disabled={phoneNumber.length < 7}
-                        className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-8"
+                        onClick={async () => {
+                            setError(null);
+                            setNoAccountFound(false);
+                            const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+                            setIsCheckingPhone(true);
+                            try {
+                                const exists = await checkPhoneExists(fullPhone);
+                                if (!exists) {
+                                    setNoAccountFound(true);
+                                    setError('No account found for this number.');
+                                    return;
+                                }
+                                setLoginStep(1);
+                            } catch (err: unknown) {
+                                setError(friendlyAuthError(err));
+                            } finally {
+                                setIsCheckingPhone(false);
+                            }
+                        }}
+                        disabled={phoneNumber.length < 7 || isCheckingPhone}
+                        className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed transition-opacity mt-8 flex items-center justify-center"
                     >
-                        Continue
+                        {isCheckingPhone ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Continue'}
                     </button>
+
+                    {/* "No account found" recovery: one-tap switch to signup with phone preserved */}
+                    {noAccountFound && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                resetTransientAuthState();
+                                setMode('signup');
+                                setStep(0);
+                                // phoneNumber + country are preserved across mode switch
+                            }}
+                            className="w-full py-3 mt-3 border-2 border-gray-900 text-gray-900 font-semibold rounded-2xl"
+                        >
+                            Sign up with this number
+                        </button>
+                    )}
 
                     {/* Switch to signup */}
                     <div className="mt-8 text-center pb-6">
                         <button
                             type="button"
-                            onClick={() => { setMode('signup'); setStep(0); }}
+                            onClick={() => {
+                                resetTransientAuthState();
+                                setMode('signup');
+                                setStep(0);
+                            }}
                             className="text-sm text-gray-500"
                         >
                             Don&apos;t have an account? <span className="font-semibold text-gray-900">Sign Up</span>
@@ -560,108 +969,109 @@ function AuthPage() {
     }
 
     // ==========================================
-    // SIGNUP: STEP 0 - Role Selection (Mockup 2)
+    // SIGNUP: STEP 0 - Role Selection
     // ==========================================
     if (mode === 'signup' && step === 0) {
         return (
-            <div className="h-[100dvh] overflow-y-auto bg-white flex flex-col">
-                {/* Top bar */}
-                <div className="flex items-center px-5 pt-12 pb-2">
+            <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
+                {/* Header with Back Button */}
+                <div className="relative flex items-center justify-center pt-16 pb-6 px-6">
                     <button
                         onClick={() => router.push('/')}
-                        className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-gray-50 text-[#0E7A3B]"
+                        className="absolute left-6 top-16 w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors"
                         aria-label="Go back"
                     >
-                        <ArrowLeft className="w-6 h-6" />
+                        <ArrowLeft className="w-5 h-5" />
                     </button>
+                    <TruckLogo size="lg" showText={true} />
                 </div>
 
-                <div className="flex-1 pb-6">
-                    {/* Full-width banner — already contains logo, heading and subtitle */}
-                    <img
-                        src="/illustrations/role-hero.jpg"
-                        alt="Choose Your Role — MbalitApp"
-                        className="block w-full h-auto mb-5"
-                    />
-
-                    <div className="px-5">
-
-                    {/* Role cards */}
-                    <div className="space-y-3">
-                        <RoleCard
-                            icon={<UserIcon className="w-6 h-6" strokeWidth={2} />}
-                            title="Resident"
-                            description="Report issues, schedule pickups, and stay updated on waste collection."
-                            badge="Most Popular"
-                            selected={registrationType === 'waste_owner'}
-                            onClick={() => setRegistrationType('waste_owner')}
-                        />
-                        <RoleCard
-                            icon={<Truck className="w-6 h-6" strokeWidth={2} />}
-                            title="Waste Collector"
-                            description="Manage assigned routes, update collection status, and optimize your daily tasks."
-                            selected={registrationType === 'collector'}
-                            onClick={() => { setIsJoiningOrg(false); setRegistrationType('collector'); }}
-                        />
-                        <RoleCard
-                            icon={<Building2 className="w-6 h-6" strokeWidth={2} />}
-                            title="Organization / Business"
-                            description="Manage teams, monitor performance, and keep your environment clean."
-                            selected={registrationType === 'organization'}
-                            onClick={() => setRegistrationType('organization')}
-                        />
-                        <RoleCard
-                            icon={<Shield className="w-6 h-6" strokeWidth={2} />}
-                            title="Government Official"
-                            description="Oversee operations, track reports, and make data-driven decisions."
-                            selected={registrationType === 'government'}
-                            onClick={() => setRegistrationType('government')}
-                        />
+                <div className="flex-1 px-6 pb-safe">
+                    <div className="text-center mb-8">
+                        <h1 className="text-2xl font-bold text-gray-900 mb-1">Get started</h1>
+                        <p className="text-gray-500">Choose an option below</p>
                     </div>
 
-                    {/* Reassurance pill */}
-                    <div className="mt-5 flex items-start gap-3 p-4 rounded-2xl bg-[#E8F6EE] border border-[#D2F4E1]">
-                        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-                            <Shield className="w-5 h-5 text-[#0E7A3B]" />
+                    <div className="flex flex-col relative pb-4 w-full">
+                        <div className="flex flex-col gap-4 w-full">
+                            {/* Waste Owner - Card */}
+                            <motion.div 
+                                whileTap={{ scale: 0.98 }} 
+                                whileHover={{ y: -2 }} 
+                                onClick={() => handleRoleSelect('waste_owner')}
+                                className="w-full group cursor-pointer block bg-[#F0F7FF] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
+                            >
+                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
+                                    <div className="w-14 h-14 rounded-[16px] bg-blue-100/50 flex flex-shrink-0 items-center justify-center text-blue-600">
+                                        <Trash2 className="w-6 h-6" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-blue-900 text-[17px]">I have waste</h3>
+                                        <p className="text-sm text-blue-700/70 mt-0.5">Get your waste collected</p>
+                                    </div>
+                                    <ChevronRight className="w-5 h-5 text-blue-300 transition-transform group-hover:translate-x-1" />
+                                </div>
+                            </motion.div>
+
+                            {/* Join Team - Card */}
+                            <motion.div 
+                                whileTap={{ scale: 0.98 }} 
+                                whileHover={{ y: -2 }} 
+                                onClick={() => {
+                                    setIsJoiningOrg(true);
+                                    setRegistrationType('collector');
+                                    setShowOrgDetails(true);
+                                    setStep(1);
+                                }}
+                                className="w-full group cursor-pointer block bg-[#F0FDF4] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
+                            >
+                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
+                                    <div className="w-14 h-14 rounded-[16px] bg-emerald-100/50 flex flex-shrink-0 items-center justify-center text-emerald-600">
+                                        <Truck className="w-6 h-6" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-emerald-900 text-[17px]">Join a team</h3>
+                                        <p className="text-sm text-emerald-700/70 mt-0.5">Have an organization code</p>
+                                    </div>
+                                    <ChevronRight className="w-5 h-5 text-emerald-300 transition-transform group-hover:translate-x-1" />
+                                </div>
+                            </motion.div>
+
+                            {/* Organization - Card */}
+                            <motion.div 
+                                whileTap={{ scale: 0.98 }} 
+                                whileHover={{ y: -2 }} 
+                                onClick={() => handleRoleSelect('organization')}
+                                className="w-full group cursor-pointer block bg-[#FFFBEB] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
+                            >
+                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
+                                    <div className="w-14 h-14 rounded-[16px] bg-amber-100/50 flex flex-shrink-0 items-center justify-center text-amber-600">
+                                        <Building2 className="w-6 h-6" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-amber-900 text-[17px]">Register company</h3>
+                                        <p className="text-sm text-amber-700/70 mt-0.5">Waste business</p>
+                                    </div>
+                                    <ChevronRight className="w-5 h-5 text-amber-300 transition-transform group-hover:translate-x-1" />
+                                </div>
+                            </motion.div>
                         </div>
-                        <div>
-                            <h4 className="font-bold text-[#0F1A14] text-sm">Don&apos;t worry!</h4>
-                            <p className="text-xs text-gray-600 leading-snug">
-                                You can change your role anytime in the app settings.
-                            </p>
-                        </div>
                     </div>
 
-                    {/* Continue */}
-                    <div className="mt-6">
-                        <MbButton
-                            size="lg"
-                            disabled={!registrationType}
-                            rightIcon={<ArrowRight className="w-5 h-5" />}
-                            onClick={() => {
-                                if (!registrationType) return;
-                                if (registrationType === 'government') {
-                                    // Government officials currently flow through the organization path
-                                    handleRoleSelect('organization');
-                                } else {
-                                    handleRoleSelect(registrationType);
-                                }
-                            }}
-                        >
-                            Continue
-                        </MbButton>
-                    </div>
 
                     {/* Switch to login */}
-                    <div className="mt-5 text-center">
+                    <div className="mt-8 text-center">
                         <button
                             type="button"
-                            onClick={() => setMode('login')}
+                            onClick={() => {
+                                resetTransientAuthState();
+                                setMode('login');
+                                setLoginStep(0);
+                            }}
                             className="text-sm text-gray-500"
                         >
-                            Already have an account? <span className="font-semibold text-[#0E7A3B]">Sign In</span>
+                            Already have an account? <span className="font-semibold text-gray-900">Sign In</span>
                         </button>
-                    </div>
                     </div>
                 </div>
             </div>
@@ -675,13 +1085,17 @@ function AuthPage() {
         <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
             {/* Top bar with back button and step dots */}
             <div className="flex items-center justify-between px-6 pt-6 pb-4">
-                <motion.button
-                    whileTap={{ scale: 0.9 }}
-                    onClick={handleBack}
-                    className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5 text-gray-600" />
-                </motion.button>
+                {step === 3 || step === 4 || step === 5 ? (
+                    <div className="w-9" />
+                ) : (
+                    <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={handleBack}
+                        className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5 text-gray-600" />
+                    </motion.button>
+                )}
 
                 {/* Step dots */}
                 <div className="flex items-center gap-2">
@@ -689,7 +1103,7 @@ function AuthPage() {
                         <div
                             key={i}
                             className={`h-1.5 rounded-full transition-all ${
-                                i + 1 <= getCurrentDisplayStep() ? 'w-6 bg-[#0E7A3B]' : 'w-1.5 bg-gray-200'
+                                i + 1 <= getCurrentDisplayStep() ? 'w-6 bg-gray-900' : 'w-1.5 bg-gray-200'
                             }`}
                         />
                     ))}
@@ -729,7 +1143,7 @@ function AuthPage() {
                                     value={joinOrgCode}
                                     onChange={(e) => setJoinOrgCode(e.target.value)}
                                     placeholder="e.g. clean-gambia-a3f2"
-                                    className="w-full px-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#0E7A3B] focus:border-transparent font-medium"
+                                    className="w-full px-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-900 focus:border-transparent font-medium"
                                 />
                             </div>
                         )}
@@ -741,7 +1155,7 @@ function AuthPage() {
                                 setShowOrgDetails(false);
                             }}
                             disabled={isJoiningOrg && joinOrgCode.length < 3}
-                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
+                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
                         >
                             Continue
                         </button>
@@ -762,7 +1176,7 @@ function AuthPage() {
                         className="flex-1 flex flex-col px-6 pb-6"
                     >
                         <h2 className="text-xl font-bold text-gray-900 mb-1">Your phone number</h2>
-                        <p className="text-gray-500 text-sm mb-6">We&apos;ll use this to verify your account</p>
+                        <p className="text-gray-500 text-sm mb-6">We&apos;ll use this as your account ID</p>
 
                         {/* Country + Number display */}
                         <div className="flex items-center gap-3 mb-6">
@@ -790,167 +1204,32 @@ function AuthPage() {
                             type="button"
                             onClick={async () => {
                                 setError(null);
-                                setIsSendingSms(true);
+                                setIsCheckingPhone(true);
                                 try {
                                     const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
                                     if (mode === 'signup') {
                                         const exists = await checkPhoneExists(fullPhone);
                                         if (exists) {
-                                            setError('This phone number is already registered. Please log in instead.');
-                                            setIsSendingSms(false);
+                                            // Auto-switch to login mode preserving phone — no dead end.
+                                            resetTransientAuthState();
+                                            setMode('login');
+                                            setLoginStep(1);
+                                            setError('This phone is already registered. Please enter your existing PIN.');
                                             return;
                                         }
                                     }
-                                    
-                                    // Ensure the container exists completely outside of React's lifecycle
-                                    let rContainer = document.getElementById('recaptcha-container');
-                                    if (!rContainer) {
-                                        rContainer = document.createElement('div');
-                                        rContainer.id = 'recaptcha-container';
-                                        document.body.appendChild(rContainer);
-                                    }
-
-                                    // Make sure we have a clean slate on the window object
-                                    if (!(window as any).recaptchaVerifier) {
-                                        // Explicitly set testing flag right before use (don't rely on module init timing)
-                                        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                                            auth.settings.appVerificationDisabledForTesting = true;
-                                        }
-
-                                        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                                            size: 'invisible'
-                                        });
-                                    }
-                                    
-                                    const verifier = (window as any).recaptchaVerifier;
-                                    const result = await sendSmsVerification(fullPhone, verifier);
-                                    setConfirmationResult(result);
-                                    setStep(2);
-                                } catch (err: any) {
-                                    console.error(err);
-                                    setError(err.message || 'Failed to send SMS');
-                                    // Clear the verifier on failure
-                                    if ((window as any).recaptchaVerifier) {
-                                        try {
-                                            (window as any).recaptchaVerifier.clear();
-                                        } catch (e) {}
-                                        (window as any).recaptchaVerifier = null;
-                                    }
+                                    setStep(6);
+                                } catch (err: unknown) {
+                                    setError(friendlyAuthError(err));
                                 } finally {
-                                    setIsSendingSms(false);
+                                    setIsCheckingPhone(false);
                                 }
                             }}
-                            disabled={phoneNumber.length < 7 || isSendingSms}
-                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
+                            disabled={phoneNumber.length < 7 || isCheckingPhone}
+                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
                         >
-                            {isSendingSms ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Continue'}
+                            Continue
                         </button>
-                    </motion.div>
-                )}
-
-                {/* ==========================================
-                    STEP 2: SMS Code Verification (Mockup 1)
-                ========================================== */}
-                {step === 2 && (
-                    <motion.div
-                        key="sms"
-                        variants={pageVariants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        transition={{ type: 'tween', duration: 0.25 }}
-                        className="flex-1 flex flex-col px-5 pb-4 overflow-y-auto"
-                    >
-                        <div className="flex items-start gap-3 mb-4">
-                            <div className="flex-1 pt-1">
-                                <h2 className="text-[26px] font-extrabold text-[#0F1A14] leading-tight">
-                                    Verify Your<br />Phone Number
-                                </h2>
-                                <p className="text-sm text-gray-500 mt-2 max-w-[15rem] leading-snug">
-                                    We&apos;ve sent a 6-digit verification code to your phone number
-                                </p>
-
-                                {/* Phone + change link */}
-                                <div className="mt-4 flex items-center gap-2">
-                                    <span className="w-6 h-6 inline-flex">{country.flag}</span>
-                                    <span className="text-sm font-semibold text-[#0F1A14]">
-                                        {country.dialCode} {formatPhone(phoneNumber)}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setStep(1)}
-                                        className="text-sm font-bold text-[#0E7A3B] ml-2 hover:underline"
-                                    >
-                                        Change
-                                    </button>
-                                </div>
-                            </div>
-                            <img
-                                src="/illustrations/verify-phone.svg"
-                                alt=""
-                                className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 -mt-2"
-                            />
-                        </div>
-
-                        <label className="block text-sm font-bold text-[#0F1A14] mb-2 mt-1">
-                            Enter 6-digit code
-                        </label>
-                        <OtpInput value={smsCode} length={6} error={!!error} />
-
-                        <div className="mt-4 flex items-start gap-2">
-                            <Shield className="w-4 h-4 text-[#0E7A3B] mt-0.5 flex-shrink-0" />
-                            <p className="text-xs text-gray-500">
-                                Your code is <span className="text-[#0E7A3B] font-semibold">{smsCode || '------'}</span>.
-                                Don&apos;t share it with anyone.
-                            </p>
-                        </div>
-
-                        <div className="mt-4 mx-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#E8F6EE] border border-[#D2F4E1]">
-                            <Clock className="w-4 h-4 text-[#0E7A3B]" />
-                            <span className="text-sm text-gray-600">
-                                Code will expire in <span className="text-[#0E7A3B] font-bold">{formatOtpTime(otpSecondsLeft)}</span>
-                            </span>
-                        </div>
-
-                        <div className="mt-3 text-center">
-                            <span className="text-sm text-gray-500">Didn&apos;t receive the code? </span>
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    setError(null);
-                                    setSmsCode('');
-                                    setOtpSecondsLeft(119);
-                                    // re-send not implemented end-to-end; placeholder hook
-                                }}
-                                className="text-sm font-bold text-[#0E7A3B] hover:underline"
-                            >
-                                Resend Code
-                            </button>
-                        </div>
-
-                        {/* Dial pad */}
-                        <div className="mt-auto pt-4">
-                            <DialPad
-                                value={smsCode}
-                                onChange={async (val) => {
-                                    setSmsCode(val);
-                                    setError(null);
-                                    if (val.length === 6) {
-                                        try {
-                                            if (!confirmationResult) throw new Error('No SMS verification found');
-                                            const newUid = await verifySmsCode(confirmationResult, val);
-                                            setVerifiedUid(newUid);
-                                            setStep(6);
-                                        } catch (err: any) {
-                                            console.error('SMS validation failed', err);
-                                            setError(err.message || 'Incorrect verification code');
-                                        }
-                                    }
-                                }}
-                                maxLength={6}
-                                showLetters={false}
-                            />
-                        </div>
                     </motion.div>
                 )}
 
@@ -987,50 +1266,86 @@ function AuthPage() {
                                             scale: currentPin.length === i ? [1, 1.2, 1] : 1,
                                         }}
                                         className={`w-3 h-3 rounded-full transition-colors ${
-                                            currentPin[i] ? 'bg-[#0E7A3B]' : 'bg-gray-200'
+                                            currentPin[i] ? 'bg-gray-900' : 'bg-gray-200'
                                         }`}
                                     />
                                 );
                             })}
                         </div>
 
-                        {/* Dial pad */}
+                        {/* Dial pad — replaced with loader during account creation,
+                            or with a "Try again" button after a transient failure
+                            so the user never has to re-enter their PIN. */}
                         <div className="flex-1 flex items-center">
-                            <DialPad
-                                value={pinStep === 'create' ? pin : confirmPin}
-                                onChange={async (val) => {
-                                    if (pinStep === 'create') {
-                                        setPin(val);
-                                        if (val.length === 6) {
-                                            setTimeout(() => setPinStep('confirm'), 300);
-                                        }
-                                    } else {
-                                        setConfirmPin(val);
-                                        if (val.length === 6) {
-                                            if (val === pin) {
-                                                if (mode === 'forgot_pin') {
-                                                    try {
-                                                        if (!confirmationResult) throw new Error('No SMS verification found');
-                                                        await resetPinWithSms(pin, confirmationResult, smsCode);
-                                                        window.location.href = '/dashboard';
-                                                    } catch (err: any) {
-                                                        setError(err.message || 'Failed to reset PIN');
-                                                    }
-                                                } else {
-                                                    setTimeout(() => setStep(3), 300);
+                            {isCreatingAccount ? (
+                                <div className="w-full flex flex-col items-center justify-center gap-4 py-12">
+                                    <Loader2 className="w-10 h-10 animate-spin text-gray-900" />
+                                    <p className="text-gray-600 font-medium">Creating your account…</p>
+                                </div>
+                            ) : pinStep === 'confirm' && pin.length === 6 && confirmPin.length === 6 && error ? (
+                                <div className="w-full flex flex-col items-center justify-center gap-4 py-8">
+                                    <button
+                                        type="button"
+                                        onClick={submitCreateAccount}
+                                        className="w-full max-w-sm py-4 bg-gray-900 text-white font-semibold rounded-2xl"
+                                    >
+                                        Try again
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setError(null);
+                                            setPin('');
+                                            setConfirmPin('');
+                                            setPinStep('create');
+                                        }}
+                                        className="text-sm text-gray-500 underline"
+                                    >
+                                        Choose a different PIN
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="w-full flex flex-col">
+                                    <DialPad
+                                        value={pinStep === 'create' ? pin : confirmPin}
+                                        onChange={(val) => {
+                                            if (isCreatingAccount) return; // ignore key presses mid-request
+                                            if (pinStep === 'create') {
+                                                setPin(val);
+                                                if (val.length === 6) {
+                                                    setTimeout(() => setPinStep('confirm'), 300);
                                                 }
                                             } else {
-                                                setError('PINs do not match. Please try again.');
-                                                setConfirmPin('');
-                                                setPinStep('create');
-                                                setPin('');
+                                                setConfirmPin(val);
+                                                // Detect mismatch as soon as the 6th digit is entered,
+                                                // but do NOT auto-submit on match — wait for the
+                                                // explicit Continue tap below.
+                                                if (val.length === 6 && val !== pin) {
+                                                    setError('PINs do not match. Please try again.');
+                                                    setConfirmPin('');
+                                                    setPinStep('create');
+                                                    setPin('');
+                                                }
                                             }
-                                        }
-                                    }
-                                }}
-                                maxLength={6}
-                                showLetters={false}
-                            />
+                                        }}
+                                        maxLength={6}
+                                        showLetters={false}
+                                    />
+
+                                    {/* Explicit Continue button on the confirm step so the user
+                                        sees a clear next action after entering their PIN twice. */}
+                                    {pinStep === 'confirm' && (
+                                        <button
+                                            type="button"
+                                            onClick={submitCreateAccount}
+                                            disabled={confirmPin.length !== 6 || confirmPin !== pin}
+                                            className="w-full py-4 mt-6 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                                        >
+                                            Continue
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 )}
@@ -1089,7 +1404,7 @@ function AuthPage() {
                                 {registrationType === 'organization' ? (
                                     <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 ) : (
-                                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 )}
                                 <input
                                     type="text"
@@ -1103,10 +1418,33 @@ function AuthPage() {
                                         }
                                     }}
                                     placeholder={registrationType === 'organization' ? "e.g. Clean Gambia Services" : "Your full name"}
-                                    className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#0E7A3B] focus:border-transparent font-medium"
+                                    className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-900 focus:border-transparent font-medium"
                                 />
                             </div>
                         </div>
+
+                        {/* Authority toggle (organizations only) */}
+                        {registrationType === 'organization' && (
+                            <button
+                                type="button"
+                                onClick={() => setIsAuthority((v) => !v)}
+                                className={`mb-6 w-full text-left p-4 rounded-2xl border-2 transition-all flex items-start gap-3 ${
+                                    isAuthority ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-300 bg-white'
+                                }`}
+                            >
+                                <div className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-colors ${
+                                    isAuthority ? 'bg-gray-900' : 'bg-white border-2 border-gray-300'
+                                }`}>
+                                    {isAuthority && <Check className="w-3 h-3 text-white" />}
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-semibold text-gray-900 text-sm">We are a public authority</p>
+                                    <p className="text-xs text-gray-500 mt-1 leading-snug">
+                                        Authorities (KMC, BCC, etc.) receive environmental hazard reports from the community and can act on them.
+                                    </p>
+                                </div>
+                            </button>
+                        )}
 
                         <div className="flex-1" />
 
@@ -1120,7 +1458,7 @@ function AuthPage() {
                                 }
                             }}
                             disabled={registrationType === 'organization' ? !orgName.trim() : !fullName.trim()}
-                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
                         >
                             {registrationType === 'waste_owner' ? 'Complete Setup' : 'Continue'}
                         </button>
@@ -1151,12 +1489,12 @@ function AuthPage() {
                                     onClick={() => setVehicleType(vehicle.id)}
                                     className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex items-center gap-4 ${
                                         vehicleType === vehicle.id
-                                            ? 'border-[#0E7A3B] bg-[#ECFDF3]'
-                                            : 'border-gray-100 hover:border-[#A8E7C3]'
+                                            ? 'border-gray-900 bg-gray-50'
+                                            : 'border-gray-100 hover:border-gray-300'
                                     }`}
                                 >
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                                        vehicleType === vehicle.id ? 'bg-[#0E7A3B] text-white' : 'bg-[#E8F6EE] text-[#0E7A3B]'
+                                        vehicleType === vehicle.id ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'
                                     }`}>
                                         {vehicle.icon}
                                     </div>
@@ -1165,7 +1503,7 @@ function AuthPage() {
                                         <p className="text-sm text-gray-500">Up to {vehicle.capacity}</p>
                                     </div>
                                     {vehicleType === vehicle.id && (
-                                        <div className="w-6 h-6 rounded-full bg-[#0E7A3B] flex items-center justify-center">
+                                        <div className="w-6 h-6 rounded-full bg-gray-900 flex items-center justify-center">
                                             <Check className="w-4 h-4 text-white" />
                                         </div>
                                     )}
@@ -1177,9 +1515,9 @@ function AuthPage() {
 
                         <button
                             type="button"
-                            onClick={() => setStep(6)}
+                            onClick={() => setStep(5)}
                             disabled={!vehicleType}
-                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
+                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
                         >
                             Continue
                         </button>
@@ -1218,14 +1556,14 @@ function AuthPage() {
                                         }}
                                         className={`p-4 rounded-2xl border-2 transition-all text-center ${
                                             isSelected
-                                                ? 'border-[#0E7A3B] bg-[#ECFDF3]'
-                                                : 'border-gray-100 hover:border-[#A8E7C3]'
+                                                ? 'border-gray-900 bg-gray-50'
+                                                : 'border-gray-100 hover:border-gray-300'
                                         }`}
                                     >
                                         <span className="text-2xl mb-1 block">{type.icon}</span>
                                         <span className="text-sm font-medium text-gray-900">{type.name}</span>
                                         {isSelected && (
-                                            <div className="mt-1 mx-auto w-5 h-5 rounded-full bg-[#0E7A3B] flex items-center justify-center">
+                                            <div className="mt-1 mx-auto w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center">
                                                 <Check className="w-3 h-3 text-white" />
                                             </div>
                                         )}
@@ -1238,7 +1576,7 @@ function AuthPage() {
                             type="button"
                             onClick={handleCompleteSignup}
                             disabled={selectedWasteTypes.length === 0 || isLoading}
-                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
+                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
                         >
                             {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Complete Setup'}
                         </button>

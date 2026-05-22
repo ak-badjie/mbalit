@@ -1,0 +1,139 @@
+
+
+Overview
+
+Logs
+
+Analytics
+
+Resources
+
+Domains
+
+Manage
+Search
+
+
+Errors only
+
+Date
+Time
+Deployment
+Source
+Log
+2026-04-18 13:43:07.29
+faffc3bc
+System
+starting up user application
+2026-04-18 13:43:07.29
+faffc3bc
+System
+forwarding local port 5000 to external port 80 (mapped as 1104)
+2026-04-18 13:43:07.29
+faffc3bc
+System
+metasidecar: loaded enterprise status from environment is_enterprise=false
+2026-04-18 13:43:08.51
+faffc3bc
+User
+> mbalit@0.1.0 build
+2026-04-18 13:43:08.51
+faffc3bc
+User
+> next build
+2026-04-18 13:43:11.68
+faffc3bc
+User
+▲ Next.js 16.1.1 (Turbopack)
+2026-04-18 13:43:11.74
+faffc3bc
+User
+Creating an optimized production build ...
+2026-04-18 13:43:23.28
+faffc3bc
+User
+✓ Compiled successfully in 10.9s
+2026-04-18 13:43:23.29
+faffc3bc
+User
+Running TypeScript ...
+2026-04-18 13:43:32.67
+faffc3bc
+User
+15 |
+2026-04-18 13:43:32.67
+faffc3bc
+User
+17 | if (isLoading) {
+2026-04-18 13:43:32.67
+faffc3bc
+User
+12 | children: React.ReactNode;
+2026-04-18 13:43:32.67
+faffc3bc
+User
+Type error: Expected 0 arguments, but got 1.
+2026-04-18 13:43:32.67
+faffc3bc
+User
+| ^
+2026-04-18 13:43:32.67
+faffc3bc
+User
+16 | // Show loading screen while checking auth
+2026-04-18 13:43:32.67
+faffc3bc
+User
+Failed to compile.
+2026-04-18 13:43:32.85
+faffc3bc
+User
+Next.js build worker exited with code: 1 and signal: null
+2026-04-18 13:43:32.91
+faffc3bc
+User
+npm notice
+2026-04-18 13:43:32.91
+faffc3bc
+User
+npm notice
+2026-04-18 13:43:32.91
+faffc3bc
+User
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+2026-04-18 13:43:32.91
+faffc3bc
+User
+npm notice To update run: npm install -g npm@11.12.1
+2026-04-18 13:43:32.91
+faffc3bc
+User
+npm notice New major version of npm available! 10.8.2 -> 11.12.1
+2026-04-18 13:43:32.92
+faffc3bc
+System
+command finished with error [sh -c npm run build]: exit status 1
+2026-04-18 13:43:33.19
+faffc3bc
+User
+> mbalit@0.1.0 build
+2026-04-18 13:43:33.19
+faffc3bc
+User
+> next build
+2026-04-18 13:43:34.23
+faffc3bc
+User
+▲ Next.js 16.1.1 (Turbopack)
+2026-04-18 13:43:34.27
+faffc3bc
+User
+Creating an optimized production build ...
+2026-04-18 13:43:44.35
+faffc3bc
+User
+✓ Compiled successfully in 9.4s
+2026-04-18 13:43:44.36
+faffc3bc
+User
+Running TypeScript ...

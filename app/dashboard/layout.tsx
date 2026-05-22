@@ -28,7 +28,12 @@ export default function DashboardLayout({
         return null;
     }
 
-    if (user?.onboardingComplete === false) {
+    // GATE-KEEPING: Redirect users who haven't completed onboarding.
+    // Important: only act once the user doc has loaded AND the auth provider
+    // has finished its first sync. Acting on a transient cache-first snapshot
+    // (which can briefly carry pre-merge data) used to trap users in a signup
+    // loop right after they completed their profile.
+    if (!isLoading && user && user.onboardingComplete === false) {
         if (typeof window !== 'undefined') {
             window.location.href = '/auth?continue=onboarding';
         }

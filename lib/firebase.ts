@@ -1,27 +1,33 @@
+// Mbalit primarily uses two Firebase data services: Firestore (documents) and
+// Realtime Database (live tracking / payments). Cloud Storage is intentionally
+// NOT used — images are stored as compressed base64 inside Firestore docs.
+//
+// Firebase Auth is initialized but is NOT the primary identity system. Login
+// is still phone+PIN (bcrypt in Firestore — see lib/auth-context.tsx). Auth
+// is used solely as a verified second factor: a user can optionally attach a
+// recovery email (Auth account + sendPasswordResetEmail link) so that
+// "Forgot PIN?" can be self-serviced via an email link instead of waiting on
+// support. See `addRecoveryEmail` / `sendPinResetEmail` in auth-context.
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getDatabase, Database } from 'firebase/database';
+import { getAuth, Auth } from 'firebase/auth';
 
-// Firebase configuration
 const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyC7mhuZypiBKFmJPk7vdtMGr_IXcKLP1aI",
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "mbalit-490022.firebaseapp.com",
-    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || "https://mbalit-490022-default-rtdb.firebaseio.com",
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "mbalit-490022",
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "mbalit-490022.firebasestorage.app",
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "549954354577",
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:549954354577:web:e0d0f012e7c20831ad2e30",
-    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-XFJD983XVC"
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAHd6RtJ-KN8aiJ3dHk1Sxg8PixZQeirdc",
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "mbalit-8a52f.firebaseapp.com",
+    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || "https://mbalit-8a52f-default-rtdb.firebaseio.com",
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "mbalit-8a52f",
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "mbalit-8a52f.firebasestorage.app",
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "379887952578",
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:379887952578:web:fa411280e5e5cbad5d915b",
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-ZK84Y6WDDW"
 };
 
-// Initialize Firebase (singleton pattern)
 let app: FirebaseApp;
-let auth: Auth;
 let db: Firestore;
 let realtimeDb: Database;
-let storage: FirebaseStorage;
+let auth: Auth;
 
 function initializeFirebase() {
     if (typeof window !== 'undefined') {
@@ -30,29 +36,12 @@ function initializeFirebase() {
         } else {
             app = getApps()[0];
         }
-
-        auth = getAuth(app);
-
-        // Disable reCAPTCHA verification for localhost (use test phone numbers in Firebase Console)
-        if (window.location.hostname === 'localhost') {
-            auth.settings.appVerificationDisabledForTesting = true;
-        }
-        // Note: For production, reCAPTCHA v2 is handled automatically by RecaptchaVerifier
-        // in the auth page. Do NOT use initializeRecaptchaConfig() unless reCAPTCHA Enterprise
-        // is explicitly enabled in Google Cloud Console for this project.
-        
-        // Ensure the session persists across page reloads
-        setPersistence(auth, browserLocalPersistence).catch((error) => {
-            console.error("Error setting persistence:", error);
-        });
-
         db = getFirestore(app);
         realtimeDb = getDatabase(app);
-        storage = getStorage(app);
+        auth = getAuth(app);
     }
 }
 
-// Initialize on import
 initializeFirebase();
 
-export { app, auth, db, realtimeDb, storage, firebaseConfig };
+export { app, db, realtimeDb, auth, firebaseConfig };

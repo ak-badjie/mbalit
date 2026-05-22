@@ -16,6 +16,7 @@ import {
     ChevronRight,
     Bell,
     Users,
+    AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -308,18 +309,38 @@ function DashboardContent() {
                             </button>
 
                             <button
-                                onClick={() => router.push('/dashboard/recycling-tips')}
-                                className="flex flex-col p-4 bg-amber-50 hover:bg-amber-100 rounded-2xl border border-amber-100 text-left transition-colors aspect-[4/3] group"
+                                onClick={() => router.push('/dashboard/report')}
+                                className="flex flex-col p-4 bg-red-50 hover:bg-red-100 rounded-2xl border border-red-100 text-left transition-colors aspect-[4/3] group"
                             >
                                 <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-auto group-hover:scale-105 transition-transform">
-                                    <MapPin className="w-5 h-5 text-amber-500" />
+                                    <AlertTriangle className="w-5 h-5 text-red-500" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-gray-900">Tips</p>
-                                    <p className="text-[11px] text-amber-600/80 font-medium mt-0.5 leading-tight">Learn to recycle</p>
+                                    <p className="text-sm font-bold text-gray-900">Report</p>
+                                    <p className="text-[11px] text-red-600/80 font-medium mt-0.5 leading-tight">Environmental hazard</p>
                                 </div>
                             </button>
                         </div>
+
+                        {/* Inline link to the resident's own past hazard reports.
+                            Lives under the Quick Actions grid so users notice it
+                            right after they tap "Report". */}
+                        <button
+                            type="button"
+                            onClick={() => router.push('/dashboard/report/my')}
+                            className="mt-3 w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 rounded-2xl border border-gray-100 transition-colors"
+                        >
+                            <span className="flex items-center gap-2.5">
+                                <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center">
+                                    <AlertTriangle className="w-4 h-4 text-red-500" />
+                                </span>
+                                <span className="text-left">
+                                    <span className="block text-sm font-semibold text-gray-900">My reports</span>
+                                    <span className="block text-[11px] text-gray-500">Track hazards you&apos;ve submitted</span>
+                                </span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </button>
                     </div>
                 </div>
 

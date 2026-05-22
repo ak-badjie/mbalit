@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth-context';
 import { ChangePinDialog } from '@/components/auth/change-pin-dialog';
+import { RecoveryEmailSection } from '@/components/auth/recovery-email-section';
 
 // Setting Item Component
 const SettingItem: React.FC<{
@@ -202,6 +203,9 @@ export default function SettingsPage() {
                         />
                     </Card>
                 </div>
+
+                {/* Recovery email */}
+                <RecoveryEmailSection />
 
                 {/* Security */}
                 <div className="space-y-2">

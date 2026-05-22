@@ -31,6 +31,28 @@ import { initializePayment } from '@/lib/payment';
 
 type OrderStatus = 'pending' | 'assigned' | 'en_route' | 'arrived' | 'completed' | 'cancelled';
 
+// Map every possible job.status value (including the ones used internally
+// by the collector dashboard) onto the customer-facing OrderStatus, so that
+// the tracking page never crashes on an unknown status.
+function normalizeStatus(raw: string | undefined): OrderStatus {
+    switch (raw) {
+        case 'accepted':
+            return 'assigned';
+        case 'in_progress':
+        case 'awaiting_payment':
+            return 'arrived';
+        case 'pending':
+        case 'assigned':
+        case 'en_route':
+        case 'arrived':
+        case 'completed':
+        case 'cancelled':
+            return raw;
+        default:
+            return 'pending';
+    }
+}
+
 const statusConfig: Record<OrderStatus, { label: string; color: string; icon: React.ReactNode; description: string }> = {
     pending: {
         label: 'Finding Collector',
@@ -147,7 +169,7 @@ export default function TrackingPage() {
     };
 
     const wasteType = job?.wasteType ? WASTE_TYPES.find(t => t.id === job.wasteType) : null;
-    const currentStatus = (job?.status as OrderStatus) || 'pending';
+    const currentStatus = normalizeStatus(job?.status);
     const statusInfo = statusConfig[currentStatus];
 
     if (isLoading) {

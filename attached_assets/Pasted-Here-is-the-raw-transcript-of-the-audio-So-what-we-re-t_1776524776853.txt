@@ -1,0 +1,15 @@
+Here is the raw transcript of the audio:
+
+So what we're trying to create here is, uh, I need you to go into, remove the phone verification thing and the reCAPTCHA, all that, like that is too much work. Get rid of it. Um, no phone verification, just don't put your phone number, keep all the features, make sure everything is working perfectly, fine.
+
+And then what we're trying to integrate is that we're trying to create a system where it would be easy to also report, um, any environmental hazard, like, you understand? Like sanitary issues that uh, members of community see in their environment. So, for example, a pile of dirt somewhere, um, take a picture of it, it should be very, very smooth, smooth, and um, and yeah, very very.
+
+So basically we'll take a picture of it and then, you know, um, send it to the authorities. They're obviously going to be guys like KMC and, you know, um, and other local authorities, uh, Banjul City Council and other guys that would, other yeah, that would, that these problems could be reported to and they would be able to act on it and maybe send out trucks to come and pack the dirt or whatever. Um, that was the original idea.
+
+Um, and also people can, and also people can, uh, people would be able to, other members of, of, of, of, uh, society or the community will be able to, um, upvote or, uh, sort of like comment on this thing, um, on the, on different problems.
+
+And for the landing page, bro, the the image there is cool, but I want something, uh, yeah. I think the entire flow is basically like, it's easy to use, it's perfect, um, it's beautiful already. I don't think there are any problems regarding this, so yeah, I think let's just, uh, get it ready and like, just ship it.
+
+You know, add the feature where you can easily, you know, after signing up, um, the feature where you can, um, obviously subscription feature, make sure it works perfectly fine. Just go deep, look at all the parts that are like not really implemented and fully implement them.
+
+Um, yeah, so that report system should come in and just work fine. When reporting, just take a picture, probably add notes, get the option to add notes, um, it is automatically going to pin your location, obviously we use Google Maps and all that to pin your location so authorities will be able to locate you, like, get the exact location for whatever problem or hazard has been caused. You understand? So that is, uh, that is also what we're trying to create. I think that would really do.

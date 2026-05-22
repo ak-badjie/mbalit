@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  allowedDevOrigins: ["*.replit.dev", "*.replit.app", "*.riker.replit.dev", "*.kirk.replit.dev"],
   typescript: {
     ignoreBuildErrors: true,
   },
