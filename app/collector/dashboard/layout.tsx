@@ -30,10 +30,8 @@ export default function CollectorDashboardLayout({
 
     return (
         <DynamicIslandProvider>
-            <div className="h-[100dvh] overflow-hidden bg-gradient-to-br from-[#F1FAF4] via-white to-[#ECFDF3]">
-                <main className="pb-24 md:pb-8 h-full overflow-y-auto">
-                    {children}
-                </main>
+            <div className="min-h-[100dvh] bg-gradient-to-br from-[#F1FAF4] via-white to-[#ECFDF3]">
+                <main className="pb-28">{children}</main>
                 <MbBottomNav items={COLLECTOR_NAV} />
             </div>
         </DynamicIslandProvider>

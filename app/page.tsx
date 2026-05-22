@@ -77,29 +77,6 @@ export default function Home() {
                     </MbButton>
                 </Link>
 
-                <div className="flex items-center gap-3 pt-1">
-                    <div className="flex-1 h-px bg-gray-200" />
-                    <span className="text-xs text-gray-400 font-medium">or continue with</span>
-                    <div className="flex-1 h-px bg-gray-200" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                    <button
-                        type="button"
-                        className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl border border-gray-200 bg-white text-[#0F1A14] font-semibold text-sm hover:bg-gray-50 transition-colors"
-                    >
-                        <img src="/icons/google-logo.svg" alt="" className="w-5 h-5" />
-                        Continue with Google
-                    </button>
-                    <button
-                        type="button"
-                        className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl border border-gray-200 bg-white text-[#0F1A14] font-semibold text-sm hover:bg-gray-50 transition-colors"
-                    >
-                        <img src="/icons/apple-logo.svg" alt="" className="w-5 h-5" />
-                        Continue with Apple
-                    </button>
-                </div>
-
                 <SecureFooter className="pt-2" />
             </motion.div>
         </div>

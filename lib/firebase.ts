@@ -1,17 +1,14 @@
-// Mbalit primarily uses two Firebase data services: Firestore (documents) and
-// Realtime Database (live tracking / payments). Cloud Storage is intentionally
-// NOT used — images are stored as compressed base64 inside Firestore docs.
+// Mbalit uses ONLY two Firebase services:
+//   - Cloud Firestore (document data)
+//   - Realtime Database (live tracking / payments)
 //
-// Firebase Auth is initialized but is NOT the primary identity system. Login
-// is still phone+PIN (bcrypt in Firestore — see lib/auth-context.tsx). Auth
-// is used solely as a verified second factor: a user can optionally attach a
-// recovery email (Auth account + sendPasswordResetEmail link) so that
-// "Forgot PIN?" can be self-serviced via an email link instead of waiting on
-// support. See `addRecoveryEmail` / `sendPinResetEmail` in auth-context.
+// Firebase Auth, Cloud Storage, and Cloud Messaging are intentionally NOT
+// initialized. Login is phone + 6-digit PIN with bcrypt hashing in Firestore
+// (see lib/auth-context.tsx). Images are stored as compressed base64 inside
+// Firestore docs.
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getDatabase, Database } from 'firebase/database';
-import { getAuth, Auth } from 'firebase/auth';
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAHd6RtJ-KN8aiJ3dHk1Sxg8PixZQeirdc",
@@ -27,7 +24,6 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let db: Firestore;
 let realtimeDb: Database;
-let auth: Auth;
 
 function initializeFirebase() {
     if (typeof window !== 'undefined') {
@@ -38,10 +34,9 @@ function initializeFirebase() {
         }
         db = getFirestore(app);
         realtimeDb = getDatabase(app);
-        auth = getAuth(app);
     }
 }
 
 initializeFirebase();
 
-export { app, db, realtimeDb, auth, firebaseConfig };
+export { app, db, realtimeDb, firebaseConfig };

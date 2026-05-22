@@ -17,12 +17,7 @@ export interface User {
   location?: GeoLocation;
   profileImage?: string;
   onboardingComplete?: boolean;
-  pin?: string; // App-specific PIN for phone number login
-  // Optional verified recovery email for self-service "Forgot PIN?" via
-  // Firebase Auth password-reset email links. See lib/auth-context.tsx.
-  recoveryEmail?: string;
-  recoveryEmailVerified?: boolean;
-  recoveryAuthUid?: string; // Linked Firebase Auth uid (random-pwd account)
+  pinHash?: string; // bcrypt hash of the 6-digit PIN, stored in Firestore
 }
 
 // User profile

@@ -84,7 +84,7 @@ export default function PermissionsOnboarding() {
     const finish = () => router.push('/dashboard');
 
     return (
-        <div className="h-[100dvh] overflow-y-auto bg-white flex flex-col">
+        <div className="min-h-[100dvh] bg-white flex flex-col">
             {/* Top bar */}
             <div className="flex items-center px-5 pt-12 pb-2">
                 <button
@@ -100,8 +100,8 @@ export default function PermissionsOnboarding() {
                 {/* Heading + recycle illustration */}
                 <div className="relative flex items-start justify-between gap-3 mb-5">
                     <div className="flex-1 pt-1 z-10">
-                        <img src="/brand/mbalitapp-logo.svg" alt="" className="w-10 h-12 mb-2" />
-                        <p className="font-extrabold text-[#0E7A3B] text-base leading-tight mb-3">MbalitApp</p>
+                        <img src="/logo.png" alt="MBalit" className="w-12 h-12 mb-2 object-contain" />
+                        <p className="font-extrabold text-[#0E7A3B] text-base leading-tight mb-3">MBalit</p>
                         <h1 className="text-[26px] font-extrabold text-[#0F1A14] leading-tight">
                             Let&apos;s Personalize<br />Your Experience
                         </h1>

@@ -8,24 +8,26 @@ import {
     Loader2,
     Camera,
     Check,
-    Trash2,
     Truck,
     Building2,
-    User,
+    User as UserIcon,
+    Shield,
     ChevronRight,
+    ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import TruckLogo from '@/components/ui/truck-logo';
 import { DialPad } from '@/components/ui/dial-pad';
-import { JigsawBlock } from '@/components/ui/jigsaw-block';
 import { CountrySelector, DEFAULT_COUNTRY } from '@/components/ui/country-selector';
 import type { Country } from '@/components/ui/country-selector';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { WASTE_TYPES } from '@/lib/waste-config';
 import { WasteType, CollectorType } from '@/types';
 import { compressImage } from '@/lib/image-utils';
+import { RoleCard } from '@/components/ui/role-card';
+import { MbButton } from '@/components/ui/mb-button';
 
 // Vehicle sizes (Lucide icons, no emojis)
 const VEHICLE_TYPES = [
@@ -46,7 +48,7 @@ const pageVariants = {
 export default function AuthPageWrapper() {
     return (
         <Suspense fallback={
-            <div className="h-[100dvh] overflow-hidden flex items-center justify-center bg-white">
+            <div className="min-h-[100dvh] flex items-center justify-center bg-white">
                 <div className="text-center">
                     <div className="w-10 h-10 border-3 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 </div>
@@ -57,14 +59,14 @@ export default function AuthPageWrapper() {
     );
 }
 
-type RegistrationType = 'waste_owner' | 'collector' | 'organization' | null;
+type RegistrationType = 'waste_owner' | 'collector' | 'organization' | 'government' | null;
 
 function AuthPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const isSignupMode = searchParams.get('signup') === 'true';
     const isCollectorMode = searchParams.get('role') === 'collector';
-    const { login, completeProfile, createAccount, checkPhoneExists, checkOrgCode, requestPinReset, lookupRecoveryEmailForPhone, sendPinResetEmail, isLoading, user } = useAuth();
+    const { login, completeProfile, createAccount, checkPhoneExists, checkOrgCode, requestPinReset, isLoading, user } = useAuth();
 
     // Map any auth error (Firebase or otherwise) to a friendly, actionable message.
     const friendlyAuthError = (err: unknown): string => {
@@ -105,14 +107,9 @@ function AuthPage() {
     const [loginStep, setLoginStep] = useState(0); // 0 = phone, 1 = pin entry, 2 = forgot pin recovery
     const [error, setError] = useState<string | null>(null);
 
-    // Forgot-PIN recovery state
+    // Forgot-PIN recovery state (support-assisted only)
     const [isSubmittingReset, setIsSubmittingReset] = useState(false);
     const [resetReference, setResetReference] = useState<string | null>(null);
-    // Self-service email reset (when user has a verified recovery email).
-    const [recoveryEmailOnFile, setRecoveryEmailOnFile] = useState<{ email: string; verified: boolean } | null>(null);
-    const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
-    const [resetEmailSentTo, setResetEmailSentTo] = useState<string | null>(null);
-    const [isCheckingRecovery, setIsCheckingRecovery] = useState(false);
 
     // Registration shared state
     const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
@@ -158,29 +155,7 @@ function AuthPage() {
         setNoAccountFound(false);
         setIsCheckingPhone(false);
         setIsCreatingAccount(false);
-        setRecoveryEmailOnFile(null);
-        setResetEmailSentTo(null);
     };
-
-    // When the user enters the Forgot PIN view, look up whether the account
-    // has a verified recovery email so we can offer self-service reset.
-    useEffect(() => {
-        if (loginStep !== 2) return;
-        let cancelled = false;
-        const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
-        if (!phoneNumber) return;
-        setIsCheckingRecovery(true);
-        setRecoveryEmailOnFile(null);
-        lookupRecoveryEmailForPhone(fullPhone)
-            .then((res) => {
-                if (cancelled) return;
-                setRecoveryEmailOnFile(res);
-            })
-            .finally(() => {
-                if (!cancelled) setIsCheckingRecovery(false);
-            });
-        return () => { cancelled = true; };
-    }, [loginStep, phoneNumber, country.dialCode, lookupRecoveryEmailForPhone]);
 
     // Auto-resume onboarding for any authenticated user with an incomplete profile,
     // or redirect to the appropriate dashboard if onboarding is already complete.
@@ -558,7 +533,7 @@ function AuthPage() {
     // ==========================================
     if (isSignupSuccess) {
         return (
-            <div className="h-[100dvh] overflow-hidden bg-white flex items-center justify-center flex-col pb-16">
+            <div className="min-h-[100dvh] bg-white flex items-center justify-center flex-col pb-16">
                 <div className="w-80 h-80">
                     <DotLottieReact
                         src="/account_created.lottie"
@@ -574,73 +549,109 @@ function AuthPage() {
     // LOGIN VIEW
     // ==========================================
     if (mode === 'login') {
-        // Step 1: Full screen PIN entry for phone login
+        // Step 1: Full screen PIN entry for phone login (Mockup 1 style)
         if (loginStep === 1) {
+            const cursor = loginPin.length;
             return (
-                <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
-                    <div className="flex items-center pt-16 px-6 mb-8">
+                <div className="min-h-[100dvh] bg-white flex flex-col">
+                    <div className="flex items-center px-5 pt-12 pb-2">
                         <motion.button
                             whileTap={{ scale: 0.9 }}
                             onClick={() => { setLoginStep(0); setLoginPin(''); setError(null); }}
-                            className="p-2 -ml-2 rounded-full hover:bg-gray-100"
+                            className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-gray-50 text-[#0E7A3B]"
+                            aria-label="Go back"
                         >
-                            <ArrowLeft className="w-6 h-6 text-gray-900" />
+                            <ArrowLeft className="w-6 h-6" />
                         </motion.button>
-                        <div className="flex-1 text-center font-semibold text-gray-900 pr-8">
-                            Enter PIN
-                        </div>
                     </div>
 
-                    <div className="flex-1 px-6 flex flex-col items-center justify-center pb-safe">
-                        <div className="text-center mb-12">
-                            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-                            <p className="text-gray-500">
-                                Enter your PIN for {formatPhone(phoneNumber)}
-                            </p>
+                    <div className="flex-1 px-5 pb-6">
+                        {/* Heading row + verify illustration */}
+                        <div className="relative flex items-start justify-between gap-3 mb-5">
+                            <div className="flex-1 pt-1 z-10">
+                                <h1 className="text-[28px] font-extrabold text-[#0F1A14] leading-tight">Log In</h1>
+                                <p className="text-sm text-gray-500 mt-2 max-w-[14rem] leading-snug">
+                                    Enter your 6-digit PIN to access your MBalit account.
+                                </p>
+                                <div className="mt-4 flex items-center gap-2">
+                                    <span className="w-6 h-6 inline-flex">{country.flag}</span>
+                                    <span className="text-sm font-semibold text-[#0F1A14]">
+                                        {country.dialCode} {formatPhone(phoneNumber)}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setLoginStep(0); setLoginPin(''); setError(null); }}
+                                        className="text-sm font-bold text-[#0E7A3B] ml-2 hover:underline"
+                                    >
+                                        Change
+                                    </button>
+                                </div>
+                            </div>
+                            <img
+                                src="/illustrations/verify-phone.svg"
+                                alt=""
+                                className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 -mt-2"
+                            />
+                        </div>
+
+                        <label className="block text-sm font-bold text-[#0F1A14] mb-2">
+                            Enter 6-digit PIN
+                        </label>
+                        <div className="flex gap-2.5 justify-start mb-3">
+                            {[0, 1, 2, 3, 4, 5].map((i) => {
+                                const filled = !!loginPin[i];
+                                const isActive = i === cursor;
+                                return (
+                                    <div
+                                        key={i}
+                                        className={`w-12 h-14 rounded-xl border-2 flex items-center justify-center transition-all text-xl font-bold
+                                            ${error
+                                                ? 'border-red-400 bg-red-50 text-red-600'
+                                                : isActive && !filled
+                                                    ? 'border-[#0E7A3B] bg-white text-[#0E7A3B]'
+                                                    : filled
+                                                        ? 'border-[#0E7A3B] bg-white text-[#0F1A14]'
+                                                        : 'border-gray-200 bg-white text-gray-300'}
+                                        `}
+                                    >
+                                        {filled ? '•' : isActive ? (
+                                            <span className="w-px h-6 bg-[#0E7A3B] animate-pulse" />
+                                        ) : ''}
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         {error && (
-                            <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl w-full max-w-sm">
+                            <div className="mt-3 mb-2 p-3 bg-red-50 border border-red-100 rounded-xl">
                                 <p className="text-sm text-red-600 text-center">{error}</p>
                             </div>
                         )}
 
-                        <div className="flex gap-4 justify-center mb-12">
-                            {[0, 1, 2, 3, 4, 5].map((i) => (
-                                <div
-                                    key={i}
-                                    className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center transition-all ${
-                                        loginPin[i] 
-                                            ? 'border-gray-900 bg-gray-900' 
-                                            : error 
-                                                ? 'border-red-300 bg-red-50'
-                                                : 'border-gray-200 bg-gray-50'
-                                    }`}
-                                >
-                                    {loginPin[i] ? (
-                                        <div className="w-3 h-3 rounded-full bg-white" />
-                                    ) : null}
-                                </div>
-                            ))}
+                        <div className="mt-4 flex items-start gap-2">
+                            <Shield className="w-4 h-4 text-[#0E7A3B] mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-gray-500">
+                                Never share your PIN with anyone — not even MBalit support.
+                            </p>
                         </div>
 
-                        <div className="w-full max-w-sm mx-auto">
+                        <div className="mt-6">
                             <DialPad
                                 value={loginPin}
                                 onChange={(val) => {
                                     setLoginPin(val);
                                     setError(null);
                                     if (val.length === 6) {
-                                        handleLogin(undefined, val); // auto-submit when 6 digits
+                                        handleLogin(undefined, val);
                                     }
                                 }}
                                 maxLength={6}
                                 showLetters={true}
                             />
                         </div>
-                        
-                        <div className="mt-8 text-center">
-                            {isLoading && <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-900" />}
+
+                        <div className="mt-4 text-center">
+                            {isLoading && <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#0E7A3B]" />}
                         </div>
 
                         <button
@@ -660,17 +671,11 @@ function AuthPage() {
             );
         }
 
-        // Step 2: Forgot-PIN recovery flow
+        // Step 2: Forgot-PIN recovery flow (support-assisted only)
         if (loginStep === 2) {
             const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
-            const obscureEmail = (e: string) => {
-                const [user, domain] = e.split('@');
-                if (!user || !domain) return e;
-                const head = user.length <= 2 ? user[0] || '' : user.slice(0, 2);
-                return `${head}${'•'.repeat(Math.max(1, user.length - 2))}@${domain}`;
-            };
             return (
-                <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
+                <div className="min-h-[100dvh] bg-white flex flex-col">
                     <div className="flex items-center pt-16 px-6 mb-8">
                         <motion.button
                             whileTap={{ scale: 0.9 }}
@@ -689,36 +694,7 @@ function AuthPage() {
                     </div>
 
                     <div className="flex-1 px-6 flex flex-col items-center pb-safe overflow-y-auto">
-                        {resetEmailSentTo ? (
-                            <div className="w-full max-w-sm mt-6">
-                                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
-                                    <Check className="w-8 h-8 text-emerald-600" />
-                                </div>
-                                <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-                                    Check your email
-                                </h1>
-                                <p className="text-gray-500 text-center mb-6">
-                                    We sent a reset link to{' '}
-                                    <span className="font-medium text-gray-900">{resetEmailSentTo}</span>.
-                                    Open it from this device and you&apos;ll be able to set a new 6-digit PIN.
-                                </p>
-                                <p className="text-xs text-gray-500 text-center mb-6">
-                                    The link expires in about an hour. Check your spam folder if you don&apos;t see it.
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setResetEmailSentTo(null);
-                                        setError(null);
-                                        setLoginStep(0);
-                                        setPhoneNumber('');
-                                    }}
-                                    className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl"
-                                >
-                                    Back to sign in
-                                </button>
-                            </div>
-                        ) : resetReference ? (
+                        {resetReference ? (
                             <div className="w-full max-w-sm mt-6">
                                 <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
                                     <Check className="w-8 h-8 text-emerald-600" />
@@ -744,7 +720,7 @@ function AuthPage() {
                                         setLoginStep(0);
                                         setPhoneNumber('');
                                     }}
-                                    className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl"
+                                    className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl"
                                 >
                                     Back to sign in
                                 </button>
@@ -769,40 +745,6 @@ function AuthPage() {
                                     </div>
                                 )}
 
-                                {/* Self-service: only shown when the account has a verified
-                                    recovery email on file. */}
-                                {recoveryEmailOnFile && recoveryEmailOnFile.verified && (
-                                    <div className="mb-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
-                                        <p className="text-sm text-emerald-800">
-                                            A recovery email is on file:{' '}
-                                            <span className="font-medium">{obscureEmail(recoveryEmailOnFile.email)}</span>
-                                        </p>
-                                    </div>
-                                )}
-
-                                {recoveryEmailOnFile && recoveryEmailOnFile.verified && (
-                                    <button
-                                        type="button"
-                                        disabled={isSendingResetEmail}
-                                        onClick={async () => {
-                                            setError(null);
-                                            setIsSendingResetEmail(true);
-                                            try {
-                                                const { email } = await sendPinResetEmail(fullPhone);
-                                                setResetEmailSentTo(email);
-                                            } catch (err: unknown) {
-                                                const msg = err instanceof Error ? err.message : friendlyAuthError(err);
-                                                setError(msg);
-                                            } finally {
-                                                setIsSendingResetEmail(false);
-                                            }
-                                        }}
-                                        className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-50 flex items-center justify-center mb-3"
-                                    >
-                                        {isSendingResetEmail ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Email me a reset link'}
-                                    </button>
-                                )}
-
                                 <button
                                     type="button"
                                     disabled={isSubmittingReset}
@@ -819,24 +761,12 @@ function AuthPage() {
                                             setIsSubmittingReset(false);
                                         }
                                     }}
-                                    className={`w-full py-4 font-semibold rounded-2xl disabled:opacity-50 flex items-center justify-center ${
-                                        recoveryEmailOnFile && recoveryEmailOnFile.verified
-                                            ? 'bg-white border-2 border-gray-900 text-gray-900'
-                                            : 'bg-gray-900 text-white'
-                                    }`}
+                                    className="w-full py-4 font-bold rounded-2xl disabled:opacity-50 flex items-center justify-center bg-[#0E7A3B] hover:bg-[#0a6230] text-white"
                                 >
                                     {isSubmittingReset
                                         ? <Loader2 className="w-5 h-5 animate-spin" />
-                                        : recoveryEmailOnFile && recoveryEmailOnFile.verified
-                                            ? 'Use support-assisted reset instead'
-                                            : 'Submit reset request'}
+                                        : 'Submit reset request'}
                                 </button>
-
-                                {isCheckingRecovery && (
-                                    <p className="text-xs text-center text-gray-400 mt-3">
-                                        Checking for a recovery email…
-                                    </p>
-                                )}
 
                                 <button
                                     type="button"
@@ -858,22 +788,22 @@ function AuthPage() {
 
         // Step 0: Phone Number Entry (Full Screen Dial Pad)
         return (
-            <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
+            <div className="min-h-[100dvh] bg-white flex flex-col">
                 {/* Header */}
-                <div className="relative flex items-center justify-center pt-16 pb-8 px-6">
+                <div className="relative flex items-center justify-center pt-12 pb-6 px-6">
                     <button
                         onClick={() => router.push('/')}
-                        className="absolute left-6 top-16 w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="absolute left-5 top-12 w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 text-[#0E7A3B]"
                         aria-label="Go back"
                     >
-                        <ArrowLeft className="w-5 h-5" />
+                        <ArrowLeft className="w-6 h-6" />
                     </button>
                     <TruckLogo size="lg" showText={true} />
                 </div>
 
-                <div className="flex-1 px-6 pb-safe flex flex-col">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h1>
-                    <p className="text-gray-500 mb-8">Sign in to your account</p>
+                <div className="flex-1 px-6 pb-6 flex flex-col">
+                    <h1 className="text-[28px] font-extrabold text-[#0F1A14] leading-tight mb-1">Log In</h1>
+                    <p className="text-gray-500 mb-6">Enter your phone number to continue.</p>
 
                     {error && (
                         <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl">
@@ -928,7 +858,7 @@ function AuthPage() {
                             }
                         }}
                         disabled={phoneNumber.length < 7 || isCheckingPhone}
-                        className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed transition-opacity mt-8 flex items-center justify-center"
+                        className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-8 flex items-center justify-center"
                     >
                         {isCheckingPhone ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Continue'}
                     </button>
@@ -969,98 +899,98 @@ function AuthPage() {
     }
 
     // ==========================================
-    // SIGNUP: STEP 0 - Role Selection
+    // SIGNUP: STEP 0 - Choose Your Role (Mockup 2)
     // ==========================================
     if (mode === 'signup' && step === 0) {
         return (
-            <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
-                {/* Header with Back Button */}
-                <div className="relative flex items-center justify-center pt-16 pb-6 px-6">
+            <div className="min-h-[100dvh] bg-white flex flex-col">
+                {/* Top bar */}
+                <div className="flex items-center px-5 pt-12 pb-2">
                     <button
                         onClick={() => router.push('/')}
-                        className="absolute left-6 top-16 w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-gray-50 text-[#0E7A3B]"
                         aria-label="Go back"
                     >
-                        <ArrowLeft className="w-5 h-5" />
+                        <ArrowLeft className="w-6 h-6" />
                     </button>
-                    <TruckLogo size="lg" showText={true} />
                 </div>
 
-                <div className="flex-1 px-6 pb-safe">
-                    <div className="text-center mb-8">
-                        <h1 className="text-2xl font-bold text-gray-900 mb-1">Get started</h1>
-                        <p className="text-gray-500">Choose an option below</p>
+                <div className="flex-1 pb-6">
+                    {/* Full-width banner — already contains logo, heading and subtitle */}
+                    <img
+                        src="/illustrations/role-hero.jpg"
+                        alt="Choose Your Role — MBalit"
+                        className="block w-full h-auto mb-5"
+                    />
+
+                    <div className="px-5">
+                    {/* Role cards */}
+                    <div className="space-y-3">
+                        <RoleCard
+                            icon={<UserIcon className="w-6 h-6" strokeWidth={2} />}
+                            title="Resident"
+                            description="Report issues, schedule pickups, and stay updated on waste collection."
+                            badge="Most Popular"
+                            selected={registrationType === 'waste_owner'}
+                            onClick={() => { setIsJoiningOrg(false); setRegistrationType('waste_owner'); }}
+                        />
+                        <RoleCard
+                            icon={<Truck className="w-6 h-6" strokeWidth={2} />}
+                            title="Waste Collector"
+                            description="Manage assigned routes, update collection status, and optimize your daily tasks."
+                            selected={registrationType === 'collector'}
+                            onClick={() => { setIsJoiningOrg(false); setRegistrationType('collector'); }}
+                        />
+                        <RoleCard
+                            icon={<Building2 className="w-6 h-6" strokeWidth={2} />}
+                            title="Organization / Business"
+                            description="Manage teams, monitor performance, and keep your environment clean."
+                            selected={registrationType === 'organization'}
+                            onClick={() => setRegistrationType('organization')}
+                        />
+                        <RoleCard
+                            icon={<Shield className="w-6 h-6" strokeWidth={2} />}
+                            title="Government Official"
+                            description="Oversee operations, track reports, and make data-driven decisions."
+                            selected={registrationType === 'government'}
+                            onClick={() => setRegistrationType('government')}
+                        />
                     </div>
 
-                    <div className="flex flex-col relative pb-4 w-full">
-                        <div className="flex flex-col gap-4 w-full">
-                            {/* Waste Owner - Card */}
-                            <motion.div 
-                                whileTap={{ scale: 0.98 }} 
-                                whileHover={{ y: -2 }} 
-                                onClick={() => handleRoleSelect('waste_owner')}
-                                className="w-full group cursor-pointer block bg-[#F0F7FF] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
-                            >
-                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
-                                    <div className="w-14 h-14 rounded-[16px] bg-blue-100/50 flex flex-shrink-0 items-center justify-center text-blue-600">
-                                        <Trash2 className="w-6 h-6" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-blue-900 text-[17px]">I have waste</h3>
-                                        <p className="text-sm text-blue-700/70 mt-0.5">Get your waste collected</p>
-                                    </div>
-                                    <ChevronRight className="w-5 h-5 text-blue-300 transition-transform group-hover:translate-x-1" />
-                                </div>
-                            </motion.div>
-
-                            {/* Join Team - Card */}
-                            <motion.div 
-                                whileTap={{ scale: 0.98 }} 
-                                whileHover={{ y: -2 }} 
-                                onClick={() => {
-                                    setIsJoiningOrg(true);
-                                    setRegistrationType('collector');
-                                    setShowOrgDetails(true);
-                                    setStep(1);
-                                }}
-                                className="w-full group cursor-pointer block bg-[#F0FDF4] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
-                            >
-                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
-                                    <div className="w-14 h-14 rounded-[16px] bg-emerald-100/50 flex flex-shrink-0 items-center justify-center text-emerald-600">
-                                        <Truck className="w-6 h-6" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-emerald-900 text-[17px]">Join a team</h3>
-                                        <p className="text-sm text-emerald-700/70 mt-0.5">Have an organization code</p>
-                                    </div>
-                                    <ChevronRight className="w-5 h-5 text-emerald-300 transition-transform group-hover:translate-x-1" />
-                                </div>
-                            </motion.div>
-
-                            {/* Organization - Card */}
-                            <motion.div 
-                                whileTap={{ scale: 0.98 }} 
-                                whileHover={{ y: -2 }} 
-                                onClick={() => handleRoleSelect('organization')}
-                                className="w-full group cursor-pointer block bg-[#FFFBEB] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
-                            >
-                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
-                                    <div className="w-14 h-14 rounded-[16px] bg-amber-100/50 flex flex-shrink-0 items-center justify-center text-amber-600">
-                                        <Building2 className="w-6 h-6" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-amber-900 text-[17px]">Register company</h3>
-                                        <p className="text-sm text-amber-700/70 mt-0.5">Waste business</p>
-                                    </div>
-                                    <ChevronRight className="w-5 h-5 text-amber-300 transition-transform group-hover:translate-x-1" />
-                                </div>
-                            </motion.div>
+                    {/* Reassurance pill */}
+                    <div className="mt-5 flex items-start gap-3 p-4 rounded-2xl bg-[#E8F6EE] border border-[#D2F4E1]">
+                        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                            <Shield className="w-5 h-5 text-[#0E7A3B]" />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-[#0F1A14] text-sm">Don&apos;t worry!</h4>
+                            <p className="text-xs text-gray-600 leading-snug">
+                                You can change your role anytime in the app settings.
+                            </p>
                         </div>
                     </div>
 
+                    {/* Continue */}
+                    <div className="mt-6">
+                        <MbButton
+                            size="lg"
+                            disabled={!registrationType}
+                            rightIcon={<ArrowRight className="w-5 h-5" />}
+                            onClick={() => {
+                                if (!registrationType) return;
+                                if (registrationType === 'government') {
+                                    handleRoleSelect('organization');
+                                } else {
+                                    handleRoleSelect(registrationType);
+                                }
+                            }}
+                        >
+                            Continue
+                        </MbButton>
+                    </div>
 
                     {/* Switch to login */}
-                    <div className="mt-8 text-center">
+                    <div className="mt-5 text-center">
                         <button
                             type="button"
                             onClick={() => {
@@ -1070,8 +1000,9 @@ function AuthPage() {
                             }}
                             className="text-sm text-gray-500"
                         >
-                            Already have an account? <span className="font-semibold text-gray-900">Sign In</span>
+                            Already have an account? <span className="font-semibold text-[#0E7A3B]">Log In</span>
                         </button>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -1082,7 +1013,7 @@ function AuthPage() {
     // SIGNUP STEPS (Full-screen)
     // ==========================================
     return (
-        <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
+        <div className="min-h-[100dvh] bg-white flex flex-col">
             {/* Top bar with back button and step dots */}
             <div className="flex items-center justify-between px-6 pt-6 pb-4">
                 {step === 3 || step === 4 || step === 5 ? (
@@ -1103,7 +1034,7 @@ function AuthPage() {
                         <div
                             key={i}
                             className={`h-1.5 rounded-full transition-all ${
-                                i + 1 <= getCurrentDisplayStep() ? 'w-6 bg-gray-900' : 'w-1.5 bg-gray-200'
+                                i + 1 <= getCurrentDisplayStep() ? 'w-6 bg-[#0E7A3B]' : 'w-1.5 bg-gray-200'
                             }`}
                         />
                     ))}
@@ -1155,7 +1086,7 @@ function AuthPage() {
                                 setShowOrgDetails(false);
                             }}
                             disabled={isJoiningOrg && joinOrgCode.length < 3}
-                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
+                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
                         >
                             Continue
                         </button>
@@ -1226,7 +1157,7 @@ function AuthPage() {
                                 }
                             }}
                             disabled={phoneNumber.length < 7 || isCheckingPhone}
-                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
+                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
                         >
                             Continue
                         </button>
@@ -1234,7 +1165,7 @@ function AuthPage() {
                 )}
 
                 {/* ==========================================
-                    STEP 3: PIN Creation (Dial Pad)
+                    STEP 6: PIN Creation (Mockup 1 style)
                 ========================================== */}
                 {step === 6 && (
                     <motion.div
@@ -1244,50 +1175,77 @@ function AuthPage() {
                         animate="center"
                         exit="exit"
                         transition={{ type: 'tween', duration: 0.25 }}
-                        className="flex-1 flex flex-col px-6 pb-6"
+                        className="flex-1 flex flex-col px-5 pb-6"
                     >
-                        <h2 className="text-xl font-bold text-gray-900 mb-1">
-                            {pinStep === 'create' ? 'Create your PIN' : 'Confirm your PIN'}
-                        </h2>
-                        <p className="text-gray-500 text-sm mb-8">
-                            {pinStep === 'create'
-                                ? 'Choose a 6-digit PIN for quick sign in'
-                                : 'Enter your PIN again to confirm'}
-                        </p>
+                        <div className="relative flex items-start justify-between gap-3 mb-5">
+                            <div className="flex-1 pt-1 z-10">
+                                <h2 className="text-[26px] font-extrabold text-[#0F1A14] leading-tight">
+                                    {pinStep === 'create' ? 'Create Your PIN' : 'Confirm Your PIN'}
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-2 max-w-[15rem] leading-snug">
+                                    {pinStep === 'create'
+                                        ? 'Choose a 6-digit PIN for quick sign in.'
+                                        : 'Enter your PIN again to confirm.'}
+                                </p>
+                            </div>
+                            <img
+                                src="/illustrations/verify-phone.svg"
+                                alt=""
+                                className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 -mt-2"
+                            />
+                        </div>
 
-                        {/* PIN dots */}
-                        <div className="flex gap-4 justify-center mb-8">
+                        <label className="block text-sm font-bold text-[#0F1A14] mb-2">
+                            Enter 6-digit PIN
+                        </label>
+                        <div className="flex gap-2.5 justify-start mb-3">
                             {[0, 1, 2, 3, 4, 5].map((i) => {
                                 const currentPin = pinStep === 'create' ? pin : confirmPin;
+                                const filled = !!currentPin[i];
+                                const isActive = i === currentPin.length;
                                 return (
-                                    <motion.div
+                                    <div
                                         key={i}
-                                        animate={{
-                                            scale: currentPin.length === i ? [1, 1.2, 1] : 1,
-                                        }}
-                                        className={`w-3 h-3 rounded-full transition-colors ${
-                                            currentPin[i] ? 'bg-gray-900' : 'bg-gray-200'
-                                        }`}
-                                    />
+                                        className={`w-12 h-14 rounded-xl border-2 flex items-center justify-center transition-all text-xl font-bold
+                                            ${error
+                                                ? 'border-red-400 bg-red-50 text-red-600'
+                                                : isActive && !filled
+                                                    ? 'border-[#0E7A3B] bg-white text-[#0E7A3B]'
+                                                    : filled
+                                                        ? 'border-[#0E7A3B] bg-white text-[#0F1A14]'
+                                                        : 'border-gray-200 bg-white text-gray-300'}
+                                        `}
+                                    >
+                                        {filled ? '•' : isActive ? (
+                                            <span className="w-px h-6 bg-[#0E7A3B] animate-pulse" />
+                                        ) : ''}
+                                    </div>
                                 );
                             })}
+                        </div>
+
+                        <div className="mt-3 flex items-start gap-2">
+                            <Shield className="w-4 h-4 text-[#0E7A3B] mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-gray-500">
+                                Never share your PIN with anyone — not even MBalit support.
+                            </p>
                         </div>
 
                         {/* Dial pad — replaced with loader during account creation,
                             or with a "Try again" button after a transient failure
                             so the user never has to re-enter their PIN. */}
-                        <div className="flex-1 flex items-center">
+                        <div className="mt-5">
                             {isCreatingAccount ? (
                                 <div className="w-full flex flex-col items-center justify-center gap-4 py-12">
-                                    <Loader2 className="w-10 h-10 animate-spin text-gray-900" />
+                                    <Loader2 className="w-10 h-10 animate-spin text-[#0E7A3B]" />
                                     <p className="text-gray-600 font-medium">Creating your account…</p>
                                 </div>
                             ) : pinStep === 'confirm' && pin.length === 6 && confirmPin.length === 6 && error ? (
-                                <div className="w-full flex flex-col items-center justify-center gap-4 py-8">
+                                <div className="w-full flex flex-col items-center justify-center gap-4 py-4">
                                     <button
                                         type="button"
                                         onClick={submitCreateAccount}
-                                        className="w-full max-w-sm py-4 bg-gray-900 text-white font-semibold rounded-2xl"
+                                        className="w-full max-w-sm py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl"
                                     >
                                         Try again
                                     </button>
@@ -1309,7 +1267,7 @@ function AuthPage() {
                                     <DialPad
                                         value={pinStep === 'create' ? pin : confirmPin}
                                         onChange={(val) => {
-                                            if (isCreatingAccount) return; // ignore key presses mid-request
+                                            if (isCreatingAccount) return;
                                             if (pinStep === 'create') {
                                                 setPin(val);
                                                 if (val.length === 6) {
@@ -1317,9 +1275,6 @@ function AuthPage() {
                                                 }
                                             } else {
                                                 setConfirmPin(val);
-                                                // Detect mismatch as soon as the 6th digit is entered,
-                                                // but do NOT auto-submit on match — wait for the
-                                                // explicit Continue tap below.
                                                 if (val.length === 6 && val !== pin) {
                                                     setError('PINs do not match. Please try again.');
                                                     setConfirmPin('');
@@ -1332,14 +1287,12 @@ function AuthPage() {
                                         showLetters={false}
                                     />
 
-                                    {/* Explicit Continue button on the confirm step so the user
-                                        sees a clear next action after entering their PIN twice. */}
                                     {pinStep === 'confirm' && (
                                         <button
                                             type="button"
                                             onClick={submitCreateAccount}
                                             disabled={confirmPin.length !== 6 || confirmPin !== pin}
-                                            className="w-full py-4 mt-6 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                                            className="w-full py-4 mt-6 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                         >
                                             Continue
                                         </button>
@@ -1404,7 +1357,7 @@ function AuthPage() {
                                 {registrationType === 'organization' ? (
                                     <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 ) : (
-                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 )}
                                 <input
                                     type="text"
@@ -1433,7 +1386,7 @@ function AuthPage() {
                                 }`}
                             >
                                 <div className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-colors ${
-                                    isAuthority ? 'bg-gray-900' : 'bg-white border-2 border-gray-300'
+                                    isAuthority ? 'bg-[#0E7A3B]' : 'bg-white border-2 border-gray-300'
                                 }`}>
                                     {isAuthority && <Check className="w-3 h-3 text-white" />}
                                 </div>
@@ -1458,7 +1411,7 @@ function AuthPage() {
                                 }
                             }}
                             disabled={registrationType === 'organization' ? !orgName.trim() : !fullName.trim()}
-                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
                             {registrationType === 'waste_owner' ? 'Complete Setup' : 'Continue'}
                         </button>
@@ -1494,7 +1447,7 @@ function AuthPage() {
                                     }`}
                                 >
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                                        vehicleType === vehicle.id ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'
+                                        vehicleType === vehicle.id ? 'bg-[#0E7A3B] text-white' : 'bg-[#E8F6EE] text-[#0E7A3B]'
                                     }`}>
                                         {vehicle.icon}
                                     </div>
@@ -1503,7 +1456,7 @@ function AuthPage() {
                                         <p className="text-sm text-gray-500">Up to {vehicle.capacity}</p>
                                     </div>
                                     {vehicleType === vehicle.id && (
-                                        <div className="w-6 h-6 rounded-full bg-gray-900 flex items-center justify-center">
+                                        <div className="w-6 h-6 rounded-full bg-[#0E7A3B] flex items-center justify-center">
                                             <Check className="w-4 h-4 text-white" />
                                         </div>
                                     )}
@@ -1517,7 +1470,7 @@ function AuthPage() {
                             type="button"
                             onClick={() => setStep(5)}
                             disabled={!vehicleType}
-                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
+                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
                         >
                             Continue
                         </button>
@@ -1563,7 +1516,7 @@ function AuthPage() {
                                         <span className="text-2xl mb-1 block">{type.icon}</span>
                                         <span className="text-sm font-medium text-gray-900">{type.name}</span>
                                         {isSelected && (
-                                            <div className="mt-1 mx-auto w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center">
+                                            <div className="mt-1 mx-auto w-5 h-5 rounded-full bg-[#0E7A3B] flex items-center justify-center">
                                                 <Check className="w-3 h-3 text-white" />
                                             </div>
                                         )}
@@ -1576,7 +1529,7 @@ function AuthPage() {
                             type="button"
                             onClick={handleCompleteSignup}
                             disabled={selectedWasteTypes.length === 0 || isLoading}
-                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
+                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
                         >
                             {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Complete Setup'}
                         </button>

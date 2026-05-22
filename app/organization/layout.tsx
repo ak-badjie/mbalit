@@ -28,8 +28,8 @@ export default function OrganizationLayout({ children }: { children: React.React
     }
 
     return (
-        <div className="h-[100dvh] flex flex-col overflow-hidden bg-white">
-            <main className="flex-1 overflow-y-auto pb-24">{children}</main>
+        <div className="min-h-[100dvh] bg-white">
+            <main className="pb-28">{children}</main>
 
             <nav className="fixed bottom-0 left-0 right-0 z-50">
                 <div className="bg-white/95 backdrop-blur-xl border-t border-gray-100 shadow-[0_-6px_24px_rgba(15,26,20,0.06)]">

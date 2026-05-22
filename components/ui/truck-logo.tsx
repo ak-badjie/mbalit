@@ -10,15 +10,15 @@ interface LogoProps {
 }
 
 const DIMENSIONS = {
-    sm: { width: 36, height: 42, text: 'text-sm' },
-    md: { width: 52, height: 60, text: 'text-base' },
-    lg: { width: 72, height: 84, text: 'text-xl' },
-    xl: { width: 110, height: 128, text: 'text-2xl' },
+    sm: { width: 40, height: 40, text: 'text-sm' },
+    md: { width: 56, height: 56, text: 'text-base' },
+    lg: { width: 80, height: 80, text: 'text-xl' },
+    xl: { width: 120, height: 120, text: 'text-2xl' },
 } as const;
 
 /**
- * MbalitApp brand mark (M with location pin) + optional wordmark.
- * Placeholder asset lives at /brand/mbalitapp-logo.svg — swap with the real logo later.
+ * MBalit brand mark + optional wordmark.
+ * Uses /logo.png (the actual MBalit logo in /public).
  */
 export const RecyclingLogo: React.FC<LogoProps> = ({
     size = 'md',
@@ -30,15 +30,15 @@ export const RecyclingLogo: React.FC<LogoProps> = ({
     return (
         <div className={`flex flex-col items-center ${className}`}>
             <img
-                src="/brand/mbalitapp-logo.svg"
-                alt="MbalitApp"
+                src="/logo.png"
+                alt="MBalit"
                 width={width}
                 height={height}
                 className="object-contain"
             />
             {showText && (
                 <span className={`font-extrabold tracking-tight text-brand-strong mt-1 ${text}`}>
-                    MbalitApp
+                    MBalit
                 </span>
             )}
         </div>
@@ -53,10 +53,10 @@ export const AnimatedRecyclingLogo: React.FC<{ className?: string }> = ({ classN
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5 }}
-            src="/brand/mbalitapp-logo.svg"
-            alt="MbalitApp"
+            src="/logo.png"
+            alt="MBalit"
             width={120}
-            height={140}
+            height={120}
             className="object-contain"
         />
         <motion.span
@@ -65,7 +65,7 @@ export const AnimatedRecyclingLogo: React.FC<{ className?: string }> = ({ classN
             transition={{ delay: 0.15 }}
             className="font-extrabold tracking-tight text-2xl text-brand-strong mt-2"
         >
-            MbalitApp
+            MBalit
         </motion.span>
     </div>
 );
