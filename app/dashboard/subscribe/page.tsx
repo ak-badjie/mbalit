@@ -138,7 +138,7 @@ export default function SubscribePage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search collectors..."
-                        className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-900 focus:bg-white border-0 transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#0E7A3B] focus:bg-white border-0 transition-all"
                     />
                     {searchQuery && (
                         <button
@@ -291,7 +291,7 @@ export default function SubscribePage() {
                                                     onClick={() => setPlan(p)}
                                                     className={`py-3 rounded-xl text-sm font-medium transition-all ${
                                                         plan === p
-                                                            ? 'bg-gray-900 text-white'
+                                                            ? 'bg-[#0E7A3B] text-white'
                                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                                     }`}
                                                 >
@@ -325,7 +325,7 @@ export default function SubscribePage() {
                                                     <motion.button
                                                         whileTap={{ scale: 0.9 }}
                                                         onClick={() => setBucketCount(bucketCount + 1)}
-                                                        className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center"
+                                                        className="w-8 h-8 rounded-lg bg-[#0E7A3B] text-white flex items-center justify-center"
                                                     >
                                                         <Plus className="w-3 h-3" />
                                                     </motion.button>
@@ -352,7 +352,7 @@ export default function SubscribePage() {
                                                     <motion.button
                                                         whileTap={{ scale: 0.9 }}
                                                         onClick={() => setLargeBinCount(largeBinCount + 1)}
-                                                        className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center"
+                                                        className="w-8 h-8 rounded-lg bg-[#0E7A3B] text-white flex items-center justify-center"
                                                     >
                                                         <Plus className="w-3 h-3" />
                                                     </motion.button>
@@ -371,7 +371,7 @@ export default function SubscribePage() {
                                                     onClick={() => setPreferredDay(d)}
                                                     className={`px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
                                                         preferredDay === d
-                                                            ? 'bg-gray-900 text-white'
+                                                            ? 'bg-[#0E7A3B] text-white'
                                                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                                                     }`}
                                                 >
@@ -403,7 +403,7 @@ export default function SubscribePage() {
                                     <button
                                         onClick={handleSubscribe}
                                         disabled={isSubmitting || (bucketCount === 0 && largeBinCount === 0)}
-                                        className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 transition-opacity flex items-center justify-center gap-2"
+                                        className="w-full py-4 bg-[#0E7A3B] text-white font-semibold rounded-2xl disabled:opacity-30 transition-opacity flex items-center justify-center gap-2"
                                     >
                                         {isSubmitting ? (
                                             <Loader2 className="w-5 h-5 animate-spin" />

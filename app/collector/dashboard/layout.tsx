@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRequireAuth } from '@/lib/auth-context';
-import { CollectorBottomNav } from '@/components/ui/collector-bottom-nav';
+import { MbBottomNav, COLLECTOR_NAV } from '@/components/ui/mb-bottom-nav';
 import { LoadingScreen } from '@/components/ui/truck-logo';
 import { DynamicIslandProvider } from '@/components/ui/dynamic-island';
 
@@ -11,19 +11,16 @@ export default function CollectorDashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { user, isLoading, isAuthenticated } = useRequireAuth('/auth');
+    const { user, isLoading, isAuthenticated } = useRequireAuth();
 
-    // Show loading screen while checking auth
     if (isLoading) {
         return <LoadingScreen duration={1500} onComplete={() => { }} />;
     }
 
-    // Redirect happens in useRequireAuth if not authenticated
     if (!isAuthenticated) {
         return null;
     }
 
-    // Redirect non-collectors to their dashboard
     if (user?.role !== 'collector') {
         if (typeof window !== 'undefined') {
             window.location.href = '/dashboard';
@@ -33,14 +30,11 @@ export default function CollectorDashboardLayout({
 
     return (
         <DynamicIslandProvider>
-            <div className="h-[100dvh] overflow-hidden bg-gradient-to-br from-gray-50 via-white to-emerald-50   ">
-                {/* Main content with padding for bottom nav */}
-                <main className="pb-24 md:pb-8">
+            <div className="h-[100dvh] overflow-hidden bg-gradient-to-br from-[#F1FAF4] via-white to-[#ECFDF3]">
+                <main className="pb-24 md:pb-8 h-full overflow-y-auto">
                     {children}
                 </main>
-
-                {/* Mobile Bottom Navigation */}
-                <CollectorBottomNav />
+                <MbBottomNav items={COLLECTOR_NAV} />
             </div>
         </DynamicIslandProvider>
     );

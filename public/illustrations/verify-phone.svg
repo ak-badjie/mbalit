@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" fill="none">
+  <!-- Soft circular background -->
+  <circle cx="170" cy="150" r="115" fill="#E8F6EE"/>
+
+  <!-- Decorative leaves -->
+  <g opacity="0.7">
+    <path d="M40 220 Q55 200 75 215 Q60 230 40 220 Z" fill="#16903E"/>
+    <path d="M55 250 Q70 230 90 245 Q75 260 55 250 Z" fill="#1FA653"/>
+    <path d="M250 70 Q265 50 285 65 Q270 80 250 70 Z" fill="#1FA653"/>
+  </g>
+
+  <!-- Paper plane -->
+  <g transform="translate(240, 50)">
+    <path d="M0 8 L24 0 L18 18 L10 14 L8 22 Z" fill="#1FA653"/>
+  </g>
+
+  <!-- Phone -->
+  <g transform="translate(110, 40)">
+    <rect x="0" y="0" width="120" height="220" rx="22" fill="#FFFFFF" stroke="#0E7A3B" stroke-width="3"/>
+    <!-- Screen -->
+    <rect x="8" y="14" width="104" height="192" rx="14" fill="#F1FAF4"/>
+    <!-- Speaker notch -->
+    <rect x="48" y="6" width="24" height="4" rx="2" fill="#0E7A3B"/>
+
+    <!-- M Logo centered -->
+    <g transform="translate(30, 60) scale(0.5)">
+      <path d="M10 130 L10 30 Q10 10 30 10 L45 10 Q55 10 60 25 L60 75 L60 25 Q65 10 75 10 L90 10 Q110 10 110 30 L110 130 L88 130 L88 45 L75 75 L60 75 L45 75 L32 45 L32 130 Z" fill="#0E7A3B"/>
+      <path d="M60 38 C72 38 82 48 82 60 C82 76 60 100 60 100 C60 100 38 76 38 60 C38 48 48 38 60 38 Z" fill="#0E7A3B"/>
+      <circle cx="60" cy="60" r="9" fill="#FFFFFF"/>
+    </g>
+
+    <text x="60" y="170" font-family="-apple-system, sans-serif" font-weight="800" font-size="14" text-anchor="middle" fill="#0E7A3B">MbalitApp</text>
+  </g>
+
+  <!-- Shield with checkmark -->
+  <g transform="translate(210, 170)">
+    <path d="M0 0 L40 0 L40 30 Q40 50 20 60 Q0 50 0 30 Z" fill="#1FA653"/>
+    <path d="M10 30 L17 38 L30 22" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" fill="none">
+  <defs>
+    <linearGradient id="permGreen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1FA653"/>
+      <stop offset="100%" stop-color="#0E7A3B"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Distant city silhouette -->
+  <g opacity="0.16">
+    <rect x="0" y="60" width="30" height="120" fill="#0E7A3B"/>
+    <rect x="35" y="40" width="25" height="140" fill="#0E7A3B"/>
+    <rect x="65" y="70" width="30" height="110" fill="#0E7A3B"/>
+    <rect x="220" y="50" width="28" height="130" fill="#0E7A3B"/>
+    <rect x="255" y="30" width="22" height="150" fill="#0E7A3B"/>
+    <rect x="282" y="65" width="32" height="115" fill="#0E7A3B"/>
+  </g>
+
+  <!-- Clouds -->
+  <g opacity="0.7">
+    <ellipse cx="80" cy="35" rx="18" ry="6" fill="#FFFFFF"/>
+    <ellipse cx="240" cy="25" rx="24" ry="7" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Location pin floating above truck -->
+  <g transform="translate(190, 25)">
+    <path d="M22 0 C34 0 44 10 44 22 C44 38 22 56 22 56 C22 56 0 38 0 22 C0 10 10 0 22 0 Z" fill="#1FA653"/>
+    <circle cx="22" cy="22" r="7" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Tree -->
+  <g transform="translate(20, 115)">
+    <ellipse cx="18" cy="40" rx="18" ry="32" fill="#1FA653"/>
+  </g>
+
+  <!-- Bin -->
+  <g transform="translate(60, 150)">
+    <rect x="0" y="0" width="32" height="45" rx="4" fill="#1FA653"/>
+    <rect x="-2" y="-3" width="36" height="6" rx="2" fill="#0E7A3B"/>
+  </g>
+
+  <!-- Truck cab -->
+  <rect x="100" y="130" width="80" height="60" rx="7" fill="#FFFFFF" stroke="#0E7A3B" stroke-width="2"/>
+  <path d="M108 138 L172 138 L172 158 L108 158 Z" fill="#CFE9D9"/>
+
+  <!-- M Logo on cab -->
+  <g transform="translate(130, 162) scale(0.15)">
+    <path d="M10 130 L10 30 Q10 10 30 10 L45 10 Q55 10 60 25 L60 75 L60 25 Q65 10 75 10 L90 10 Q110 10 110 30 L110 130 L88 130 L88 45 L75 75 L60 75 L45 75 L32 45 L32 130 Z" fill="#0E7A3B"/>
+    <path d="M60 38 C72 38 82 48 82 60 C82 76 60 100 60 100 C60 100 38 76 38 60 C38 48 48 38 60 38 Z" fill="#0E7A3B"/>
+  </g>
+
+  <!-- Truck body -->
+  <rect x="180" y="115" width="100" height="75" rx="6" fill="url(#permGreen)"/>
+  <path d="M280 115 L295 130 L295 190 L280 190 Z" fill="#0E7A3B"/>
+
+  <!-- Recycle -->
+  <g transform="translate(210, 135)">
+    <circle cx="18" cy="18" r="18" fill="#FFFFFF" opacity="0.2"/>
+    <path d="M18 8 L26 20 L21 20 L21 28 L15 28 L15 20 L10 20 Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Wheels -->
+  <circle cx="125" cy="195" r="12" fill="#1A1A1A"/>
+  <circle cx="125" cy="195" r="5" fill="#9CA3AF"/>
+  <circle cx="225" cy="195" r="12" fill="#1A1A1A"/>
+  <circle cx="225" cy="195" r="5" fill="#9CA3AF"/>
+  <circle cx="258" cy="195" r="12" fill="#1A1A1A"/>
+  <circle cx="258" cy="195" r="5" fill="#9CA3AF"/>
+
+  <line x1="0" y1="213" x2="320" y2="213" stroke="#0E7A3B" stroke-width="2" opacity="0.3"/>
+</svg>

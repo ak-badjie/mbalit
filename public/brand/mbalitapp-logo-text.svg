@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 180" fill="none">
+  <!-- Mark -->
+  <g transform="translate(120, 0)">
+    <path d="M10 130 L10 30 Q10 10 30 10 L45 10 Q55 10 60 25 L60 75 L60 25 Q65 10 75 10 L90 10 Q110 10 110 30 L110 130 L88 130 L88 45 L75 75 L60 75 L45 75 L32 45 L32 130 Z" fill="#0E7A3B"/>
+    <path d="M60 38 C72 38 82 48 82 60 C82 76 60 100 60 100 C60 100 38 76 38 60 C38 48 48 38 60 38 Z" fill="#0E7A3B"/>
+    <circle cx="60" cy="60" r="9" fill="#FFFFFF"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="180" y="170" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="34" text-anchor="middle" fill="#0E7A3B">MbalitApp</text>
+</svg>

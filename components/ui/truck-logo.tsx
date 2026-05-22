@@ -9,59 +9,69 @@ interface LogoProps {
     className?: string;
 }
 
-// Static Recycling Bin Logo (for nav bars and headers)
+const DIMENSIONS = {
+    sm: { width: 36, height: 42, text: 'text-sm' },
+    md: { width: 52, height: 60, text: 'text-base' },
+    lg: { width: 72, height: 84, text: 'text-xl' },
+    xl: { width: 110, height: 128, text: 'text-2xl' },
+} as const;
+
+/**
+ * MbalitApp brand mark (M with location pin) + optional wordmark.
+ * Placeholder asset lives at /brand/mbalitapp-logo.svg — swap with the real logo later.
+ */
 export const RecyclingLogo: React.FC<LogoProps> = ({
     size = 'md',
     showText = true,
     className = '',
 }) => {
-    const dimensions = {
-        sm: { width: 56, height: 56 },
-        md: { width: 72, height: 72 },
-        lg: { width: 110, height: 110 },
-        xl: { width: 150, height: 150 },
-    };
-
-    const { width, height } = dimensions[size];
+    const { width, height, text } = DIMENSIONS[size];
 
     return (
         <div className={`flex flex-col items-center ${className}`}>
             <img
-                src="/logo.png"
-                alt="MBALit Logo"
+                src="/brand/mbalitapp-logo.svg"
+                alt="MbalitApp"
                 width={width}
                 height={height}
                 className="object-contain"
             />
+            {showText && (
+                <span className={`font-extrabold tracking-tight text-brand-strong mt-1 ${text}`}>
+                    MbalitApp
+                </span>
+            )}
         </div>
     );
 };
 
-// Alias for backwards compatibility
 export const TruckLogo = RecyclingLogo;
 
-// Animated logo for loading screen (larger with enhanced animation)
-export const AnimatedRecyclingLogo: React.FC<{ className?: string }> = ({ className = '' }) => {
-    return (
-        <div className={`flex flex-col items-center ${className}`}>
-            <motion.img
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                src="/logo.png"
-                alt="MBALit Logo"
-                width={120}
-                height={120}
-                className="object-contain"
-            />
-        </div>
-    );
-};
+export const AnimatedRecyclingLogo: React.FC<{ className?: string }> = ({ className = '' }) => (
+    <div className={`flex flex-col items-center ${className}`}>
+        <motion.img
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            src="/brand/mbalitapp-logo.svg"
+            alt="MbalitApp"
+            width={120}
+            height={140}
+            className="object-contain"
+        />
+        <motion.span
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="font-extrabold tracking-tight text-2xl text-brand-strong mt-2"
+        >
+            MbalitApp
+        </motion.span>
+    </div>
+);
 
-// Alias for backwards compatibility
 export const AnimatedTruckLogo = AnimatedRecyclingLogo;
 
-// Loading screen component
 interface LoadingScreenProps {
     onComplete?: () => void;
     duration?: number;
@@ -89,7 +99,8 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-teal-50   "
+            className="fixed inset-0 z-[100] flex items-center justify-center"
+            style={{ background: 'linear-gradient(180deg, #EFF9F3 0%, #FFFFFF 100%)' }}
         >
             <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}

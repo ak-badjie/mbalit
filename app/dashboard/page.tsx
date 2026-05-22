@@ -36,7 +36,7 @@ const StepDots: React.FC<{ current: number; total: number }> = ({ current, total
             <div
                 key={i}
                 className={`h-1.5 rounded-full transition-all ${
-                    i + 1 <= current ? 'w-6 bg-gray-900' : 'w-1.5 bg-gray-200'
+                    i + 1 <= current ? 'w-6 bg-[#0E7A3B]' : 'w-1.5 bg-gray-200'
                 }`}
             />
         ))}
@@ -234,7 +234,7 @@ function DashboardContent() {
                     <motion.button
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setStep(1)}
-                        className="w-full p-5 rounded-2xl bg-gray-900 text-white text-left flex items-center gap-4"
+                        className="w-full p-5 rounded-2xl bg-[#0E7A3B] hover:bg-[#0a6230] text-white text-left flex items-center gap-4"
                     >
                         <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
                             <Plus className="w-6 h-6" />
@@ -384,14 +384,14 @@ function DashboardContent() {
                                     }}
                                     className={`p-4 rounded-2xl border-2 transition-all ${
                                         isSelected
-                                            ? 'border-gray-900 bg-gray-50'
-                                            : 'border-gray-100 hover:border-gray-300'
+                                            ? 'border-[#0E7A3B] bg-[#ECFDF3]'
+                                            : 'border-gray-100 hover:border-[#A8E7C3]'
                                     }`}
                                 >
                                     <span className="text-2xl mb-2 block">{type.icon}</span>
                                     <span className="text-sm font-medium text-gray-900">{type.name}</span>
                                     {isSelected && (
-                                        <div className="mt-1 mx-auto w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center">
+                                        <div className="mt-1 mx-auto w-5 h-5 rounded-full bg-[#0E7A3B] flex items-center justify-center">
                                             <Check className="w-3 h-3 text-white" />
                                         </div>
                                     )}
@@ -403,7 +403,7 @@ function DashboardContent() {
                     <button
                         onClick={handleNextStep}
                         disabled={selectedWasteTypes.length === 0}
-                        className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 transition-opacity"
+                        className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-semibold rounded-2xl disabled:opacity-30 transition-opacity"
                     >
                         Continue
                     </button>
@@ -436,7 +436,7 @@ function DashboardContent() {
                                     <motion.button
                                         whileTap={{ scale: 0.9 }}
                                         onClick={() => setBucketCount(bucketCount + 1)}
-                                        className="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center font-bold"
+                                        className="w-10 h-10 rounded-xl bg-[#0E7A3B] hover:bg-[#0a6230] text-white flex items-center justify-center font-bold"
                                     >
                                         +
                                     </motion.button>
@@ -463,7 +463,7 @@ function DashboardContent() {
                                     <motion.button
                                         whileTap={{ scale: 0.9 }}
                                         onClick={() => setTrashBagCount(trashBagCount + 1)}
-                                        className="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center font-bold"
+                                        className="w-10 h-10 rounded-xl bg-[#0E7A3B] hover:bg-[#0a6230] text-white flex items-center justify-center font-bold"
                                     >
                                         +
                                     </motion.button>
@@ -490,7 +490,7 @@ function DashboardContent() {
                                     <motion.button
                                         whileTap={{ scale: 0.9 }}
                                         onClick={() => setLargeBinCount(largeBinCount + 1)}
-                                        className="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center font-bold"
+                                        className="w-10 h-10 rounded-xl bg-[#0E7A3B] hover:bg-[#0a6230] text-white flex items-center justify-center font-bold"
                                     >
                                         +
                                     </motion.button>
@@ -512,7 +512,7 @@ function DashboardContent() {
                     <button
                         onClick={handleNextStep}
                         disabled={bucketCount === 0 && trashBagCount === 0 && largeBinCount === 0}
-                        className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 transition-opacity"
+                        className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-semibold rounded-2xl disabled:opacity-30 transition-opacity"
                     >
                         Continue
                     </button>
@@ -536,13 +536,13 @@ function DashboardContent() {
                                     onChange={(e) => setPlusCode(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter' && plusCode.trim()) handlePlusCodeBlur(); }}
                                     placeholder="e.g., 4HMQ+3C Banjul"
-                                    className={`flex-1 px-4 py-3 rounded-xl border ${plusCodeError ? 'border-red-400' : 'border-gray-200'} bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-900 focus:border-transparent`}
+                                    className={`flex-1 px-4 py-3 rounded-xl border ${plusCodeError ? 'border-red-400' : 'border-gray-200'} bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#0E7A3B] focus:border-transparent`}
                                 />
                                 <Button
                                     variant="primary"
                                     onClick={handlePlusCodeBlur}
                                     disabled={!plusCode.trim() || isGeocodingPlusCode}
-                                    className="px-4 bg-gray-900 hover:bg-gray-800"
+                                    className="px-4 bg-[#0E7A3B] hover:bg-[#0a6230]"
                                 >
                                     {isGeocodingPlusCode ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
                                 </Button>
@@ -642,7 +642,7 @@ function DashboardContent() {
                         <button
                             onClick={handleSubmitRequest}
                             disabled={!location || isSubmitting}
-                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 transition-opacity flex items-center justify-center gap-2"
+                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-semibold rounded-2xl disabled:opacity-30 transition-opacity flex items-center justify-center gap-2"
                         >
                             {isSubmitting ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />

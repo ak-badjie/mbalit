@@ -1,181 +1,107 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
+import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Recycle, Truck } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { ArrowRight, Lock, User } from 'lucide-react';
+import { MbButton } from '@/components/ui/mb-button';
+import { SecureFooter } from '@/components/ui/secure-footer';
 
-// Component Imports
-import TruckLogo from '@/components/ui/truck-logo';
-import Header from '@/components/layout/header';
-import WhoIsItFor from '@/components/sections/WhoIsItFor';
-import Footer from '@/components/layout/Footer';
-import { JigsawBlock } from '@/components/ui/jigsaw-block';
-
+/**
+ * Landing screen — full-bleed truck hero with the MbalitApp brand overlaid on the sky.
+ */
 export default function Home() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  return (
-    <div className="h-[100dvh] overflow-hidden sm:h-auto sm:min-h-screen sm:overflow-x-hidden sm:overflow-y-auto bg-white font-sans selection:bg-emerald-500/30">
-        <Header />
-
-      {/* Hero Section */}
-      <section className="relative min-h-[100dvh] flex flex-col items-center justify-center pt-20 pb-0 md:pt-32 overflow-hidden px-4">
-        {/* Assets & Overlays */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-            {/* Desktop Hero Image */}
-            <div className="absolute inset-0 z-0 hidden sm:block">
-                <Image
-                  src="/hero.png"
-                  alt="Waste truck collection"
-                  fill
-                  className="object-cover object-center scale-105"
-                  priority
+    return (
+        <div className="relative min-h-[100dvh] bg-white overflow-hidden flex flex-col">
+            {/* Full-bleed hero (truck + city + trees) */}
+            <div className="relative flex-1 min-h-0">
+                <img
+                    src="/illustrations/landing-hero.jpg"
+                    alt="Waste collection truck"
+                    className="absolute inset-0 w-full h-full object-cover"
                 />
+                {/* Soft top fade for legibility behind the brand block */}
+                <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/70 via-white/30 to-transparent pointer-events-none" />
+
+                {/* Brand overlay */}
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, type: 'spring' }}
+                    className="relative z-10 flex flex-col items-center text-center pt-14 sm:pt-16 px-6"
+                >
+                    <img
+                        src="/logo.png"
+                        alt="MBalit"
+                        className="w-[120px] h-[120px] sm:w-[140px] sm:h-[140px] object-contain drop-shadow-sm"
+                    />
+                    <h1 className="mt-2 text-5xl sm:text-6xl font-extrabold tracking-tight text-[#0E7A3B] leading-none drop-shadow-sm">
+                        MBalit
+                    </h1>
+                    <p className="mt-4 text-xl sm:text-2xl font-bold text-[#0F1A14]">
+                        Smart Waste. <span className="text-[#1FA653]">Clean Future.</span>
+                    </p>
+                    <p className="mt-2 text-sm sm:text-base text-gray-600 max-w-xs">
+                        Join thousands of partners who are building cleaner, greener cities.
+                    </p>
+                </motion.div>
             </div>
 
-            {/* Mobile Hero Image */}
-            <div className="absolute inset-0 z-0 sm:hidden">
-                <Image
-                  src="/hero-mobile.png"
-                  alt="Waste truck collection mobile"
-                  fill
-                  className="object-cover object-center"
-                  priority
-                />
-            </div>
-
-            {/* Dark Tint Overlay */}
-            <div className="absolute inset-0 bg-black/5 z-10 pointer-events-none"></div>
-        </div>
-
-        <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col items-center justify-center -mt-24 sm:mt-0">
-          
-          {/* Main Content Group */}
-          <div className="w-full flex flex-col items-center justify-center relative mt-0 sm:mt-12 text-center mb-8">
+            {/* Bottom action card */}
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
-              className="mb-4 sm:mb-8"
+                initial={{ y: 40, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+                className="relative z-10 -mt-6 bg-white rounded-t-[28px] shadow-[0_-12px_36px_rgba(15,26,20,0.08)] px-6 pt-6 pb-8 space-y-4"
             >
-                <TruckLogo size="xl" className="mx-auto drop-shadow-2xl" showText={false} />
-            </motion.div>
-
-            <motion.h1 
-              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-emerald-950 mb-4 tracking-tight px-2 leading-tight drop-shadow-sm"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.8 }}
-            >
-              Smart <span className="text-emerald-600">Waste</span><br className="sm:hidden" /> Management
-            </motion.h1>
-
-            {/* Hero Subtitle */}
-            <motion.p
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.8 }}
-              className="hidden sm:block text-sm sm:text-lg md:text-xl text-emerald-900/80 font-medium max-w-xl md:max-w-2xl mx-auto mb-10 leading-relaxed px-4"
-            >
-              Connect with verified waste collectors in your area. Schedule pickups,
-              track in real-time, and contribute to a cleaner environment.
-            </motion.p>
-
-            {/* CTA Buttons - Diagonal Interlocking Puzzle Pair */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.8 }}
-              className="relative w-[320px] h-[180px] mx-auto mt-8 pb-10"
-            >
-                {/* Sign Up Piece — top-left, with bottom-right corner notch */}
-                <Link href="/auth?signup=true" className="absolute top-0 left-0 block group cursor-pointer z-20">
-                    <motion.div whileTap={{ scale: 0.96 }} whileHover={{ y: -3, x: -2 }}>
-                        <div className="relative w-[200px] h-[90px]">
-                            <svg viewBox="0 0 200 90" fill="none" className="absolute inset-0 w-full h-full drop-shadow-lg">
-                                <path d={`
-                                    M 20,0
-                                    L 180,0 A 20,20 0 0 1 200,20
-                                    L 200,42
-                                    L 172,42 A 10,10 0 0 0 162,52
-                                    L 162,70 A 20,20 0 0 1 142,90
-                                    L 20,90 A 20,20 0 0 1 0,70
-                                    L 0,20 A 20,20 0 0 1 20,0 Z
-                                `} fill="#10b981" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
-                                {/* Glass highlight */}
-                                <path d={`
-                                    M 20,0
-                                    L 180,0 A 20,20 0 0 1 200,20
-                                    L 200,42
-                                    L 172,42 A 10,10 0 0 0 162,52
-                                    L 162,70 A 20,20 0 0 1 142,90
-                                    L 20,90 A 20,20 0 0 1 0,70
-                                    L 0,20 A 20,20 0 0 1 20,0 Z
-                                `} fill="url(#signupGrad)" opacity="0.15" />
-                                <defs>
-                                    <linearGradient id="signupGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="white" stopOpacity="1" />
-                                        <stop offset="50%" stopColor="white" stopOpacity="0" />
-                                    </linearGradient>
-                                </defs>
-                            </svg>
-                            <div className="relative z-10 flex items-center justify-center h-full pr-6">
-                                <span className="font-black tracking-wider text-2xl text-white drop-shadow-sm">SIGN UP</span>
-                            </div>
-                        </div>
-                    </motion.div>
+                <Link href="/auth?signup=true" className="block">
+                    <MbButton
+                        size="lg"
+                        leftIcon={<User className="w-5 h-5" />}
+                        rightIcon={<ArrowRight className="w-5 h-5" />}
+                        className="justify-between"
+                    >
+                        Sign Up
+                    </MbButton>
                 </Link>
 
-                {/* Log In Piece — bottom-right, with top-left corner tab that fits into Sign Up's notch */}
-                <Link href="/auth" className="absolute bottom-0 right-0 block group cursor-pointer z-10">
-                    <motion.div whileTap={{ scale: 0.96 }} whileHover={{ y: -3, x: 2 }}>
-                        <div className="relative w-[200px] h-[90px]">
-                            <svg viewBox="0 0 200 90" fill="none" className="absolute inset-0 w-full h-full drop-shadow-lg">
-                                <path d={`
-                                    M 58,0 A 20,20 0 0 1 78,0
-                                    L 180,0 A 20,20 0 0 1 200,20
-                                    L 200,70 A 20,20 0 0 1 180,90
-                                    L 20,90 A 20,20 0 0 1 0,70
-                                    L 0,48
-                                    L 28,48 A 10,10 0 0 0 38,38
-                                    L 38,20 A 20,20 0 0 1 58,0 Z
-                                `} fill="white" stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
-                                {/* Glass highlight */}
-                                <path d={`
-                                    M 58,0 A 20,20 0 0 1 78,0
-                                    L 180,0 A 20,20 0 0 1 200,20
-                                    L 200,70 A 20,20 0 0 1 180,90
-                                    L 20,90 A 20,20 0 0 1 0,70
-                                    L 0,48
-                                    L 28,48 A 10,10 0 0 0 38,38
-                                    L 38,20 A 20,20 0 0 1 58,0 Z
-                                `} fill="url(#loginGrad)" opacity="0.08" />
-                                <defs>
-                                    <linearGradient id="loginGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="black" stopOpacity="0" />
-                                        <stop offset="100%" stopColor="black" stopOpacity="0.1" />
-                                    </linearGradient>
-                                </defs>
-                            </svg>
-                            <div className="relative z-10 flex items-center justify-center h-full pl-6">
-                                <span className="font-extrabold tracking-wider text-2xl text-emerald-900">LOG IN</span>
-                            </div>
-                        </div>
-                    </motion.div>
+                <Link href="/auth" className="block">
+                    <MbButton
+                        size="lg"
+                        variant="outline"
+                        leftIcon={<Lock className="w-5 h-5" />}
+                        rightIcon={<ArrowRight className="w-5 h-5" />}
+                        className="justify-between"
+                    >
+                        Sign In
+                    </MbButton>
                 </Link>
-            </motion.div>
-          </div>
-        </div>
-      </section>
 
-      {/* Additional Sections - Hidden on mobile to lock view to hero */}
-      <div className="hidden sm:block">
-        <WhoIsItFor />
-        <Footer />
-      </div>
-    </div>
-  );
+                <div className="flex items-center gap-3 pt-1">
+                    <div className="flex-1 h-px bg-gray-200" />
+                    <span className="text-xs text-gray-400 font-medium">or continue with</span>
+                    <div className="flex-1 h-px bg-gray-200" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        type="button"
+                        className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl border border-gray-200 bg-white text-[#0F1A14] font-semibold text-sm hover:bg-gray-50 transition-colors"
+                    >
+                        <img src="/icons/google-logo.svg" alt="" className="w-5 h-5" />
+                        Continue with Google
+                    </button>
+                    <button
+                        type="button"
+                        className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl border border-gray-200 bg-white text-[#0F1A14] font-semibold text-sm hover:bg-gray-50 transition-colors"
+                    >
+                        <img src="/icons/apple-logo.svg" alt="" className="w-5 h-5" />
+                        Continue with Apple
+                    </button>
+                </div>
+
+                <SecureFooter className="pt-2" />
+            </motion.div>
+        </div>
+    );
 }

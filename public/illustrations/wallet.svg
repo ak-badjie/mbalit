@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" fill="none">
+  <!-- Soft leaves backdrop -->
+  <g opacity="0.15">
+    <path d="M170 30 Q190 20 200 40 Q190 60 170 50 Z" fill="#FFFFFF"/>
+    <path d="M30 150 Q50 140 60 160 Q50 180 30 170 Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Wallet body -->
+  <rect x="40" y="60" width="160" height="110" rx="12" fill="#FFFFFF"/>
+  <rect x="40" y="60" width="160" height="110" rx="12" stroke="#0E7A3B" stroke-width="2" fill="none"/>
+  <!-- Wallet flap -->
+  <path d="M40 60 L200 60 L200 90 Q200 100 190 100 L50 100 Q40 100 40 90 Z" fill="#FDF1B5"/>
+  <!-- Wallet stitching -->
+  <path d="M50 110 L190 110" stroke="#0E7A3B" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+  <!-- Card peeking -->
+  <rect x="60" y="50" width="80" height="50" rx="6" fill="#FFC857"/>
+  <rect x="68" y="60" width="22" height="14" rx="2" fill="#FFFFFF" opacity="0.7"/>
+  <!-- Wallet clasp -->
+  <circle cx="180" cy="125" r="6" fill="#0E7A3B"/>
+
+  <!-- Coins -->
+  <circle cx="160" cy="155" r="14" fill="#FFC857" stroke="#E89A1A" stroke-width="2"/>
+  <text x="160" y="160" font-family="sans-serif" font-weight="800" font-size="12" text-anchor="middle" fill="#FFFFFF">D</text>
+  <circle cx="180" cy="165" r="12" fill="#FFC857" stroke="#E89A1A" stroke-width="2"/>
+  <circle cx="195" cy="155" r="10" fill="#FFC857" stroke="#E89A1A" stroke-width="2"/>
+</svg>

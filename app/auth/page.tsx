@@ -8,11 +8,13 @@ import {
     Loader2,
     Camera,
     Check,
-    Trash2,
     Truck,
     Building2,
-    User,
+    User as UserIcon,
+    Shield,
     ChevronRight,
+    Clock,
+    ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
@@ -21,13 +23,16 @@ import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 
 import { db } from '@/lib/firebase';
 import TruckLogo from '@/components/ui/truck-logo';
 import { DialPad } from '@/components/ui/dial-pad';
-import { JigsawBlock } from '@/components/ui/jigsaw-block';
 import { CountrySelector, DEFAULT_COUNTRY } from '@/components/ui/country-selector';
 import type { Country } from '@/components/ui/country-selector';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { WASTE_TYPES } from '@/lib/waste-config';
 import { WasteType, CollectorType } from '@/types';
 import { compressImage } from '@/lib/image-utils';
+import { RoleCard } from '@/components/ui/role-card';
+import { OtpInput } from '@/components/ui/otp-input';
+import { MbButton } from '@/components/ui/mb-button';
+import { SecureFooter } from '@/components/ui/secure-footer';
 
 // Vehicle sizes (Lucide icons, no emojis)
 const VEHICLE_TYPES = [
@@ -50,7 +55,7 @@ export default function AuthPageWrapper() {
         <Suspense fallback={
             <div className="h-[100dvh] overflow-hidden flex items-center justify-center bg-white">
                 <div className="text-center">
-                    <div className="w-10 h-10 border-3 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <div className="w-10 h-10 border-[3px] border-[#0E7A3B] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 </div>
             </div>
         }>
@@ -59,7 +64,7 @@ export default function AuthPageWrapper() {
     );
 }
 
-type RegistrationType = 'waste_owner' | 'collector' | 'organization' | null;
+type RegistrationType = 'waste_owner' | 'collector' | 'organization' | 'government' | null;
 
 function AuthPage() {
     const router = useRouter();
@@ -112,6 +117,23 @@ function AuthPage() {
     const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
     const [isSendingSms, setIsSendingSms] = useState(false);
     const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+    const [otpSecondsLeft, setOtpSecondsLeft] = useState(119); // 1:59
+
+    // Reset & run OTP timer whenever entering step 2
+    useEffect(() => {
+        if (step !== 2) return;
+        setOtpSecondsLeft(119);
+        const id = setInterval(() => {
+            setOtpSecondsLeft((s) => (s > 0 ? s - 1 : 0));
+        }, 1000);
+        return () => clearInterval(id);
+    }, [step]);
+
+    const formatOtpTime = (total: number) => {
+        const m = Math.floor(total / 60).toString().padStart(2, '0');
+        const s = (total % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    };
 
     // Auto-continue onboarding for existing users
     useEffect(() => {
@@ -411,9 +433,9 @@ function AuthPage() {
                                 <div
                                     key={i}
                                     className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center transition-all ${
-                                        loginPin[i] 
-                                            ? 'border-gray-900 bg-gray-900' 
-                                            : error 
+                                        loginPin[i]
+                                            ? 'border-[#0E7A3B] bg-[#0E7A3B]'
+                                            : error
                                                 ? 'border-red-300 bg-red-50'
                                                 : 'border-gray-200 bg-gray-50'
                                     }`}
@@ -517,7 +539,7 @@ function AuthPage() {
                         type="button"
                         onClick={() => { setLoginStep(1); setError(null); }}
                         disabled={phoneNumber.length < 7}
-                        className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed transition-opacity mt-8"
+                        className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-8"
                     >
                         Continue
                     </button>
@@ -538,105 +560,108 @@ function AuthPage() {
     }
 
     // ==========================================
-    // SIGNUP: STEP 0 - Role Selection
+    // SIGNUP: STEP 0 - Role Selection (Mockup 2)
     // ==========================================
     if (mode === 'signup' && step === 0) {
         return (
-            <div className="h-[100dvh] overflow-hidden bg-white flex flex-col">
-                {/* Header with Back Button */}
-                <div className="relative flex items-center justify-center pt-16 pb-6 px-6">
+            <div className="h-[100dvh] overflow-y-auto bg-white flex flex-col">
+                {/* Top bar */}
+                <div className="flex items-center px-5 pt-12 pb-2">
                     <button
                         onClick={() => router.push('/')}
-                        className="absolute left-6 top-16 w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-gray-50 text-[#0E7A3B]"
                         aria-label="Go back"
                     >
-                        <ArrowLeft className="w-5 h-5" />
+                        <ArrowLeft className="w-6 h-6" />
                     </button>
-                    <TruckLogo size="lg" showText={true} />
                 </div>
 
-                <div className="flex-1 px-6 pb-safe">
-                    <div className="text-center mb-8">
-                        <h1 className="text-2xl font-bold text-gray-900 mb-1">Get started</h1>
-                        <p className="text-gray-500">Choose an option below</p>
+                <div className="flex-1 pb-6">
+                    {/* Full-width banner — already contains logo, heading and subtitle */}
+                    <img
+                        src="/illustrations/role-hero.jpg"
+                        alt="Choose Your Role — MbalitApp"
+                        className="block w-full h-auto mb-5"
+                    />
+
+                    <div className="px-5">
+
+                    {/* Role cards */}
+                    <div className="space-y-3">
+                        <RoleCard
+                            icon={<UserIcon className="w-6 h-6" strokeWidth={2} />}
+                            title="Resident"
+                            description="Report issues, schedule pickups, and stay updated on waste collection."
+                            badge="Most Popular"
+                            selected={registrationType === 'waste_owner'}
+                            onClick={() => setRegistrationType('waste_owner')}
+                        />
+                        <RoleCard
+                            icon={<Truck className="w-6 h-6" strokeWidth={2} />}
+                            title="Waste Collector"
+                            description="Manage assigned routes, update collection status, and optimize your daily tasks."
+                            selected={registrationType === 'collector'}
+                            onClick={() => { setIsJoiningOrg(false); setRegistrationType('collector'); }}
+                        />
+                        <RoleCard
+                            icon={<Building2 className="w-6 h-6" strokeWidth={2} />}
+                            title="Organization / Business"
+                            description="Manage teams, monitor performance, and keep your environment clean."
+                            selected={registrationType === 'organization'}
+                            onClick={() => setRegistrationType('organization')}
+                        />
+                        <RoleCard
+                            icon={<Shield className="w-6 h-6" strokeWidth={2} />}
+                            title="Government Official"
+                            description="Oversee operations, track reports, and make data-driven decisions."
+                            selected={registrationType === 'government'}
+                            onClick={() => setRegistrationType('government')}
+                        />
                     </div>
 
-                    <div className="flex flex-col relative pb-4 w-full">
-                        <div className="flex flex-col gap-4 w-full">
-                            {/* Waste Owner - Card */}
-                            <motion.div 
-                                whileTap={{ scale: 0.98 }} 
-                                whileHover={{ y: -2 }} 
-                                onClick={() => handleRoleSelect('waste_owner')}
-                                className="w-full group cursor-pointer block bg-[#F0F7FF] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
-                            >
-                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
-                                    <div className="w-14 h-14 rounded-[16px] bg-blue-100/50 flex flex-shrink-0 items-center justify-center text-blue-600">
-                                        <Trash2 className="w-6 h-6" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-blue-900 text-[17px]">I have waste</h3>
-                                        <p className="text-sm text-blue-700/70 mt-0.5">Get your waste collected</p>
-                                    </div>
-                                    <ChevronRight className="w-5 h-5 text-blue-300 transition-transform group-hover:translate-x-1" />
-                                </div>
-                            </motion.div>
-
-                            {/* Join Team - Card */}
-                            <motion.div 
-                                whileTap={{ scale: 0.98 }} 
-                                whileHover={{ y: -2 }} 
-                                onClick={() => {
-                                    setIsJoiningOrg(true);
-                                    setRegistrationType('collector');
-                                    setShowOrgDetails(true);
-                                    setStep(1);
-                                }}
-                                className="w-full group cursor-pointer block bg-[#F0FDF4] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
-                            >
-                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
-                                    <div className="w-14 h-14 rounded-[16px] bg-emerald-100/50 flex flex-shrink-0 items-center justify-center text-emerald-600">
-                                        <Truck className="w-6 h-6" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-emerald-900 text-[17px]">Join a team</h3>
-                                        <p className="text-sm text-emerald-700/70 mt-0.5">Have an organization code</p>
-                                    </div>
-                                    <ChevronRight className="w-5 h-5 text-emerald-300 transition-transform group-hover:translate-x-1" />
-                                </div>
-                            </motion.div>
-
-                            {/* Organization - Card */}
-                            <motion.div 
-                                whileTap={{ scale: 0.98 }} 
-                                whileHover={{ y: -2 }} 
-                                onClick={() => handleRoleSelect('organization')}
-                                className="w-full group cursor-pointer block bg-[#FFFBEB] rounded-[22px] drop-shadow-md hover:drop-shadow-lg transition-all border border-white"
-                            >
-                                <div className="flex flex-row items-center gap-5 py-6 px-6 text-left">
-                                    <div className="w-14 h-14 rounded-[16px] bg-amber-100/50 flex flex-shrink-0 items-center justify-center text-amber-600">
-                                        <Building2 className="w-6 h-6" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-amber-900 text-[17px]">Register company</h3>
-                                        <p className="text-sm text-amber-700/70 mt-0.5">Waste business</p>
-                                    </div>
-                                    <ChevronRight className="w-5 h-5 text-amber-300 transition-transform group-hover:translate-x-1" />
-                                </div>
-                            </motion.div>
+                    {/* Reassurance pill */}
+                    <div className="mt-5 flex items-start gap-3 p-4 rounded-2xl bg-[#E8F6EE] border border-[#D2F4E1]">
+                        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                            <Shield className="w-5 h-5 text-[#0E7A3B]" />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-[#0F1A14] text-sm">Don&apos;t worry!</h4>
+                            <p className="text-xs text-gray-600 leading-snug">
+                                You can change your role anytime in the app settings.
+                            </p>
                         </div>
                     </div>
 
+                    {/* Continue */}
+                    <div className="mt-6">
+                        <MbButton
+                            size="lg"
+                            disabled={!registrationType}
+                            rightIcon={<ArrowRight className="w-5 h-5" />}
+                            onClick={() => {
+                                if (!registrationType) return;
+                                if (registrationType === 'government') {
+                                    // Government officials currently flow through the organization path
+                                    handleRoleSelect('organization');
+                                } else {
+                                    handleRoleSelect(registrationType);
+                                }
+                            }}
+                        >
+                            Continue
+                        </MbButton>
+                    </div>
 
                     {/* Switch to login */}
-                    <div className="mt-8 text-center">
+                    <div className="mt-5 text-center">
                         <button
                             type="button"
                             onClick={() => setMode('login')}
                             className="text-sm text-gray-500"
                         >
-                            Already have an account? <span className="font-semibold text-gray-900">Sign In</span>
+                            Already have an account? <span className="font-semibold text-[#0E7A3B]">Sign In</span>
                         </button>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -664,7 +689,7 @@ function AuthPage() {
                         <div
                             key={i}
                             className={`h-1.5 rounded-full transition-all ${
-                                i + 1 <= getCurrentDisplayStep() ? 'w-6 bg-gray-900' : 'w-1.5 bg-gray-200'
+                                i + 1 <= getCurrentDisplayStep() ? 'w-6 bg-[#0E7A3B]' : 'w-1.5 bg-gray-200'
                             }`}
                         />
                     ))}
@@ -704,7 +729,7 @@ function AuthPage() {
                                     value={joinOrgCode}
                                     onChange={(e) => setJoinOrgCode(e.target.value)}
                                     placeholder="e.g. clean-gambia-a3f2"
-                                    className="w-full px-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-900 focus:border-transparent font-medium"
+                                    className="w-full px-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#0E7A3B] focus:border-transparent font-medium"
                                 />
                             </div>
                         )}
@@ -716,7 +741,7 @@ function AuthPage() {
                                 setShowOrgDetails(false);
                             }}
                             disabled={isJoiningOrg && joinOrgCode.length < 3}
-                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
+                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
                         >
                             Continue
                         </button>
@@ -816,7 +841,7 @@ function AuthPage() {
                                 }
                             }}
                             disabled={phoneNumber.length < 7 || isSendingSms}
-                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
+                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
                         >
                             {isSendingSms ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Continue'}
                         </button>
@@ -824,7 +849,7 @@ function AuthPage() {
                 )}
 
                 {/* ==========================================
-                    STEP 2: SMS Code Verification
+                    STEP 2: SMS Code Verification (Mockup 1)
                 ========================================== */}
                 {step === 2 && (
                     <motion.div
@@ -834,29 +859,77 @@ function AuthPage() {
                         animate="center"
                         exit="exit"
                         transition={{ type: 'tween', duration: 0.25 }}
-                        className="flex-1 flex flex-col px-6 pb-6"
+                        className="flex-1 flex flex-col px-5 pb-4 overflow-y-auto"
                     >
-                        <h2 className="text-xl font-bold text-gray-900 mb-1">Enter Verification Code</h2>
-                        <p className="text-gray-500 text-sm mb-6">We sent a 6-digit code to {formatPhone(phoneNumber)}</p>
+                        <div className="flex items-start gap-3 mb-4">
+                            <div className="flex-1 pt-1">
+                                <h2 className="text-[26px] font-extrabold text-[#0F1A14] leading-tight">
+                                    Verify Your<br />Phone Number
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-2 max-w-[15rem] leading-snug">
+                                    We&apos;ve sent a 6-digit verification code to your phone number
+                                </p>
 
-                        <div className="flex gap-3 justify-center mb-8">
-                            {[0, 1, 2, 3, 4, 5].map((i) => (
-                                <div
-                                    key={i}
-                                    className={`w-12 h-14 rounded-2xl border-2 flex items-center justify-center transition-all text-xl font-bold ${
-                                        smsCode[i] 
-                                            ? 'border-gray-900 bg-white text-gray-900' 
-                                            : error 
-                                                ? 'border-red-300 bg-red-50'
-                                                : 'border-gray-200 bg-gray-50'
-                                    }`}
-                                >
-                                    {smsCode[i] || ''}
+                                {/* Phone + change link */}
+                                <div className="mt-4 flex items-center gap-2">
+                                    <span className="w-6 h-6 inline-flex">{country.flag}</span>
+                                    <span className="text-sm font-semibold text-[#0F1A14]">
+                                        {country.dialCode} {formatPhone(phoneNumber)}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep(1)}
+                                        className="text-sm font-bold text-[#0E7A3B] ml-2 hover:underline"
+                                    >
+                                        Change
+                                    </button>
                                 </div>
-                            ))}
+                            </div>
+                            <img
+                                src="/illustrations/verify-phone.svg"
+                                alt=""
+                                className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 -mt-2"
+                            />
                         </div>
 
-                        <div className="flex-1 flex items-center">
+                        <label className="block text-sm font-bold text-[#0F1A14] mb-2 mt-1">
+                            Enter 6-digit code
+                        </label>
+                        <OtpInput value={smsCode} length={6} error={!!error} />
+
+                        <div className="mt-4 flex items-start gap-2">
+                            <Shield className="w-4 h-4 text-[#0E7A3B] mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-gray-500">
+                                Your code is <span className="text-[#0E7A3B] font-semibold">{smsCode || '------'}</span>.
+                                Don&apos;t share it with anyone.
+                            </p>
+                        </div>
+
+                        <div className="mt-4 mx-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#E8F6EE] border border-[#D2F4E1]">
+                            <Clock className="w-4 h-4 text-[#0E7A3B]" />
+                            <span className="text-sm text-gray-600">
+                                Code will expire in <span className="text-[#0E7A3B] font-bold">{formatOtpTime(otpSecondsLeft)}</span>
+                            </span>
+                        </div>
+
+                        <div className="mt-3 text-center">
+                            <span className="text-sm text-gray-500">Didn&apos;t receive the code? </span>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    setError(null);
+                                    setSmsCode('');
+                                    setOtpSecondsLeft(119);
+                                    // re-send not implemented end-to-end; placeholder hook
+                                }}
+                                className="text-sm font-bold text-[#0E7A3B] hover:underline"
+                            >
+                                Resend Code
+                            </button>
+                        </div>
+
+                        {/* Dial pad */}
+                        <div className="mt-auto pt-4">
                             <DialPad
                                 value={smsCode}
                                 onChange={async (val) => {
@@ -914,7 +987,7 @@ function AuthPage() {
                                             scale: currentPin.length === i ? [1, 1.2, 1] : 1,
                                         }}
                                         className={`w-3 h-3 rounded-full transition-colors ${
-                                            currentPin[i] ? 'bg-gray-900' : 'bg-gray-200'
+                                            currentPin[i] ? 'bg-[#0E7A3B]' : 'bg-gray-200'
                                         }`}
                                     />
                                 );
@@ -1016,7 +1089,7 @@ function AuthPage() {
                                 {registrationType === 'organization' ? (
                                     <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 ) : (
-                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 )}
                                 <input
                                     type="text"
@@ -1030,7 +1103,7 @@ function AuthPage() {
                                         }
                                     }}
                                     placeholder={registrationType === 'organization' ? "e.g. Clean Gambia Services" : "Your full name"}
-                                    className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-900 focus:border-transparent font-medium"
+                                    className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#0E7A3B] focus:border-transparent font-medium"
                                 />
                             </div>
                         </div>
@@ -1047,7 +1120,7 @@ function AuthPage() {
                                 }
                             }}
                             disabled={registrationType === 'organization' ? !orgName.trim() : !fullName.trim()}
-                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
                             {registrationType === 'waste_owner' ? 'Complete Setup' : 'Continue'}
                         </button>
@@ -1078,12 +1151,12 @@ function AuthPage() {
                                     onClick={() => setVehicleType(vehicle.id)}
                                     className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex items-center gap-4 ${
                                         vehicleType === vehicle.id
-                                            ? 'border-gray-900 bg-gray-50'
-                                            : 'border-gray-100 hover:border-gray-300'
+                                            ? 'border-[#0E7A3B] bg-[#ECFDF3]'
+                                            : 'border-gray-100 hover:border-[#A8E7C3]'
                                     }`}
                                 >
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                                        vehicleType === vehicle.id ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'
+                                        vehicleType === vehicle.id ? 'bg-[#0E7A3B] text-white' : 'bg-[#E8F6EE] text-[#0E7A3B]'
                                     }`}>
                                         {vehicle.icon}
                                     </div>
@@ -1092,7 +1165,7 @@ function AuthPage() {
                                         <p className="text-sm text-gray-500">Up to {vehicle.capacity}</p>
                                     </div>
                                     {vehicleType === vehicle.id && (
-                                        <div className="w-6 h-6 rounded-full bg-gray-900 flex items-center justify-center">
+                                        <div className="w-6 h-6 rounded-full bg-[#0E7A3B] flex items-center justify-center">
                                             <Check className="w-4 h-4 text-white" />
                                         </div>
                                     )}
@@ -1106,7 +1179,7 @@ function AuthPage() {
                             type="button"
                             onClick={() => setStep(6)}
                             disabled={!vehicleType}
-                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
+                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
                         >
                             Continue
                         </button>
@@ -1145,14 +1218,14 @@ function AuthPage() {
                                         }}
                                         className={`p-4 rounded-2xl border-2 transition-all text-center ${
                                             isSelected
-                                                ? 'border-gray-900 bg-gray-50'
-                                                : 'border-gray-100 hover:border-gray-300'
+                                                ? 'border-[#0E7A3B] bg-[#ECFDF3]'
+                                                : 'border-gray-100 hover:border-[#A8E7C3]'
                                         }`}
                                     >
                                         <span className="text-2xl mb-1 block">{type.icon}</span>
                                         <span className="text-sm font-medium text-gray-900">{type.name}</span>
                                         {isSelected && (
-                                            <div className="mt-1 mx-auto w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center">
+                                            <div className="mt-1 mx-auto w-5 h-5 rounded-full bg-[#0E7A3B] flex items-center justify-center">
                                                 <Check className="w-3 h-3 text-white" />
                                             </div>
                                         )}
@@ -1165,7 +1238,7 @@ function AuthPage() {
                             type="button"
                             onClick={handleCompleteSignup}
                             disabled={selectedWasteTypes.length === 0 || isLoading}
-                            className="w-full py-4 bg-gray-900 text-white font-semibold rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-4"
+                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
                         >
                             {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Complete Setup'}
                         </button>

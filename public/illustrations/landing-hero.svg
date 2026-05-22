@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" fill="none">
+  <!-- Sky gradient -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E5F4ED"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <linearGradient id="truckGreen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1FA653"/>
+      <stop offset="100%" stop-color="#0E7A3B"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#sky)"/>
+
+  <!-- Distant buildings -->
+  <g opacity="0.25">
+    <rect x="40" y="180" width="60" height="240" fill="#88BFA0"/>
+    <rect x="110" y="140" width="50" height="280" fill="#88BFA0"/>
+    <rect x="170" y="200" width="70" height="220" fill="#88BFA0"/>
+    <rect x="250" y="160" width="55" height="260" fill="#88BFA0"/>
+    <rect x="540" y="170" width="60" height="250" fill="#88BFA0"/>
+    <rect x="610" y="130" width="50" height="290" fill="#88BFA0"/>
+    <rect x="670" y="190" width="65" height="230" fill="#88BFA0"/>
+  </g>
+
+  <!-- Trees left -->
+  <g>
+    <ellipse cx="60" cy="380" rx="50" ry="80" fill="#1FA653"/>
+    <ellipse cx="120" cy="360" rx="40" ry="70" fill="#16903E"/>
+  </g>
+  <!-- Trees right -->
+  <g>
+    <ellipse cx="720" cy="380" rx="55" ry="85" fill="#1FA653"/>
+    <ellipse cx="660" cy="370" rx="40" ry="70" fill="#16903E"/>
+  </g>
+
+  <!-- Ground -->
+  <rect x="0" y="480" width="800" height="120" fill="#F1F5F2"/>
+  <rect x="0" y="478" width="800" height="4" fill="#0E7A3B" opacity="0.2"/>
+
+  <!-- Truck cab -->
+  <rect x="220" y="320" width="170" height="130" rx="14" fill="#FFFFFF" stroke="#0E7A3B" stroke-width="3"/>
+  <!-- Cab window -->
+  <path d="M240 340 L370 340 L370 390 L240 390 Z" fill="#CFE9D9"/>
+  <!-- Cab divider -->
+  <rect x="302" y="340" width="6" height="50" fill="#FFFFFF"/>
+  <!-- M logo on cab door -->
+  <g transform="translate(260, 400) scale(0.32)">
+    <path d="M10 130 L10 30 Q10 10 30 10 L45 10 Q55 10 60 25 L60 75 L60 25 Q65 10 75 10 L90 10 Q110 10 110 30 L110 130 L88 130 L88 45 L75 75 L60 75 L45 75 L32 45 L32 130 Z" fill="#0E7A3B"/>
+    <path d="M60 38 C72 38 82 48 82 60 C82 76 60 100 60 100 C60 100 38 76 38 60 C38 48 48 38 60 38 Z" fill="#0E7A3B"/>
+    <circle cx="60" cy="60" r="9" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Truck body / compactor -->
+  <rect x="390" y="280" width="210" height="170" rx="10" fill="url(#truckGreen)"/>
+  <!-- Hopper slant -->
+  <path d="M600 280 L640 320 L640 450 L600 450 Z" fill="#0E7A3B"/>
+
+  <!-- Recycle symbol on body -->
+  <g transform="translate(460, 320)">
+    <circle cx="35" cy="40" r="38" fill="#FFFFFF" opacity="0.18"/>
+    <path d="M35 18 L48 38 L40 38 L40 55 L30 55 L30 38 L22 38 Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Wheels -->
+  <circle cx="270" cy="460" r="28" fill="#1A1A1A"/>
+  <circle cx="270" cy="460" r="12" fill="#9CA3AF"/>
+  <circle cx="490" cy="460" r="28" fill="#1A1A1A"/>
+  <circle cx="490" cy="460" r="12" fill="#9CA3AF"/>
+  <circle cx="560" cy="460" r="28" fill="#1A1A1A"/>
+  <circle cx="560" cy="460" r="12" fill="#9CA3AF"/>
+
+  <!-- Green bin to side -->
+  <rect x="640" y="380" width="60" height="80" rx="6" fill="#1FA653"/>
+  <rect x="638" y="376" width="64" height="10" rx="3" fill="#0E7A3B"/>
+  <path d="M662 410 L678 410 L670 425 L662 425 L678 425 L670 440" stroke="#FFFFFF" stroke-width="2.5" fill="none"/>
+</svg>
