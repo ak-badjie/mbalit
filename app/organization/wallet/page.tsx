@@ -1,15 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Bell, Settings, FileText, Building2, Shield, HelpCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Bell, Settings, FileText, Building2, Shield, HelpCircle, Wallet as WalletIcon, Loader2 } from 'lucide-react';
 import { WalletBalanceCard } from '@/components/ui/wallet-balance-card';
-import { TransactionItem } from '@/components/ui/transaction-item';
-
-const TRANSACTIONS: Array<{ kind: 'credit' | 'debit' | 'refund'; title: string; subtitle: string; timestamp: string; amount: string; balance?: string }> = [
-    { kind: 'credit', title: 'Pickup Earnings (Team)', subtitle: 'May 22 batch', timestamp: 'May 22, 2024 · 06:00 PM', amount: 'D3,250.00', balance: 'D18,420.00' },
-    { kind: 'debit', title: 'Payroll Payout', subtitle: 'Aminata Sow + 3 others', timestamp: 'May 21, 2024 · 09:00 AM', amount: 'D5,400.00', balance: 'D15,170.00' },
-    { kind: 'credit', title: 'Pickup Earnings (Team)', subtitle: 'May 20 batch', timestamp: 'May 20, 2024 · 06:00 PM', amount: 'D2,840.00', balance: 'D20,570.00' },
-];
+import { TransactionItem, TransactionKind } from '@/components/ui/transaction-item';
+import { useAuth } from '@/lib/auth-context';
+import { getOrganizationByOwner, getWalletBalance, getWalletTransactions } from '@/lib/firestore';
 
 const QUICK_ACTIONS = [
     { icon: FileText, label: 'Transactions', href: '/organization/wallet/history' },
@@ -18,8 +14,55 @@ const QUICK_ACTIONS = [
     { icon: HelpCircle, label: 'Support', href: '/organization/wallet/help' },
 ];
 
+interface TxnDoc {
+    id: string;
+    type?: string;
+    direction?: 'credit' | 'debit';
+    title?: string;
+    description?: string;
+    amount?: number;
+    balanceAfter?: number;
+    bookingId?: string;
+    createdAt?: Date;
+    [key: string]: unknown;
+}
+
+const formatGmd = (n: number | undefined) =>
+    `D${(typeof n === 'number' ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const classify = (t: TxnDoc): TransactionKind =>
+    t.type === 'refund' ? 'refund' : t.direction === 'debit' ? 'debit' : 'credit';
+const timestamp = (d?: Date) =>
+    d ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
 export default function OrgWalletPage() {
+    const { user } = useAuth();
     const [visible, setVisible] = useState(true);
+    const [balance, setBalance] = useState(0);
+    const [transactions, setTransactions] = useState<TxnDoc[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const org = (await getOrganizationByOwner(user.id)) as { id: string; orgCode?: string } | null;
+                const walletId = org?.orgCode || user.id;
+                const [b, txns] = await Promise.all([
+                    getWalletBalance(walletId),
+                    getWalletTransactions(walletId, 5),
+                ]);
+                if (cancelled) return;
+                setBalance(b);
+                setTransactions(txns as TxnDoc[]);
+            } catch (err) {
+                console.error('Org wallet load failed:', err);
+            } finally {
+                if (!cancelled) setIsLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [user?.id]);
 
     return (
         <div className="min-h-full bg-white">
@@ -40,12 +83,12 @@ export default function OrgWalletPage() {
 
             <div className="px-5 mt-4">
                 <WalletBalanceCard
-                    balance="D18,420.00"
-                    balanceWords="GMD Eighteen Thousand Four Hundred Twenty"
-                    totalAdded="D24,300.00"
-                    totalSpent="D14,600.00"
-                    pendingWithdrawal="D2,500.00"
-                    pendingRequests={2}
+                    balance={formatGmd(balance)}
+                    balanceWords={`GMD ${balance.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+                    totalAdded={formatGmd(0)}
+                    totalSpent={formatGmd(0)}
+                    pendingWithdrawal={formatGmd(0)}
+                    pendingRequests={0}
                     visible={visible}
                     onToggleVisibility={() => setVisible((v) => !v)}
                 />
@@ -76,9 +119,34 @@ export default function OrgWalletPage() {
                         <h2 className="font-bold text-[#0F1A14] text-base">Recent Transactions</h2>
                         <button className="text-sm font-semibold text-[#0E7A3B] hover:underline">View All</button>
                     </div>
-                    {TRANSACTIONS.map((t, i) => (
-                        <TransactionItem key={i} kind={t.kind} title={t.title} subtitle={t.subtitle} timestamp={t.timestamp} amount={t.amount} balanceAfter={t.balance} />
-                    ))}
+
+                    {isLoading ? (
+                        <div className="py-10 flex items-center justify-center">
+                            <Loader2 className="w-6 h-6 animate-spin text-[#0E7A3B]" />
+                        </div>
+                    ) : transactions.length === 0 ? (
+                        <div className="py-10 flex flex-col items-center text-center">
+                            <div className="w-14 h-14 rounded-full bg-[#E8F6EE] flex items-center justify-center text-[#0E7A3B] mb-3">
+                                <WalletIcon className="w-6 h-6" />
+                            </div>
+                            <p className="font-bold text-[#0F1A14] text-sm">No transactions yet</p>
+                            <p className="text-xs text-gray-500 mt-1 max-w-[18rem]">
+                                Team payouts and earnings will appear here once activity starts.
+                            </p>
+                        </div>
+                    ) : (
+                        transactions.map((t) => (
+                            <TransactionItem
+                                key={t.id}
+                                kind={classify(t)}
+                                title={t.title || (t.direction === 'debit' ? 'Payout' : 'Earnings')}
+                                subtitle={t.description || (t.bookingId ? `Booking #${t.bookingId}` : '')}
+                                timestamp={timestamp(t.createdAt)}
+                                amount={formatGmd(t.amount)}
+                                balanceAfter={typeof t.balanceAfter === 'number' ? formatGmd(t.balanceAfter) : undefined}
+                            />
+                        ))
+                    )}
                 </div>
             </div>
         </div>

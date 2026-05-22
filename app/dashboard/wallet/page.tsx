@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Bell,
@@ -10,59 +10,13 @@ import {
     Shield,
     HelpCircle,
     ChevronRight,
+    Wallet as WalletIcon,
+    Loader2,
 } from 'lucide-react';
 import { WalletBalanceCard } from '@/components/ui/wallet-balance-card';
-import { TransactionItem } from '@/components/ui/transaction-item';
-
-const TRANSACTIONS: Array<{
-    kind: 'credit' | 'debit' | 'refund';
-    title: string;
-    subtitle: string;
-    timestamp: string;
-    amount: string;
-    balance?: string;
-}> = [
-    {
-        kind: 'credit',
-        title: 'Money Added',
-        subtitle: 'From: Access Bank •••• 1234',
-        timestamp: 'May 22, 2024 · 10:30 AM',
-        amount: 'D2,000.00',
-        balance: 'D4,560.00',
-    },
-    {
-        kind: 'debit',
-        title: 'Payment to GreenCity',
-        subtitle: 'Booking #BKD-2024-00124',
-        timestamp: 'May 22, 2024 · 11:15 AM',
-        amount: 'D150.00',
-        balance: 'D2,560.00',
-    },
-    {
-        kind: 'credit',
-        title: 'Money Added',
-        subtitle: 'From: Cash Deposit',
-        timestamp: 'May 20, 2024 · 09:45 AM',
-        amount: 'D1,500.00',
-        balance: 'D2,710.00',
-    },
-    {
-        kind: 'debit',
-        title: 'Payment to GreenCity',
-        subtitle: 'Booking #BKD-2024-00120',
-        timestamp: 'May 20, 2024 · 02:20 PM',
-        amount: 'D120.00',
-        balance: 'D1,210.00',
-    },
-    {
-        kind: 'refund',
-        title: 'Refund Received',
-        subtitle: 'Booking #BKD-2024-00110',
-        timestamp: 'May 18, 2024 · 04:10 PM',
-        amount: 'D100.00',
-        balance: 'D1,330.00',
-    },
-];
+import { TransactionItem, TransactionKind } from '@/components/ui/transaction-item';
+import { useAuth } from '@/lib/auth-context';
+import { getWalletBalance, getWalletTransactions } from '@/lib/firestore';
 
 const QUICK_ACTIONS = [
     { icon: FileText, label: 'Transaction History', href: '/dashboard/wallet/history' },
@@ -71,9 +25,75 @@ const QUICK_ACTIONS = [
     { icon: HelpCircle, label: 'Help & Support', href: '/dashboard/wallet/help' },
 ];
 
+interface TxnDoc {
+    id: string;
+    type?: string;
+    direction?: 'credit' | 'debit';
+    title?: string;
+    description?: string;
+    amount?: number;
+    balanceAfter?: number;
+    bookingId?: string;
+    source?: string;
+    createdAt?: Date;
+    [key: string]: unknown;
+}
+
+function formatGmd(amount: number | undefined): string {
+    const value = typeof amount === 'number' ? amount : 0;
+    return `D${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function inWords(amount: number): string {
+    // Cheap "currency in words" helper — good enough for the readout under the balance.
+    if (!amount) return 'GMD Zero';
+    return `GMD ${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+}
+
+function classify(t: TxnDoc): TransactionKind {
+    if (t.type === 'refund') return 'refund';
+    return t.direction === 'debit' ? 'debit' : 'credit';
+}
+
+function timestamp(d?: Date): string {
+    if (!d) return '';
+    return d.toLocaleString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
 export default function WalletPage() {
     const router = useRouter();
+    const { user } = useAuth();
     const [visible, setVisible] = useState(true);
+    const [balance, setBalance] = useState<number>(0);
+    const [transactions, setTransactions] = useState<TxnDoc[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const [b, txns] = await Promise.all([
+                    getWalletBalance(user.id),
+                    getWalletTransactions(user.id, 5),
+                ]);
+                if (cancelled) return;
+                setBalance(b);
+                setTransactions(txns as TxnDoc[]);
+            } catch (err) {
+                console.error('Wallet load failed:', err);
+            } finally {
+                if (!cancelled) setIsLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [user?.id]);
 
     return (
         <div className="min-h-full bg-white">
@@ -84,13 +104,16 @@ export default function WalletPage() {
                     <p className="text-sm text-gray-500 mt-1">Manage your balance and transactions</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="relative w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50">
+                    <button
+                        onClick={() => router.push('/dashboard/notifications')}
+                        className="relative w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50"
+                    >
                         <Bell className="w-5 h-5 text-gray-700" />
-                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                            3
-                        </span>
                     </button>
-                    <button className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50">
+                    <button
+                        onClick={() => router.push('/dashboard/settings')}
+                        className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50"
+                    >
                         <Settings className="w-5 h-5 text-gray-700" />
                     </button>
                 </div>
@@ -99,12 +122,12 @@ export default function WalletPage() {
             {/* Balance card */}
             <div className="px-5 mt-4">
                 <WalletBalanceCard
-                    balance="D4,560.00"
-                    balanceWords="GMD Four Thousand Five Hundred Sixty"
-                    totalAdded="D12,800.00"
-                    totalSpent="D8,240.00"
-                    pendingWithdrawal="D1,200.00"
-                    pendingRequests={1}
+                    balance={formatGmd(balance)}
+                    balanceWords={inWords(balance)}
+                    totalAdded={formatGmd(0)}
+                    totalSpent={formatGmd(0)}
+                    pendingWithdrawal={formatGmd(0)}
+                    pendingRequests={0}
                     visible={visible}
                     onToggleVisibility={() => setVisible((v) => !v)}
                     onAddMoney={() => router.push('/dashboard/wallet/add')}
@@ -147,23 +170,31 @@ export default function WalletPage() {
                             View All
                         </button>
                     </div>
-                    <div>
-                        {TRANSACTIONS.map((t, i) => (
-                            <TransactionItem
-                                key={i}
-                                kind={t.kind}
-                                title={t.title}
-                                subtitle={t.subtitle}
-                                timestamp={t.timestamp}
-                                amount={t.amount}
-                                balanceAfter={t.balance}
-                            />
-                        ))}
-                    </div>
+
+                    {isLoading ? (
+                        <div className="py-10 flex items-center justify-center">
+                            <Loader2 className="w-6 h-6 animate-spin text-[#0E7A3B]" />
+                        </div>
+                    ) : transactions.length === 0 ? (
+                        <EmptyTransactions />
+                    ) : (
+                        <div>
+                            {transactions.map((t) => (
+                                <TransactionItem
+                                    key={t.id}
+                                    kind={classify(t)}
+                                    title={t.title || (t.direction === 'debit' ? 'Payment' : 'Money Added')}
+                                    subtitle={t.description || t.source || (t.bookingId ? `Booking #${t.bookingId}` : '')}
+                                    timestamp={timestamp(t.createdAt)}
+                                    amount={formatGmd(t.amount)}
+                                    balanceAfter={typeof t.balanceAfter === 'number' ? formatGmd(t.balanceAfter) : undefined}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Add money promo */}
             <div className="px-5 mt-4 mb-6">
                 <div className="relative overflow-hidden bg-[#F1FAF4] border border-[#D2F4E1] rounded-2xl p-4 flex items-center gap-3">
                     <div className="flex-1">
@@ -186,6 +217,20 @@ export default function WalletPage() {
                     />
                 </div>
             </div>
+        </div>
+    );
+}
+
+function EmptyTransactions() {
+    return (
+        <div className="py-10 flex flex-col items-center text-center">
+            <div className="w-14 h-14 rounded-full bg-[#E8F6EE] flex items-center justify-center text-[#0E7A3B] mb-3">
+                <WalletIcon className="w-6 h-6" />
+            </div>
+            <p className="font-bold text-[#0F1A14] text-sm">No transactions yet</p>
+            <p className="text-xs text-gray-500 mt-1 max-w-[18rem]">
+                Add money to your wallet or book a pickup to see your activity here.
+            </p>
         </div>
     );
 }
