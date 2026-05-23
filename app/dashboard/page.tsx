@@ -21,6 +21,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { ProfileLocationMap } from '@/components/maps/profile-location-map';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { geocodePlusCode } from '@/lib/maps';
 import { initializePayment, PaymentIntentResult } from '@/lib/payment';
 import { createJob } from '@/lib/realtime';
@@ -92,14 +93,29 @@ function DashboardContent() {
         if (!plusCode.trim()) return;
         setIsGeocodingPlusCode(true);
         setPlusCodeError(null);
-        const result = await geocodePlusCode(plusCode);
-        if (result) {
-            setLocation(result);
-            setPlusCodeError(null);
-        } else {
-            setPlusCodeError('Could not find this Plus Code');
+        try {
+            const result = await geocodePlusCode(plusCode);
+            if (result) {
+                setLocation(result);
+                setPlusCodeError(null);
+            } else {
+                setPlusCodeError('Could not find this Plus Code');
+            }
+        } catch (err) {
+            // Google Maps can throw when billing isn't enabled, the key is
+            // invalid, or the user is offline. We catch here so the booking
+            // flow stays usable (Find My Location still works) and so an
+            // uncaught rejection doesn't crash the tab on iOS Safari.
+            console.error('Plus Code lookup failed:', err);
+            const msg = err instanceof Error ? err.message : '';
+            if (/billing|denied|notactivated/i.test(msg)) {
+                setPlusCodeError('Map lookup is temporarily unavailable. Please try “Find My Location” instead.');
+            } else {
+                setPlusCodeError('Could not look up that Plus Code right now.');
+            }
+        } finally {
+            setIsGeocodingPlusCode(false);
         }
-        setIsGeocodingPlusCode(false);
     }, [plusCode]);
 
     const handleFindLocation = useCallback(() => {
@@ -175,7 +191,14 @@ function DashboardContent() {
         } catch (error) {
             console.error('Job creation failed:', error);
             setIsSubmitting(false);
-            alert('Booking failed. Please try again.');
+            const msg = error instanceof Error ? error.message : '';
+            if (/billing|denied|notactivated/i.test(msg)) {
+                alert('Booking is temporarily unavailable while we sort out a service issue. Please try again in a moment.');
+            } else if (/network|failed to fetch/i.test(msg)) {
+                alert('Network problem — check your connection and try again.');
+            } else {
+                alert('Booking failed. Please try again.');
+            }
         }
     };
 
@@ -594,14 +617,39 @@ function DashboardContent() {
                             )}
                         </div>
 
-                        {/* Map */}
+                        {/* Map — wrapped in an error boundary so a Google
+                            Maps load failure (e.g. billing disabled, invalid
+                            key, offline) can't crash the entire booking
+                            flow. This was previously hard-crashing the tab
+                            on iOS Safari. */}
                         <div className="rounded-2xl overflow-hidden border border-gray-100">
-                            <ProfileLocationMap
-                                location={location || undefined}
-                                onLocationChange={(loc) => setLocation(loc)}
-                                enableLiveTracking={!plusCode.trim()}
-                                height="200px"
-                            />
+                            <ErrorBoundary
+                                fallback={(reset) => (
+                                    <div className="bg-amber-50 border border-amber-100 px-4 py-5 text-center">
+                                        <div className="flex items-center justify-center gap-2 text-amber-700 font-semibold text-sm">
+                                            <MapPin className="w-4 h-4" />
+                                            Map temporarily unavailable
+                                        </div>
+                                        <p className="text-xs text-amber-700/80 mt-1">
+                                            You can still book — use the Plus Code field above or tap “Find My Location.”
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={reset}
+                                            className="mt-3 text-xs font-bold text-[#0E7A3B] hover:underline"
+                                        >
+                                            Retry loading map
+                                        </button>
+                                    </div>
+                                )}
+                            >
+                                <ProfileLocationMap
+                                    location={location || undefined}
+                                    onLocationChange={(loc) => setLocation(loc)}
+                                    enableLiveTracking={!plusCode.trim()}
+                                    height="200px"
+                                />
+                            </ErrorBoundary>
                         </div>
 
                         {/* Location confirmed */}
@@ -690,12 +738,14 @@ function DashboardContent() {
 
 export default function DashboardPage() {
     return (
-        <Suspense fallback={
-            <div className="flex items-center justify-center h-[100dvh] overflow-hidden">
-                <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
-            </div>
-        }>
-            <DashboardContent />
-        </Suspense>
+        <ErrorBoundary>
+            <Suspense fallback={
+                <div className="flex items-center justify-center h-[100dvh] overflow-hidden">
+                    <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+                </div>
+            }>
+                <DashboardContent />
+            </Suspense>
+        </ErrorBoundary>
     );
 }

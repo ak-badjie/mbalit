@@ -63,13 +63,22 @@ interface AuthContextType {
 }
 
 const UNLOCKED_SESSION_KEY = 'mbalit_unlocked';
+// Same-tab `sessionStorage` writes don't fire a 'storage' event, so PinLock
+// can't observe them unless we emit a custom event manually. Listeners on
+// 'mbalit-unlock-changed' resync from sessionStorage when this fires.
+const emitUnlockChange = () => {
+    if (typeof window === 'undefined') return;
+    try { window.dispatchEvent(new Event('mbalit-unlock-changed')); } catch { /* noop */ }
+};
 const markUnlocked = () => {
     if (typeof window === 'undefined') return;
     try { window.sessionStorage.setItem(UNLOCKED_SESSION_KEY, '1'); } catch { /* noop */ }
+    emitUnlockChange();
 };
 const clearUnlocked = () => {
     if (typeof window === 'undefined') return;
     try { window.sessionStorage.removeItem(UNLOCKED_SESSION_KEY); } catch { /* noop */ }
+    emitUnlockChange();
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);

@@ -30,12 +30,29 @@ export function PinLock({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         setMounted(true);
         if (typeof window === 'undefined') return;
-        try {
-            setUnlocked(window.sessionStorage.getItem(UNLOCKED_SESSION_KEY) === '1');
-        } catch {
-            /* sessionStorage unavailable — fail open so the user isn't stuck. */
-            setUnlocked(true);
-        }
+
+        const sync = () => {
+            try {
+                setUnlocked(window.sessionStorage.getItem(UNLOCKED_SESSION_KEY) === '1');
+            } catch {
+                /* sessionStorage unavailable — fail open so the user isn't stuck. */
+                setUnlocked(true);
+            }
+        };
+        sync();
+
+        // Listen for unlock changes from auth-context (login / createAccount /
+        // logout). Same-tab sessionStorage writes don't fire the native
+        // 'storage' event, so the AuthProvider emits a custom event we listen
+        // for. Without this, the user would see the PIN lock screen
+        // immediately after they just entered their PIN on the login page.
+        window.addEventListener('mbalit-unlock-changed', sync);
+        // Storage event is still useful for cross-tab sync (rare, but cheap).
+        window.addEventListener('storage', sync);
+        return () => {
+            window.removeEventListener('mbalit-unlock-changed', sync);
+            window.removeEventListener('storage', sync);
+        };
     }, []);
 
     // Hydration guard so we don't flash the lock screen for an already-unlocked user.
