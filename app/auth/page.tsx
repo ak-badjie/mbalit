@@ -29,6 +29,8 @@ import { WasteType, CollectorType } from '@/types';
 import { compressImage } from '@/lib/image-utils';
 import { RoleCard } from '@/components/ui/role-card';
 import { MbButton } from '@/components/ui/mb-button';
+import { enrollBiometric, isBiometricSupported } from '@/lib/biometric';
+import { Fingerprint, ScanFace } from 'lucide-react';
 
 // Vehicle sizes (Lucide icons, no emojis)
 const VEHICLE_TYPES = [
@@ -63,6 +65,59 @@ export default function AuthPageWrapper() {
 type RegistrationType = 'waste_owner' | 'collector' | 'organization' | 'government' | null;
 
 type SignupSubRole = 'resident' | 'business_waste' | 'collection_business' | 'driver' | 'government';
+
+/**
+ * Opt-in checkbox shown beneath the PIN boxes on both the login and signup
+ * PIN screens. When checked, the calling screen enrols a WebAuthn platform
+ * credential right after the PIN is verified / created — so the OS prompt
+ * fires in the same user-gesture chain as the final digit press.
+ */
+function BiometricOptIn({
+    checked,
+    onChange,
+    isIos,
+    hint,
+    className,
+}: {
+    checked: boolean;
+    onChange: (v: boolean) => void;
+    isIos: boolean;
+    hint?: string;
+    className?: string;
+}) {
+    const label = isIos ? 'Enable Face ID' : 'Enable fingerprint unlock';
+    const Icon = isIos ? ScanFace : Fingerprint;
+    return (
+        <label
+            className={`mt-4 flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-colors ${
+                checked ? 'border-[#0E7A3B] bg-[#F1FAF4]' : 'border-gray-200 bg-white hover:border-[#A8E7C3]'
+            } ${className || ''}`}
+        >
+            <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => onChange(e.target.checked)}
+                className="sr-only"
+            />
+            <div
+                className={`mt-0.5 w-5 h-5 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                    checked ? 'border-[#0E7A3B] bg-[#0E7A3B]' : 'border-gray-300 bg-white'
+                }`}
+            >
+                {checked && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                    <Icon className="w-4 h-4 text-[#0E7A3B]" />
+                    <span className="font-bold text-sm text-[#0F1A14]">{label}</span>
+                </div>
+                <p className="text-xs text-gray-600 mt-0.5">
+                    {hint || 'Skip the PIN next time and unlock with biometrics instead.'}
+                </p>
+            </div>
+        </label>
+    );
+}
 
 // Step 0a: high-level track picker
 function TrackPicker({
@@ -270,6 +325,39 @@ function AuthPage() {
     const [isCheckingPhone, setIsCheckingPhone] = useState(false);
     const [noAccountFound, setNoAccountFound] = useState(false);
 
+    // Opt-in flag set by the checkbox on the PIN screens. When true, we call
+    // enrollBiometric() immediately after the underlying account auth resolves
+    // (login or createAccount) so the OS prompt happens in the same user-gesture
+    // chain as the final PIN digit press — required for WebAuthn.
+    const [enableBiometric, setEnableBiometric] = useState(false);
+    const [biometricSupported, setBiometricSupported] = useState(false);
+    const isIos = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    useEffect(() => {
+        let cancelled = false;
+        isBiometricSupported().then((ok) => {
+            if (!cancelled) setBiometricSupported(ok);
+        });
+        return () => { cancelled = true; };
+    }, []);
+
+    /**
+     * Best-effort biometric enrollment helper. Called from handleLogin and
+     * submitCreateAccount after their respective auth steps succeed. Failure
+     * here is not fatal — we just leave biometric off and the user can
+     * enable it later from Settings.
+     */
+    const tryEnrollBiometric = async (uid: string | undefined, displayName: string) => {
+        if (!uid) return;
+        if (!enableBiometric) return;
+        if (!biometricSupported) return;
+        try {
+            await enrollBiometric({ uid, userName: displayName || uid });
+        } catch (err) {
+            console.warn('Biometric enrollment skipped:', err);
+        }
+    };
+
     // Reset all transient PIN/error state — used when switching mode or recovering.
     const resetTransientAuthState = () => {
         setPin('');
@@ -369,13 +457,18 @@ function AuthPage() {
             const pinToUse = pinOverride || loginPin;
             if (pinToUse.length !== 6) return;
             
-            await login(fullPhone, pinToUse);
+            const loggedInUid = await login(fullPhone, pinToUse);
             // Check user role and collector type for redirect
             const usersRef = collection(db, 'users');
             const loginQuery = query(usersRef, where('phone', '==', fullPhone));
             const loginSnap = await getDocs(loginQuery);
-            if (!loginSnap.empty) {
-                const userData = loginSnap.docs[0].data();
+            const userData = loginSnap.empty ? null : loginSnap.docs[0].data();
+            // Enrol biometric BEFORE the route change so the OS prompt fires
+            // inside the same user-gesture chain as the final PIN digit press
+            // (WebAuthn requires that).
+            await tryEnrollBiometric(loggedInUid, userData?.name || fullPhone);
+
+            if (userData) {
                 if (userData.role === 'collector' && userData.collectorType === 'organization') {
                     router.replace('/organization/dashboard');
                 } else if (userData.role === 'collector') {
@@ -416,6 +509,10 @@ function AuthPage() {
         try {
             const newUid = await createAccount(fullPhone, pin);
             setCreatedUid(newUid);
+            // Enrol biometric right after the account is created (same gesture
+            // chain). If the user declined the checkbox or the device doesn't
+            // support it, this is a no-op.
+            await tryEnrollBiometric(newUid, fullPhone);
             setTimeout(() => setStep(3), 300);
         } catch (err: unknown) {
             const code = (err as { code?: string; message?: string })?.code || '';
@@ -760,6 +857,15 @@ function AuthPage() {
                                 Never share your PIN with anyone — not even MBalit support.
                             </p>
                         </div>
+
+                        {biometricSupported && (
+                            <BiometricOptIn
+                                checked={enableBiometric}
+                                onChange={setEnableBiometric}
+                                isIos={isIos}
+                                hint="Sign in faster next time without re-entering your PIN."
+                            />
+                        )}
 
                         <div className="mt-6">
                             <DialPad
@@ -1398,6 +1504,16 @@ function AuthPage() {
                                 </div>
                             ) : (
                                 <div className="w-full flex flex-col">
+                                    {biometricSupported && pinStep === 'confirm' && (
+                                        <BiometricOptIn
+                                            checked={enableBiometric}
+                                            onChange={setEnableBiometric}
+                                            isIos={isIos}
+                                            hint="We'll set this up right after your PIN is created."
+                                            className="mb-3"
+                                        />
+                                    )}
+
                                     <DialPad
                                         value={pinStep === 'create' ? pin : confirmPin}
                                         onChange={(val) => {
