@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { InstallGate } from "@/components/install/install-gate";
+import { PinLock } from "@/components/install/pin-lock";
 import { ServiceWorkerRegister } from "@/components/install/sw-register";
 
 const geistSans = Geist({
@@ -79,7 +80,9 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <InstallGate>
-              {children}
+              <PinLock>
+                {children}
+              </PinLock>
             </InstallGate>
           </AuthProvider>
         </ThemeProvider>

@@ -8,6 +8,7 @@ import {
     Loader2,
     Camera,
     Check,
+    Trash2,
     Truck,
     Building2,
     User as UserIcon,
@@ -60,6 +61,123 @@ export default function AuthPageWrapper() {
 }
 
 type RegistrationType = 'waste_owner' | 'collector' | 'organization' | 'government' | null;
+
+type SignupSubRole = 'resident' | 'business_waste' | 'collection_business' | 'driver' | 'government';
+
+// Step 0a: high-level track picker
+function TrackPicker({
+    onPickHave,
+    onPickCollect,
+}: {
+    onPickHave: () => void;
+    onPickCollect: () => void;
+}) {
+    return (
+        <>
+            <h1 className="text-[24px] font-extrabold text-[#0F1A14] leading-tight mb-1">
+                What brings you to MBalit?
+            </h1>
+            <p className="text-sm text-gray-500 mb-4 leading-snug">
+                Pick the option that best describes you — you can change this later.
+            </p>
+            <div className="space-y-3">
+                <RoleCard
+                    icon={<Trash2 className="w-6 h-6" strokeWidth={2} />}
+                    title="I want my waste collected"
+                    description="Residents, businesses, or anyone who needs their waste picked up."
+                    badge="Most Popular"
+                    onClick={onPickHave}
+                />
+                <RoleCard
+                    icon={<Truck className="w-6 h-6" strokeWidth={2} />}
+                    title="I collect waste"
+                    description="Waste-collection businesses, drivers, or municipalities."
+                    onClick={onPickCollect}
+                />
+            </div>
+        </>
+    );
+}
+
+// Step 0b1: sub-picker when the user wants waste collected
+function HaveWasteSubPicker({
+    picked,
+    onPick,
+}: {
+    picked: SignupSubRole | null;
+    onPick: (r: SignupSubRole) => void;
+}) {
+    return (
+        <>
+            <h1 className="text-[24px] font-extrabold text-[#0F1A14] leading-tight mb-1">
+                Tell us a bit more
+            </h1>
+            <p className="text-sm text-gray-500 mb-4 leading-snug">
+                Are you signing up as an individual or a business?
+            </p>
+            <div className="space-y-3">
+                <RoleCard
+                    icon={<UserIcon className="w-6 h-6" strokeWidth={2} />}
+                    title="Resident"
+                    description="Schedule pickups for your home and stay updated on waste collection."
+                    badge="Most Popular"
+                    selected={picked === 'resident'}
+                    onClick={() => onPick('resident')}
+                />
+                <RoleCard
+                    icon={<Building2 className="w-6 h-6" strokeWidth={2} />}
+                    title="Business / Organization"
+                    description="A company, school or office that needs regular waste pickups."
+                    selected={picked === 'business_waste'}
+                    onClick={() => onPick('business_waste')}
+                />
+            </div>
+        </>
+    );
+}
+
+// Step 0b2: sub-picker when the user collects waste
+function CollectWasteSubPicker({
+    picked,
+    onPick,
+}: {
+    picked: SignupSubRole | null;
+    onPick: (r: SignupSubRole) => void;
+}) {
+    return (
+        <>
+            <h1 className="text-[24px] font-extrabold text-[#0F1A14] leading-tight mb-1">
+                How do you collect?
+            </h1>
+            <p className="text-sm text-gray-500 mb-4 leading-snug">
+                Pick the option that matches your role.
+            </p>
+            <div className="space-y-3">
+                <RoleCard
+                    icon={<Building2 className="w-6 h-6" strokeWidth={2} />}
+                    title="Waste-collection business"
+                    description="Run your own collection company with drivers under you."
+                    selected={picked === 'collection_business'}
+                    onClick={() => onPick('collection_business')}
+                />
+                <RoleCard
+                    icon={<Truck className="w-6 h-6" strokeWidth={2} />}
+                    title="Driver under an organization"
+                    description="You'll need the organization code from your employer."
+                    selected={picked === 'driver'}
+                    onClick={() => onPick('driver')}
+                />
+                <RoleCard
+                    icon={<Shield className="w-6 h-6" strokeWidth={2} />}
+                    title="Government / Municipality"
+                    description="Track reports, oversee operations, and make data-driven decisions."
+                    selected={picked === 'government'}
+                    onClick={() => onPick('government')}
+                />
+            </div>
+        </>
+    );
+}
 
 function AuthPage() {
     const router = useRouter();
@@ -126,6 +244,14 @@ function AuthPage() {
     const [orgName, setOrgName] = useState('');
     const [joinOrgCode, setJoinOrgCode] = useState('');
     const [isJoiningOrg, setIsJoiningOrg] = useState(false);
+    // Two-step picker on step 0: first the user picks the high-level track
+    // ("having waste collected" vs "collecting waste"); then a sub-role
+    // within that track. We translate the sub-role to the existing
+    // RegistrationType when the user taps Continue.
+    type SignupTrack = 'have' | 'collect' | null;
+    type SubRole = 'resident' | 'business_waste' | 'collection_business' | 'driver' | 'government' | null;
+    const [signupTrack, setSignupTrack] = useState<SignupTrack>(null);
+    const [pickedSubRole, setPickedSubRole] = useState<SubRole>(null);
     const [showOrgDetails, setShowOrgDetails] = useState(false);
     // Public-authority flag (KMC, BCC, etc.) — only meaningful when registering
     // a new organization. Drives access to the community Reports inbox.
@@ -899,15 +1025,45 @@ function AuthPage() {
     }
 
     // ==========================================
-    // SIGNUP: STEP 0 - Choose Your Role (Mockup 2)
+    // SIGNUP: STEP 0 — Two-step picker
+    //   0a: high-level track (have waste vs collect waste)
+    //   0b: sub-role within that track
     // ==========================================
     if (mode === 'signup' && step === 0) {
+        const onBack = () => {
+            if (signupTrack) {
+                // Second screen — go back to the track picker
+                setSignupTrack(null);
+                setPickedSubRole(null);
+            } else {
+                router.push('/');
+            }
+        };
+
+        const advance = () => {
+            if (!pickedSubRole) return;
+            if (pickedSubRole === 'resident' || pickedSubRole === 'business_waste') {
+                handleRoleSelect('waste_owner');
+            } else if (pickedSubRole === 'collection_business') {
+                setIsJoiningOrg(false);
+                handleRoleSelect('organization');
+            } else if (pickedSubRole === 'driver') {
+                // Driver under an existing org — show the org-code entry first.
+                setIsJoiningOrg(true);
+                setRegistrationType('collector');
+                setShowOrgDetails(true);
+                setStep(1);
+            } else if (pickedSubRole === 'government') {
+                setIsAuthority(true);
+                handleRoleSelect('organization');
+            }
+        };
+
         return (
             <div className="min-h-[100dvh] bg-white flex flex-col">
-                {/* Top bar */}
                 <div className="flex items-center px-5 pt-12 pb-2">
                     <button
-                        onClick={() => router.push('/')}
+                        onClick={onBack}
                         className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-gray-50 text-[#0E7A3B]"
                         aria-label="Go back"
                     >
@@ -916,93 +1072,71 @@ function AuthPage() {
                 </div>
 
                 <div className="flex-1 pb-6">
-                    {/* Full-width banner — already contains logo, heading and subtitle */}
                     <img
                         src="/illustrations/role-hero.jpg"
-                        alt="Choose Your Role — MBalit"
+                        alt="MBalit — Sign Up"
                         className="block w-full h-auto mb-5"
                     />
 
                     <div className="px-5">
-                    {/* Role cards */}
-                    <div className="space-y-3">
-                        <RoleCard
-                            icon={<UserIcon className="w-6 h-6" strokeWidth={2} />}
-                            title="Resident"
-                            description="Report issues, schedule pickups, and stay updated on waste collection."
-                            badge="Most Popular"
-                            selected={registrationType === 'waste_owner'}
-                            onClick={() => { setIsJoiningOrg(false); setRegistrationType('waste_owner'); }}
-                        />
-                        <RoleCard
-                            icon={<Truck className="w-6 h-6" strokeWidth={2} />}
-                            title="Waste Collector"
-                            description="Manage assigned routes, update collection status, and optimize your daily tasks."
-                            selected={registrationType === 'collector'}
-                            onClick={() => { setIsJoiningOrg(false); setRegistrationType('collector'); }}
-                        />
-                        <RoleCard
-                            icon={<Building2 className="w-6 h-6" strokeWidth={2} />}
-                            title="Organization / Business"
-                            description="Manage teams, monitor performance, and keep your environment clean."
-                            selected={registrationType === 'organization'}
-                            onClick={() => setRegistrationType('organization')}
-                        />
-                        <RoleCard
-                            icon={<Shield className="w-6 h-6" strokeWidth={2} />}
-                            title="Government Official"
-                            description="Oversee operations, track reports, and make data-driven decisions."
-                            selected={registrationType === 'government'}
-                            onClick={() => setRegistrationType('government')}
-                        />
-                    </div>
+                        {!signupTrack ? (
+                            <TrackPicker
+                                onPickHave={() => setSignupTrack('have')}
+                                onPickCollect={() => setSignupTrack('collect')}
+                            />
+                        ) : signupTrack === 'have' ? (
+                            <HaveWasteSubPicker
+                                picked={pickedSubRole}
+                                onPick={(r) => setPickedSubRole(r)}
+                            />
+                        ) : (
+                            <CollectWasteSubPicker
+                                picked={pickedSubRole}
+                                onPick={(r) => setPickedSubRole(r)}
+                            />
+                        )}
 
-                    {/* Reassurance pill */}
-                    <div className="mt-5 flex items-start gap-3 p-4 rounded-2xl bg-[#E8F6EE] border border-[#D2F4E1]">
-                        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-                            <Shield className="w-5 h-5 text-[#0E7A3B]" />
+                        {/* Reassurance pill */}
+                        <div className="mt-5 flex items-start gap-3 p-4 rounded-2xl bg-[#E8F6EE] border border-[#D2F4E1]">
+                            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                                <Shield className="w-5 h-5 text-[#0E7A3B]" />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-[#0F1A14] text-sm">Don&apos;t worry!</h4>
+                                <p className="text-xs text-gray-600 leading-snug">
+                                    You can switch roles later from settings.
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <h4 className="font-bold text-[#0F1A14] text-sm">Don&apos;t worry!</h4>
-                            <p className="text-xs text-gray-600 leading-snug">
-                                You can change your role anytime in the app settings.
-                            </p>
+
+                        {signupTrack && (
+                            <div className="mt-6">
+                                <MbButton
+                                    size="lg"
+                                    disabled={!pickedSubRole}
+                                    rightIcon={<ArrowRight className="w-5 h-5" />}
+                                    onClick={advance}
+                                >
+                                    Continue
+                                </MbButton>
+                            </div>
+                        )}
+
+                        <div className="mt-5 text-center">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    resetTransientAuthState();
+                                    setSignupTrack(null);
+                                    setPickedSubRole(null);
+                                    setMode('login');
+                                    setLoginStep(0);
+                                }}
+                                className="text-sm text-gray-500"
+                            >
+                                Already have an account? <span className="font-semibold text-[#0E7A3B]">Log In</span>
+                            </button>
                         </div>
-                    </div>
-
-                    {/* Continue */}
-                    <div className="mt-6">
-                        <MbButton
-                            size="lg"
-                            disabled={!registrationType}
-                            rightIcon={<ArrowRight className="w-5 h-5" />}
-                            onClick={() => {
-                                if (!registrationType) return;
-                                if (registrationType === 'government') {
-                                    handleRoleSelect('organization');
-                                } else {
-                                    handleRoleSelect(registrationType);
-                                }
-                            }}
-                        >
-                            Continue
-                        </MbButton>
-                    </div>
-
-                    {/* Switch to login */}
-                    <div className="mt-5 text-center">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                resetTransientAuthState();
-                                setMode('login');
-                                setLoginStep(0);
-                            }}
-                            className="text-sm text-gray-500"
-                        >
-                            Already have an account? <span className="font-semibold text-[#0E7A3B]">Log In</span>
-                        </button>
-                    </div>
                     </div>
                 </div>
             </div>

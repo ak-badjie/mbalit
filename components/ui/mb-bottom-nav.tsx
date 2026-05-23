@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Home, Calendar, BarChart3, Wallet, User } from 'lucide-react';
+import { Home, Calendar, BarChart3, Wallet, User, FileText, Settings } from 'lucide-react';
 
 export interface MbNavItem {
     icon: React.ElementType;
@@ -12,19 +12,40 @@ export interface MbNavItem {
     href: string;
 }
 
+/**
+ * Resident nav — these users PAY for pickups (they don't earn), so there's
+ * no wallet or earnings tab. Settings is surfaced directly in the bar.
+ */
 export const RESIDENT_NAV: MbNavItem[] = [
     { icon: Home, label: 'Home', href: '/dashboard' },
-    { icon: Calendar, label: 'Bookings', href: '/dashboard/orders' },
-    { icon: BarChart3, label: 'Earnings', href: '/dashboard/earnings' },
-    { icon: Wallet, label: 'Wallet', href: '/dashboard/wallet' },
+    { icon: Calendar, label: 'Pickups', href: '/dashboard/orders' },
+    { icon: FileText, label: 'Reports', href: '/dashboard/report/my' },
+    { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
     { icon: User, label: 'Profile', href: '/dashboard/profile' },
 ];
 
+/**
+ * Collector nav — independent collectors / org owners. Drivers under an org
+ * use COLLECTOR_DRIVER_NAV (no wallet).
+ */
 export const COLLECTOR_NAV: MbNavItem[] = [
     { icon: Home, label: 'Home', href: '/collector/dashboard' },
-    { icon: Calendar, label: 'Bookings', href: '/collector/bookings' },
+    { icon: Calendar, label: 'Pickups', href: '/collector/bookings' },
     { icon: BarChart3, label: 'Earnings', href: '/collector/earnings' },
     { icon: Wallet, label: 'Wallet', href: '/collector/wallet' },
+    { icon: User, label: 'Profile', href: '/collector/profile' },
+];
+
+/**
+ * Driver-under-org nav — earnings flow into the org's wallet, not the
+ * driver's. So no wallet tab, no withdrawal flow. The org owner pays them
+ * outside the platform.
+ */
+export const COLLECTOR_DRIVER_NAV: MbNavItem[] = [
+    { icon: Home, label: 'Home', href: '/collector/dashboard' },
+    { icon: Calendar, label: 'Pickups', href: '/collector/bookings' },
+    { icon: BarChart3, label: 'Earnings', href: '/collector/earnings' },
+    { icon: Settings, label: 'Settings', href: '/collector/settings' },
     { icon: User, label: 'Profile', href: '/collector/profile' },
 ];
 

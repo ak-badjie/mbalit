@@ -47,6 +47,12 @@ interface AuthContextType {
     createAccount: (phone: string, pin: string) => Promise<string>;
     completeProfile: (uid: string, phone: string, pin: string, roleData: any) => Promise<void>;
     login: (phone: string, pin: string) => Promise<string>;
+    /**
+     * Verify the current signed-in user's PIN — used by the lock screen on
+     * returning visits to the PWA. Does NOT mint a new session; just checks
+     * the hash against the user doc's pinHash.
+     */
+    verifyPin: (pin: string) => Promise<boolean>;
     checkPhoneExists: (phone: string) => Promise<boolean>;
     checkOrgCode: (orgCode: string) => Promise<boolean>;
     changePin: (oldPin: string, newPin: string) => Promise<void>;
@@ -55,6 +61,16 @@ interface AuthContextType {
     updateCollectorWasteTypes: (wasteTypes: WasteType[]) => Promise<void>;
     setCollectorAvailability: (available: boolean) => Promise<void>;
 }
+
+const UNLOCKED_SESSION_KEY = 'mbalit_unlocked';
+const markUnlocked = () => {
+    if (typeof window === 'undefined') return;
+    try { window.sessionStorage.setItem(UNLOCKED_SESSION_KEY, '1'); } catch { /* noop */ }
+};
+const clearUnlocked = () => {
+    if (typeof window === 'undefined') return;
+    try { window.sessionStorage.removeItem(UNLOCKED_SESSION_KEY); } catch { /* noop */ }
+};
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -173,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 updatedAt: serverTimestamp(),
             });
             writeStoredUid(newRef.id);
+            markUnlocked();
             setUid(newRef.id);
             return newRef.id;
         } catch (error) {
@@ -226,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 throw new Error('Phone number or PIN is incorrect.');
             }
             writeStoredUid(userDoc.id);
+            markUnlocked();
             setUid(userDoc.id);
             return userDoc.id;
         } catch (error) {
@@ -328,8 +346,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = async () => {
         writeStoredUid(null);
+        clearUnlocked();
         setUid(null);
         setUser(null);
+    };
+
+    /**
+     * Verify the signed-in user's PIN against their stored bcrypt hash.
+     * Marks the current session as unlocked on success. Used by the lock screen.
+     */
+    const verifyPin = async (pin: string): Promise<boolean> => {
+        if (!user) throw new Error('No user signed in.');
+        if (!/^\d{6}$/.test(pin)) return false;
+        const snap = await getDoc(doc(db, 'users', user.id));
+        if (!snap.exists()) return false;
+        const data = snap.data() as { pinHash?: string };
+        if (!data.pinHash) return false;
+        const ok = await bcrypt.compare(pin, data.pinHash);
+        if (ok) markUnlocked();
+        return ok;
     };
 
     const updateCollectorWasteTypes = async (wasteTypes: WasteType[]) => {
@@ -371,6 +406,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 createAccount,
                 completeProfile,
                 login,
+                verifyPin,
                 checkPhoneExists,
                 checkOrgCode,
                 changePin,
