@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Shield, LogOut } from 'lucide-react';
+import { Loader2, Shield, LogOut, Fingerprint, ScanFace } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { DialPad } from '@/components/ui/dial-pad';
+import { hasBiometricCredential, isBiometricSupported, verifyBiometric } from '@/lib/biometric';
 
 const UNLOCKED_SESSION_KEY = 'mbalit_unlocked';
 
@@ -63,11 +64,22 @@ export function PinLock({ children }: { children: React.ReactNode }) {
 
     return (
         <PinEntry
+            uid={user.id}
             phone={user.phone}
             displayName={user.name}
             onUnlock={async (pin) => {
                 const ok = await verifyPin(pin);
                 if (ok) setUnlocked(true);
+                return ok;
+            }}
+            onBiometricUnlock={async () => {
+                const ok = await verifyBiometric(user.id);
+                if (ok) {
+                    // Biometric is a presence check only — still set the
+                    // session unlock flag so the rest of the app knows.
+                    try { window.sessionStorage.setItem(UNLOCKED_SESSION_KEY, '1'); } catch { /* noop */ }
+                    setUnlocked(true);
+                }
                 return ok;
             }}
             onSignOut={async () => {
@@ -78,16 +90,56 @@ export function PinLock({ children }: { children: React.ReactNode }) {
 }
 
 interface PinEntryProps {
+    uid: string;
     phone: string;
     displayName?: string;
     onUnlock: (pin: string) => Promise<boolean>;
+    onBiometricUnlock: () => Promise<boolean>;
     onSignOut: () => Promise<void>;
 }
 
-function PinEntry({ phone, displayName, onUnlock, onSignOut }: PinEntryProps) {
+function PinEntry({ uid, phone, displayName, onUnlock, onBiometricUnlock, onSignOut }: PinEntryProps) {
     const [pin, setPin] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const [biometricAvailable, setBiometricAvailable] = useState(false);
+    const [biometricBusy, setBiometricBusy] = useState(false);
+    const isIos = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    // Check biometric on mount, then auto-prompt once if the user enrolled
+    // on this device. If they cancel, the regular PIN entry stays usable.
+    useEffect(() => {
+        let cancelled = false;
+        let promptedOnce = false;
+        (async () => {
+            if (!hasBiometricCredential(uid)) return;
+            const supported = await isBiometricSupported();
+            if (cancelled) return;
+            if (!supported) return;
+            setBiometricAvailable(true);
+
+            // Auto-trigger the OS prompt once on mount for a one-tap unlock,
+            // but guard so we don't keep replaying it if the user dismisses.
+            if (!promptedOnce) {
+                promptedOnce = true;
+                tryBiometric();
+            }
+        })();
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [uid]);
+
+    const tryBiometric = async () => {
+        if (biometricBusy) return;
+        setBiometricBusy(true);
+        setError(null);
+        try {
+            const ok = await onBiometricUnlock();
+            if (!ok) setError(null);
+        } finally {
+            setBiometricBusy(false);
+        }
+    };
 
     const greeting = (() => {
         const h = new Date().getHours();
@@ -118,7 +170,7 @@ function PinEntry({ phone, displayName, onUnlock, onSignOut }: PinEntryProps) {
     };
 
     return (
-        <div className="relative h-[100dvh] overflow-hidden">
+        <div className="relative h-screen-safe overflow-hidden">
             {/* Wallpaper background */}
             <div className="absolute inset-0 -z-0">
                 <img
@@ -150,6 +202,24 @@ function PinEntry({ phone, displayName, onUnlock, onSignOut }: PinEntryProps) {
                         <h1 className="text-2xl font-extrabold text-[#0F1A14] mt-1">Enter your PIN</h1>
                         <p className="text-xs text-gray-600 mt-1">Unlock MBalit for {phone}</p>
                     </div>
+
+                    {biometricAvailable && (
+                        <button
+                            type="button"
+                            onClick={tryBiometric}
+                            disabled={biometricBusy}
+                            className="mb-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[#D2F4E1] text-[#0E7A3B] font-bold text-sm shadow-[0_4px_14px_rgba(15,26,20,0.08)] hover:bg-[#F1FAF4] disabled:opacity-60"
+                        >
+                            {biometricBusy ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : isIos ? (
+                                <ScanFace className="w-4 h-4" />
+                            ) : (
+                                <Fingerprint className="w-4 h-4" />
+                            )}
+                            {isIos ? 'Unlock with Face ID' : 'Unlock with biometrics'}
+                        </button>
+                    )}
 
                     {/* PIN boxes */}
                     <div className="flex gap-2.5 justify-center mb-3">

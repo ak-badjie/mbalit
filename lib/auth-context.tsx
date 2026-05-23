@@ -35,9 +35,13 @@ import {
     onSnapshot,
     Timestamp,
     addDoc,
+    deleteDoc,
+    updateDoc,
+    writeBatch,
 } from 'firebase/firestore';
 import bcrypt from 'bcryptjs';
 import { db } from './firebase';
+import { removeBiometric } from './biometric';
 import { User, WasteType, Collector } from '@/types';
 
 interface AuthContextType {
@@ -57,6 +61,12 @@ interface AuthContextType {
     checkOrgCode: (orgCode: string) => Promise<boolean>;
     changePin: (oldPin: string, newPin: string) => Promise<void>;
     requestPinReset: (phone: string) => Promise<{ referenceCode: string }>;
+    /**
+     * Destructive — wipes the user's Firestore footprint and signs them out.
+     * Requires the current PIN as confirmation. See implementation comment
+     * for what gets deleted vs deactivated.
+     */
+    deleteAccount: (pin: string) => Promise<void>;
     logout: () => Promise<void>;
     updateCollectorWasteTypes: (wasteTypes: WasteType[]) => Promise<void>;
     setCollectorAvailability: (available: boolean) => Promise<void>;
@@ -353,6 +363,100 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { referenceCode };
     };
 
+    /**
+     * Wipe the user's entire footprint and sign them out.
+     *
+     * Deletes outright:
+     *   - users/{uid}
+     *   - collectorProfiles/{uid}
+     *   - wallets/{uid}
+     *   - collectorStats/{uid}
+     *   - collectorSettings/{uid}
+     *   - any walletTransactions / notifications keyed to this user
+     *     (best-effort; we batch the first 100 of each)
+     *
+     * Deactivates rather than deletes:
+     *   - organizations/{orgCode} where the user is the owner — flipping
+     *     isActive:false so existing members + finished jobs stay coherent.
+     *
+     * Anything not in those collections (completed jobs in RTDB, payment
+     * records, reviews left for other collectors) is intentionally kept so
+     * historical data stays consistent for the other party. Server-side
+     * cleanup of those should run as a background job.
+     *
+     * Requires the user to re-enter their PIN as a confirmation step.
+     */
+    const deleteAccount = async (pin: string): Promise<void> => {
+        if (!user) throw new Error('No user signed in.');
+        const ok = await verifyPin(pin);
+        if (!ok) throw new Error('PIN is incorrect — account NOT deleted.');
+
+        const uid = user.id;
+
+        // 1. Deactivate any org owned by this user (don't hard-delete: members
+        //    still reference it).
+        try {
+            const ownedOrgsSnap = await getDocs(
+                query(collection(db, 'organizations'), where('ownerId', '==', uid))
+            );
+            for (const orgDoc of ownedOrgsSnap.docs) {
+                try {
+                    await updateDoc(orgDoc.ref, {
+                        isActive: false,
+                        deletedOwnerId: uid,
+                        deletedAt: serverTimestamp(),
+                    });
+                } catch (err) {
+                    console.warn('Could not deactivate org', orgDoc.id, err);
+                }
+            }
+        } catch (err) {
+            console.warn('Owned-orgs lookup failed during delete:', err);
+        }
+
+        // 2. Best-effort wipe of related rows. Batched for atomicity per batch.
+        const collectionsToScan: Array<{ name: string; field: string }> = [
+            { name: 'walletTransactions', field: 'walletId' },
+            { name: 'notifications', field: 'userId' },
+            { name: 'pinResetRequests', field: 'userId' },
+        ];
+        for (const c of collectionsToScan) {
+            try {
+                const snap = await getDocs(
+                    query(collection(db, c.name), where(c.field, '==', uid), limit(100))
+                );
+                if (snap.empty) continue;
+                const batch = writeBatch(db);
+                snap.docs.forEach((d) => batch.delete(d.ref));
+                await batch.commit();
+            } catch (err) {
+                console.warn(`Could not wipe ${c.name} for ${uid}:`, err);
+            }
+        }
+
+        // 3. Delete the per-user singletons.
+        const singletons = ['wallets', 'collectorStats', 'collectorSettings', 'collectorProfiles'];
+        for (const col of singletons) {
+            try { await deleteDoc(doc(db, col, uid)); } catch { /* noop */ }
+        }
+
+        // 4. Finally drop the user doc itself. After this point the onSnapshot
+        //    listener will fire with snap.exists()===false which clears the
+        //    in-memory state anyway, but we explicitly log out so the lock
+        //    flag + stored uid are cleared in one go.
+        try { await deleteDoc(doc(db, 'users', uid)); } catch (err) {
+            console.error('User doc delete failed:', err);
+            throw new Error('Account could not be fully deleted. Please contact support.');
+        }
+
+        // 5. Clean up local biometric credential + session state.
+        try { removeBiometric(uid); } catch { /* noop */ }
+        writeStoredUid(null);
+        clearUnlocked();
+        setUid(null);
+        setUser(null);
+    };
+
     const logout = async () => {
         writeStoredUid(null);
         clearUnlocked();
@@ -420,6 +524,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 checkOrgCode,
                 changePin,
                 requestPinReset,
+                deleteAccount,
                 logout,
                 updateCollectorWasteTypes,
                 setCollectorAvailability,

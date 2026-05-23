@@ -29,7 +29,7 @@ interface InstallUIProps {
  */
 export function InstallUI({ platform, hasPrompt, installState, onInstall }: InstallUIProps) {
     return (
-        <div className="relative h-[100dvh] overflow-hidden">
+        <div className="relative h-screen-safe overflow-hidden">
             {/* Wallpaper background */}
             <div className="absolute inset-0 -z-0">
                 <img

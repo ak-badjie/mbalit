@@ -306,6 +306,14 @@ body {
 .safe-area-pb { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .safe-area-pt { padding-top: env(safe-area-inset-top, 0px); }
 
+/* iOS-safe viewport heights — dvh is only supported on Safari 15.4+. Older
+ * iOS 15 builds and any iOS 14 fallback would see an invalid value, leaving
+ * the height auto and producing a blank-looking screen for full-bleed
+ * layouts like the install gate and PIN lock. Declare 100vh first so it
+ * always applies, then dvh as a progressive enhancement. */
+.h-screen-safe { height: 100vh; height: 100dvh; }
+.min-h-screen-safe { min-height: 100vh; min-height: 100dvh; }
+
 /* ==== LEGACY: kept so existing components keep working while migrating ==== */
 .btn {
   display: inline-flex;
