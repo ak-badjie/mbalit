@@ -1,16 +1,52 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowRight, Lock, User } from 'lucide-react';
 import { MbButton } from '@/components/ui/mb-button';
 import { SecureFooter } from '@/components/ui/secure-footer';
+import { useAuth } from '@/lib/auth-context';
 
 /**
- * Landing screen — full-bleed truck hero with the MbalitApp brand overlaid on the sky.
+ * Landing screen — full-bleed truck hero with the MBalit brand overlaid on
+ * the sky. Only shown to UNAUTHENTICATED visitors. If there's already a
+ * signed-in user (the PinLock has just unlocked, or they navigated back to
+ * "/" inside the PWA), we redirect them straight to their dashboard so
+ * they never see the Sign Up / Log In page a second time.
  */
 export default function Home() {
+    const router = useRouter();
+    const { user, isLoading } = useAuth();
+
+    // Already-signed-in users land here when the PWA's start_url ("/") opens
+    // after the PinLock clears. Without this redirect, they'd see the
+    // logo + Sign Up / Log In page again, have to tap "Log In", and only
+    // then get bounced to their dashboard — confusing and slow.
+    useEffect(() => {
+        if (isLoading || !user) return;
+        if (user.onboardingComplete === false) {
+            // Half-finished signup → resume onboarding on /auth.
+            router.replace('/auth?continue=onboarding');
+            return;
+        }
+        const collectorType = 'collectorType' in user ? (user as { collectorType?: string }).collectorType : undefined;
+        if (user.role === 'collector' && collectorType === 'organization') {
+            router.replace('/organization/dashboard');
+        } else if (user.role === 'collector') {
+            router.replace('/collector/dashboard');
+        } else {
+            router.replace('/dashboard');
+        }
+    }, [user, isLoading, router]);
+
+    // While auth state is still loading, or while the redirect for an
+    // authenticated user is queueing, render nothing. Showing the landing
+    // page even for a frame would cause the "logo + Sign Up flash" the
+    // user reported.
+    if (isLoading || user) return null;
+
     return (
         <div className="relative min-h-[100dvh] bg-white overflow-hidden flex flex-col">
             {/* Full-bleed hero (truck + city + trees) */}
