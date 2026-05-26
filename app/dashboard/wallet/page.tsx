@@ -6,12 +6,11 @@ import {
     Bell,
     Settings,
     FileText,
-    Building2,
     Shield,
-    HelpCircle,
     ChevronRight,
     Wallet as WalletIcon,
     Loader2,
+    RefreshCw
 } from 'lucide-react';
 import { WalletBalanceCard } from '@/components/ui/wallet-balance-card';
 import { TransactionItem, TransactionKind } from '@/components/ui/transaction-item';
@@ -20,9 +19,9 @@ import { getWalletBalance, getWalletTransactions } from '@/lib/firestore';
 
 const QUICK_ACTIONS = [
     { icon: FileText, label: 'Transaction History', href: '/dashboard/wallet/history' },
-    { icon: Building2, label: 'Bank Accounts', href: '/dashboard/wallet/accounts' },
     { icon: Shield, label: 'Withdrawal Requests', href: '/dashboard/wallet/withdrawals' },
-    { icon: HelpCircle, label: 'Help & Support', href: '/dashboard/wallet/help' },
+    { icon: RefreshCw, label: 'Subscriptions', href: '/dashboard/subscriptions' },
+    { icon: Settings, label: 'Wallet Settings', href: '/dashboard/settings' },
 ];
 
 interface TxnDoc {

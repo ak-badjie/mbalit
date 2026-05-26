@@ -295,11 +295,13 @@ function AuthPage() {
         return msg || 'Something went wrong. Please try again.';
     };
 
+    const inviteCode = searchParams.get('invite');
+
     // Flow state
-    const [mode, setMode] = useState<'login' | 'signup'>(isSignupMode ? 'signup' : 'login');
-    const [step, setStep] = useState(0); // 0 = role select, 1 = phone, 3 = profile, 4 = vehicle, 5 = waste types, 6 = pin
+    const [mode, setMode] = useState<'login' | 'signup'>(isSignupMode || !!inviteCode ? 'signup' : 'login');
+    const [step, setStep] = useState(inviteCode ? 1 : 0); // 0 = role select, 1 = phone, 3 = profile, 4 = vehicle, 5 = waste types, 6 = pin
     const [registrationType, setRegistrationType] = useState<RegistrationType>(
-        isCollectorMode ? 'collector' : null
+        isCollectorMode || !!inviteCode ? 'collector' : null
     );
 
     // Login state
@@ -324,16 +326,16 @@ function AuthPage() {
 
     // Organization state
     const [orgName, setOrgName] = useState('');
-    const [joinOrgCode, setJoinOrgCode] = useState('');
-    const [isJoiningOrg, setIsJoiningOrg] = useState(false);
+    const [joinOrgCode, setJoinOrgCode] = useState(inviteCode || '');
+    const [isJoiningOrg, setIsJoiningOrg] = useState(!!inviteCode);
     // Two-step picker on step 0: first the user picks the high-level track
     // ("having waste collected" vs "collecting waste"); then a sub-role
     // within that track. We translate the sub-role to the existing
     // RegistrationType when the user taps Continue.
     type SignupTrack = 'have' | 'collect' | null;
     type SubRole = 'resident' | 'business_waste' | 'collection_business' | 'driver' | 'government' | null;
-    const [signupTrack, setSignupTrack] = useState<SignupTrack>(null);
-    const [pickedSubRole, setPickedSubRole] = useState<SubRole>(null);
+    const [signupTrack, setSignupTrack] = useState<SignupTrack>(inviteCode ? 'collect' : null);
+    const [pickedSubRole, setPickedSubRole] = useState<SubRole>(inviteCode ? 'driver' : null);
     const [showOrgDetails, setShowOrgDetails] = useState(false);
     // Public-authority flag (KMC, BCC, etc.) — only meaningful when registering
     // a new organization. Drives access to the community Reports inbox.
@@ -460,9 +462,9 @@ function AuthPage() {
                     // re-choose. This is the case that was previously silently
                     // turning every account into a Resident.
                     setMode('signup');
-                    setStep(0);
-                    setSignupTrack(null);
-                    setPickedSubRole(null);
+                    setStep(inviteCode ? 1 : 0);
+                    setSignupTrack(inviteCode ? 'collect' : null);
+                    setPickedSubRole(inviteCode ? 'driver' : null);
                 }
             }
         } else if (user.onboardingComplete === true) {

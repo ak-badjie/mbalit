@@ -19,7 +19,6 @@ export interface MbNavItem {
 export const RESIDENT_NAV: MbNavItem[] = [
     { icon: Home, label: 'Home', href: '/dashboard' },
     { icon: Calendar, label: 'Pickups', href: '/dashboard/orders' },
-    { icon: FileText, label: 'Reports', href: '/dashboard/report/my' },
     { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
     { icon: User, label: 'Profile', href: '/dashboard/profile' },
 ];

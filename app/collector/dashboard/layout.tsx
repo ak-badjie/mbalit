@@ -43,6 +43,17 @@ export default function CollectorDashboardLayout({
     // Drivers under an organization don't have their own wallet — earnings
     // flow into the org's wallet, and the org pays them outside the platform.
     const isDriverUnderOrg = collectorType === 'organization_member';
+    
+    if (isDriverUnderOrg) {
+        const isApproved = 'isApproved' in user ? (user as { isApproved?: boolean }).isApproved : false;
+        if (!isApproved) {
+            if (typeof window !== 'undefined') {
+                window.location.href = '/collector/pending';
+            }
+            return null;
+        }
+    }
+
     const navItems = isDriverUnderOrg ? COLLECTOR_DRIVER_NAV : COLLECTOR_NAV;
 
     return (

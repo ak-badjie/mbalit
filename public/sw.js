@@ -68,3 +68,57 @@ self.addEventListener('fetch', (event) => {
     fetch(request).catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
   );
 });
+
+// Handle incoming Web Push notifications
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  try {
+    let data;
+    try {
+      data = event.data.json();
+    } catch {
+      data = { title: 'Mbalit', body: event.data.text() };
+    }
+    
+    // Support FCM payload format or generic format
+    const payload = data.notification || data;
+    const title = payload.title || 'Mbalit Update';
+    
+    const options = {
+      body: payload.body || '',
+      icon: '/logo.png', // Proper branding
+      badge: '/logo.png',
+      data: {
+        url: data.data?.url || payload.click_action || '/'
+      },
+      vibrate: [200, 100, 200]
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (err) {
+    console.error('Failed to handle push event', err);
+  }
+});
+
+// Handle clicks on push notifications
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  const urlToOpen = new URL(event.notification.data?.url || '/', self.location.origin).href;
+  
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Focus existing window if already open to the URL
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open a new window
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});

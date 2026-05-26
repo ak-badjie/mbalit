@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Bell, UserPlus, Users, MoreVertical, Loader2 } from 'lucide-react';
+import { Bell, UserPlus, Users, MoreVertical, Loader2, X, MessageCircle, MessageSquare } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/auth-context';
 import { getOrganizationByOwner, getOrganizationMembers } from '@/lib/firestore';
 
@@ -19,6 +20,8 @@ export default function TeamPage() {
     const [members, setMembers] = useState<Member[]>([]);
     const [orgCode, setOrgCode] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [invitePhone, setInvitePhone] = useState('');
 
     useEffect(() => {
         if (!user?.id) return;
@@ -78,7 +81,10 @@ export default function TeamPage() {
             )}
 
             <div className="px-5 mt-4">
-                <button className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-[#A8E7C3] bg-[#F1FAF4] text-[#0E7A3B] font-bold">
+                <button 
+                    onClick={() => setShowInviteModal(true)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-[#A8E7C3] bg-[#F1FAF4] text-[#0E7A3B] font-bold hover:bg-[#E8F6EE] transition-colors"
+                >
                     <UserPlus className="w-5 h-5" />
                     Invite Member
                 </button>
@@ -102,8 +108,12 @@ export default function TeamPage() {
                 ) : (
                     members.map((m) => (
                         <div key={m.id} className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#1FA653] to-[#0E7A3B] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                                {(m.name || '?').charAt(0).toUpperCase()}
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#1FA653] to-[#0E7A3B] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden border-2 border-white shadow-sm">
+                                {m.profileImage ? (
+                                    <img src={m.profileImage as string} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                    (m.name || '?').charAt(0).toUpperCase()
+                                )}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
@@ -121,6 +131,85 @@ export default function TeamPage() {
                     ))
                 )}
             </div>
+            <AnimatePresence>
+                {showInviteModal && orgCode && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                        onClick={() => setShowInviteModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl relative"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <button 
+                                onClick={() => setShowInviteModal(false)}
+                                className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100"
+                            >
+                                <X className="w-5 h-5 text-gray-500" />
+                            </button>
+                            
+                            <div className="w-12 h-12 rounded-full bg-[#E8F6EE] flex items-center justify-center text-[#0E7A3B] mb-4">
+                                <UserPlus className="w-6 h-6" />
+                            </div>
+                            
+                            <h2 className="text-xl font-bold text-[#0F1A14] mb-2">Invite Driver</h2>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Enter a phone number to send an invite link. When they sign up, they'll be automatically added to your team.
+                            </p>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-[#0F1A14] mb-1">
+                                        Phone Number
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        value={invitePhone}
+                                        onChange={e => setInvitePhone(e.target.value)}
+                                        placeholder="+220 XXXXXXXX"
+                                        className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl focus:border-[#0E7A3B] outline-none text-[#0F1A14] font-bold"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                    <button
+                                        onClick={() => {
+                                            const url = encodeURIComponent(`${window.location.origin}/auth?invite=${orgCode}`);
+                                            const text = encodeURIComponent(`Join my Mbalit team! Use this link to sign up: `);
+                                            window.open(`https://wa.me/${invitePhone.replace(/\+/g, '')}?text=${text}${url}`, '_blank');
+                                            setShowInviteModal(false);
+                                        }}
+                                        disabled={!invitePhone}
+                                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white font-bold transition-colors disabled:opacity-50"
+                                    >
+                                        <MessageCircle className="w-5 h-5" />
+                                        WhatsApp
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const url = `${window.location.origin}/auth?invite=${orgCode}`;
+                                            const text = `Join my Mbalit team! Use this link to sign up: ${url}`;
+                                            window.open(`sms:${invitePhone}?body=${encodeURIComponent(text)}`, '_blank');
+                                            setShowInviteModal(false);
+                                        }}
+                                        disabled={!invitePhone}
+                                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold transition-colors disabled:opacity-50"
+                                    >
+                                        <MessageSquare className="w-5 h-5" />
+                                        SMS
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

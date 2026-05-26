@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Bell, Settings, FileText, Building2, Shield, HelpCircle, Wallet as WalletIcon, Loader2 } from 'lucide-react';
+import { Bell, Settings, FileText, Shield, Wallet as WalletIcon, Loader2, RefreshCw } from 'lucide-react';
 import { WalletBalanceCard } from '@/components/ui/wallet-balance-card';
 import { TransactionItem, TransactionKind } from '@/components/ui/transaction-item';
 import { useAuth } from '@/lib/auth-context';
@@ -9,9 +9,9 @@ import { getOrganizationByOwner, getWalletBalance, getWalletTransactions } from 
 
 const QUICK_ACTIONS = [
     { icon: FileText, label: 'Transactions', href: '/organization/wallet/history' },
-    { icon: Building2, label: 'Bank Accounts', href: '/organization/wallet/accounts' },
     { icon: Shield, label: 'Withdrawals', href: '/organization/wallet/withdrawals' },
-    { icon: HelpCircle, label: 'Support', href: '/organization/wallet/help' },
+    { icon: RefreshCw, label: 'Subscriptions', href: '/organization/subscriptions' },
+    { icon: Settings, label: 'Settings', href: '/organization/settings' },
 ];
 
 interface TxnDoc {

@@ -865,64 +865,33 @@ export default function OrganizationDashboard() {
                             )}
                         </div>
 
-                        {/* Recent Transactions */}
-                        <div className="mt-6">
-                            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                <Wallet className="w-5 h-5 text-gray-400" />
-                                Recent Transactions
-                            </h3>
-                            {orgTransactions.length === 0 ? (
-                                <Card variant="default" padding="lg" className="text-center bg-gray-50/50">
-                                    <p className="text-gray-500 text-sm">No recent transactions</p>
-                                </Card>
-                            ) : (
-                                <div className="space-y-3">
-                                    {orgTransactions.slice(0, 5).map(tx => (
-                                        <Card key={tx.id} variant="default" padding="sm" className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-900">{tx.description || tx.type}</p>
-                                                <p className="text-xs text-gray-500">{tx.createdAt?.toLocaleDateString()}</p>
-                                            </div>
-                                            <p className={`font-bold ${tx.amount > 0 ? 'text-emerald-600' : 'text-gray-900'}`}>
-                                                {tx.amount > 0 ? '+' : ''}{formatPrice(tx.amount)}
-                                            </p>
-                                        </Card>
-                                    ))}
+                        {/* Quick Links */}
+                        <div className="mt-6 mb-8 grid grid-cols-2 gap-3">
+                            <button
+                                onClick={() => router.push('/organization/wallet')}
+                                className="w-full p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col items-center justify-center gap-2 text-center"
+                            >
+                                <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
+                                    <Wallet className="w-6 h-6 text-emerald-600" />
                                 </div>
-                            )}
-                        </div>
+                                <div>
+                                    <p className="font-bold text-gray-900">Wallet & Txns</p>
+                                    <p className="text-xs text-gray-500">View all history</p>
+                                </div>
+                            </button>
 
-                        {/* Active Subscriptions */}
-                        <div className="mt-6 mb-8">
-                            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                <Star className="w-5 h-5 text-amber-500" />
-                                Managed Subscriptions
-                            </h3>
-                            {orgSubscriptions.length === 0 ? (
-                                <Card variant="default" padding="lg" className="text-center bg-gray-50/50">
-                                    <p className="text-gray-500 text-sm">No active subscriptions assigned to your organization</p>
-                                </Card>
-                            ) : (
-                                <div className="space-y-3">
-                                    {orgSubscriptions.map(sub => {
-                                        const summary = getSubscriptionSummary(sub);
-                                        return (
-                                            <Card key={sub.id} variant="default" padding="md" className="border border-emerald-100 bg-emerald-50/30">
-                                                <div className="flex justify-between mb-2">
-                                                    <Badge variant="success" className="capitalize">{summary.planName} Plan</Badge>
-                                                    <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full">
-                                                        {summary.monthlyPrice}/mo
-                                                    </span>
-                                                </div>
-                                                <div className="text-sm text-gray-700 mt-2 space-y-1">
-                                                    <p><strong>Containers:</strong> {summary.containerSummary}</p>
-                                                    <p><strong>Next Pickup:</strong> {summary.nextPickup}</p>
-                                                </div>
-                                            </Card>
-                                        );
-                                    })}
+                            <button
+                                onClick={() => router.push('/organization/subscriptions')}
+                                className="w-full p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col items-center justify-center gap-2 text-center"
+                            >
+                                <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+                                    <Star className="w-6 h-6 text-amber-600" />
                                 </div>
-                            )}
+                                <div>
+                                    <p className="font-bold text-gray-900">Subscriptions</p>
+                                    <p className="text-xs text-gray-500">Manage packages</p>
+                                </div>
+                            </button>
                         </div>
                     </>
                 )}
