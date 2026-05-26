@@ -124,13 +124,12 @@ export default function WalletPage() {
                 <WalletBalanceCard
                     balance={formatGmd(balance)}
                     balanceWords={inWords(balance)}
-                    totalAdded={formatGmd(0)}
+                    totalEarned={formatGmd(0)}
                     totalSpent={formatGmd(0)}
                     pendingWithdrawal={formatGmd(0)}
                     pendingRequests={0}
                     visible={visible}
                     onToggleVisibility={() => setVisible((v) => !v)}
-                    onAddMoney={() => router.push('/dashboard/wallet/add')}
                     onWithdraw={() => router.push('/dashboard/wallet/withdraw')}
                 />
             </div>
@@ -195,28 +194,7 @@ export default function WalletPage() {
                 </div>
             </div>
 
-            <div className="px-5 mt-4 mb-6">
-                <div className="relative overflow-hidden bg-[#F1FAF4] border border-[#D2F4E1] rounded-2xl p-4 flex items-center gap-3">
-                    <div className="flex-1">
-                        <h3 className="font-bold text-[#0F1A14] text-base">Add Money to Wallet</h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                            Top up your wallet for faster and seamless transactions.
-                        </p>
-                        <button
-                            onClick={() => router.push('/dashboard/wallet/add')}
-                            className="mt-3 inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-semibold text-sm"
-                        >
-                            Add Money Now
-                            <ChevronRight className="w-4 h-4" />
-                        </button>
-                    </div>
-                    <img
-                        src="/illustrations/add-money.svg"
-                        alt=""
-                        className="w-28 h-24 flex-shrink-0"
-                    />
-                </div>
-            </div>
+
         </div>
     );
 }
@@ -229,7 +207,7 @@ function EmptyTransactions() {
             </div>
             <p className="font-bold text-[#0F1A14] text-sm">No transactions yet</p>
             <p className="text-xs text-gray-500 mt-1 max-w-[18rem]">
-                Add money to your wallet or book a pickup to see your activity here.
+                Book a pickup or receive payments to see your activity here.
             </p>
         </div>
     );

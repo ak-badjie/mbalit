@@ -95,14 +95,13 @@ export default function CollectorWalletPage() {
                 <WalletBalanceCard
                     balance={formatGmd(balance)}
                     balanceWords={`GMD ${balance.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
-                    totalAdded={formatGmd(0)}
+                    totalEarned={formatGmd(0)}
                     totalSpent={formatGmd(0)}
                     pendingWithdrawal={formatGmd(0)}
                     pendingRequests={0}
                     visible={visible}
                     onToggleVisibility={() => setVisible((v) => !v)}
-                    onAddMoney={() => router.push('/collector/wallet/add')}
-                    onWithdraw={() => router.push('/collector/wallet/withdraw')}
+                    onWithdraw={() => router.push('/dashboard/wallet/withdraw')}
                 />
             </div>
 
@@ -151,7 +150,7 @@ export default function CollectorWalletPage() {
                             </div>
                             <p className="font-bold text-[#0F1A14] text-sm">No transactions yet</p>
                             <p className="text-xs text-gray-500 mt-1 max-w-[18rem]">
-                                Complete a pickup to start earning. Your activity will appear here.
+                                Complete pickups and receive payments to see your activity here.
                             </p>
                         </div>
                     ) : (

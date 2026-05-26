@@ -54,7 +54,10 @@ export const PAYMENT_METHODS = [
     },
 ];
 
-// Initialize payment with Modem Pay via API route
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '@/lib/firebase';
+
+// Initialize payment with Modem Pay via Firebase Functions
 export async function initializePayment(
     amount: number,
     currency: string = 'GMD',
@@ -63,33 +66,27 @@ export async function initializePayment(
     try {
         const customer = metadata as { email?: string; phone?: string; name?: string } | undefined;
 
-        // Call our API route to create the payment intent
-        const response = await fetch('/api/payments/create', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
+        const functions = getFunctions(app);
+        const createPayment = httpsCallable(functions, 'createPayment');
+
+        const response = await createPayment({
+            amount,
+            currency,
+            customer_name: customer?.name || 'Customer',
+            customer_email: customer?.email || '',
+            customer_phone: customer?.phone || '',
+            metadata: {
+                ...metadata,
+                source: 'mbalit_web',
             },
-            body: JSON.stringify({
-                amount,
-                currency,
-                customer_name: customer?.name || 'Customer',
-                customer_email: customer?.email || '',
-                customer_phone: customer?.phone || '',
-                metadata: {
-                    ...metadata,
-                    source: 'mbalit_web',
-                },
-            }),
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to create payment');
+        const result = response.data as any;
+        console.log('Payment function result:', result);
+
+        if (!result || !result.success) {
+            throw new Error(result?.message || 'Failed to create payment');
         }
-
-        const result = await response.json();
-
-        console.log('Payment API raw response:', result);
 
         // Generate fallback id if API doesn't return one
         const paymentId = result.id || result.reference || `mbalit_${Date.now()}`;
@@ -97,7 +94,7 @@ export async function initializePayment(
         return {
             id: paymentId,
             status: 'pending',
-            paymentUrl: result.payment_url,
+            paymentUrl: result.paymentUrl,
             amount: result.amount || amount,
             currency: result.currency || currency,
         };
@@ -107,18 +104,3 @@ export async function initializePayment(
     }
 }
 
-// Verify payment status (client-side check)
-export async function verifyPayment(paymentIntentId: string): Promise<{ status: string; paid: boolean }> {
-    try {
-        const response = await fetch(`/api/payments/verify/${paymentIntentId}`);
-
-        if (!response.ok) {
-            throw new Error('Failed to verify payment');
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('Payment verification error:', error);
-        throw error;
-    }
-}

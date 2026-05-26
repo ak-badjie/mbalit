@@ -25,13 +25,13 @@ interface WalletBalanceCardProps {
     balanceLabel?: string;
     balance: string;
     balanceWords?: string;
-    totalAdded: string;
+    totalEarned: string;
     totalSpent: string;
     pendingWithdrawal: string;
     pendingRequests?: number;
     visible?: boolean;
     onToggleVisibility?: () => void;
-    onAddMoney?: () => void;
+
     onWithdraw?: () => void;
 }
 
@@ -39,13 +39,12 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
     balanceLabel = 'Available Balance',
     balance,
     balanceWords,
-    totalAdded,
+    totalEarned,
     totalSpent,
     pendingWithdrawal,
     pendingRequests = 0,
     visible = true,
     onToggleVisibility,
-    onAddMoney,
     onWithdraw,
 }) => {
     return (
@@ -87,16 +86,10 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
                 )}
 
                 <div className="mt-4 flex gap-2.5">
-                    <button
-                        onClick={onAddMoney}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white text-[#0E7A3B] font-semibold text-sm shadow-sm"
-                    >
-                        <Plus className="w-4 h-4" strokeWidth={2.5} />
-                        Add Money
-                    </button>
+
                     <button
                         onClick={onWithdraw}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-white/40 text-white font-semibold text-sm hover:bg-white/10 transition-colors"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white text-[#0E7A3B] font-semibold text-sm shadow-sm transition-colors"
                     >
                         <Upload className="w-4 h-4" strokeWidth={2.5} />
                         Withdraw
@@ -106,8 +99,8 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
                 <div className="mt-4 pt-4 border-t border-white/15 flex items-stretch">
                     <Stat
                         icon={<ArrowDownCircle className="w-4 h-4" />}
-                        label="Total Added"
-                        value={totalAdded}
+                        label="Total Earned"
+                        value={totalEarned}
                         sub="This Month"
                     />
                     <div className="w-px bg-white/15" />
