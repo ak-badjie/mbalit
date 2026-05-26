@@ -139,7 +139,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
-                    className="relative w-full max-w-md mx-4 bg-white  rounded-3xl shadow-2xl overflow-hidden"
+                    className="relative w-full max-w-md mx-4 bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
                 >
                     {/* Close button */}
                     {status !== 'processing' && status !== 'success' && (
@@ -152,7 +152,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     )}
 
                     {/* Wave Animation Header */}
-                    <div className="relative h-48 bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 overflow-hidden">
+                    <div className="relative h-32 sm:h-48 shrink-0 bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 overflow-hidden">
                         {/* Wave SVG Animation */}
                         <svg
                             className="absolute bottom-0 left-0 w-full"
@@ -216,20 +216,20 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     </div>
 
                     {/* Content */}
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6 overflow-y-auto">
                         {status === 'pending' && (
                             <div className="text-center">
-                                <h2 className="text-2xl font-bold text-gray-900  mb-2">
+                                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
                                     Complete Payment
                                 </h2>
-                                <p className="text-gray-500  mb-6">
+                                <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">
                                     Pay {currency} {amount.toLocaleString()} to confirm your pickup
                                 </p>
 
-                                <div className="bg-gray-50  rounded-xl p-4 mb-6">
+                                <div className="bg-gray-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-gray-500">Amount</span>
-                                        <span className="text-2xl font-bold text-emerald-600">
+                                        <span className="text-xl sm:text-2xl font-bold text-emerald-600">
                                             {currency} {amount.toLocaleString()}
                                         </span>
                                     </div>
@@ -240,9 +240,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                     <p className="text-sm text-gray-500  mb-3">
                                         Supported Payment Methods
                                     </p>
-                                    <div className="grid grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
                                         {/* Wave */}
-                                        <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
+                                        <div className="bg-white border border-gray-200 rounded-xl p-2 flex flex-col items-center justify-center">
                                             <img
                                                 src="https://www.wave.com/img/nav-logo.png"
                                                 alt="Wave"
@@ -252,7 +252,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                         </div>
 
                                         {/* AfriMoney */}
-                                        <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
+                                        <div className="bg-white border border-gray-200 rounded-xl p-2 flex flex-col items-center justify-center">
                                             <img
                                                 src="https://slcb.com/admin/gallery/751_20230511.jpg"
                                                 alt="AfriMoney"
@@ -262,7 +262,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                         </div>
 
                                         {/* QMoney */}
-                                        <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
+                                        <div className="bg-white border border-gray-200 rounded-xl p-2 flex flex-col items-center justify-center">
                                             <img
                                                 src="/qmoneylogo.png"
                                                 alt="QMoney"
@@ -272,7 +272,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                         </div>
 
                                         {/* Yonna Wallet */}
-                                        <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
+                                        <div className="bg-white border border-gray-200 rounded-xl p-2 flex flex-col items-center justify-center">
                                             <img
                                                 src="/yonnawalletlogo.png"
                                                 alt="Yonna Wallet"
@@ -282,7 +282,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                         </div>
 
                                         {/* APS Wallet */}
-                                        <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
+                                        <div className="bg-white border border-gray-200 rounded-xl p-2 flex flex-col items-center justify-center">
                                             <img
                                                 src="https://apsinternational.com/wp-content/uploads/2022/05/APS-logo.svg"
                                                 alt="APS Wallet"

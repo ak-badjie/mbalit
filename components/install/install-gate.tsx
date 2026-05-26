@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { InstallPlatform, InstallState } from './install-ui';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 // Lazy-load the heavy framer-motion install UI ONLY when the gate decides to
 // render it. Keeping it out of the static graph (so RootLayout never pulls
@@ -50,11 +52,27 @@ export function InstallGate({ children }: { children: React.ReactNode }) {
     const [platform, setPlatform] = useState<InstallPlatform>('unknown');
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [installState, setInstallState] = useState<InstallState>('idle');
+    const [requireStandalone, setRequireStandalone] = useState<boolean | null>(null);
 
     useEffect(() => {
         setMounted(true);
         setStandalone(isStandalone());
         setPlatform(detectPlatform());
+
+        const checkSettings = async () => {
+            try {
+                const settingDoc = await getDoc(doc(db, 'settings', 'app'));
+                if (settingDoc.exists()) {
+                    setRequireStandalone(settingDoc.data().requireStandaloneDevice !== false);
+                } else {
+                    setRequireStandalone(true);
+                }
+            } catch (e) {
+                console.error("Failed to fetch app settings", e);
+                setRequireStandalone(true);
+            }
+        };
+        checkSettings();
 
         const onBeforeInstall = (e: Event) => {
             e.preventDefault();
@@ -81,8 +99,8 @@ export function InstallGate({ children }: { children: React.ReactNode }) {
     // Hydration guard: render nothing until we know the standalone state, so
     // we never flash the login screen for a user who actually has the PWA
     // installed (or flash the install gate for a standalone user).
-    if (!mounted) return null;
-    if (standalone) return <>{children}</>;
+    if (!mounted || requireStandalone === null) return null;
+    if (standalone || !requireStandalone) return <>{children}</>;
 
     const handleInstall = async () => {
         if (!deferredPrompt) return;
