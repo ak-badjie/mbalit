@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Bell, UserPlus, Users, MoreVertical, Loader2, X, MessageCircle, MessageSquare } from 'lucide-react';
+import { Bell, UserPlus, Users, MoreVertical, Loader2, X, MessageCircle, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/auth-context';
-import { getOrganizationByOwner, getOrganizationMembers } from '@/lib/firestore';
+import { getOrganizationByOwner, getOrganizationMembers, approveMember, removeMember } from '@/lib/firestore';
 
 interface Member {
     id: string;
@@ -22,6 +22,39 @@ export default function TeamPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [invitePhone, setInvitePhone] = useState('');
+    const [processingMember, setProcessingMember] = useState<string | null>(null);
+
+    const handleApproveMember = async (memberId: string) => {
+        if (!orgCode) return;
+        setProcessingMember(memberId);
+        try {
+            await approveMember(orgCode, memberId);
+            const groups = await getOrganizationMembers(orgCode);
+            const approved = (groups.approved || []).map((m: Member) => ({ ...m, isApproved: true }));
+            const pending = (groups.pending || []).map((m: Member) => ({ ...m, isApproved: false }));
+            setMembers([...approved, ...pending]);
+        } catch (err) {
+            console.error('Failed to approve:', err);
+        } finally {
+            setProcessingMember(null);
+        }
+    };
+
+    const handleRemoveMember = async (memberId: string) => {
+        if (!orgCode) return;
+        setProcessingMember(memberId);
+        try {
+            await removeMember(orgCode, memberId);
+            const groups = await getOrganizationMembers(orgCode);
+            const approved = (groups.approved || []).map((m: Member) => ({ ...m, isApproved: true }));
+            const pending = (groups.pending || []).map((m: Member) => ({ ...m, isApproved: false }));
+            setMembers([...approved, ...pending]);
+        } catch (err) {
+            console.error('Failed to remove:', err);
+        } finally {
+            setProcessingMember(null);
+        }
+    };
 
     useEffect(() => {
         if (!user?.id) return;
@@ -124,9 +157,29 @@ export default function TeamPage() {
                                 </div>
                                 <p className="text-xs text-gray-500 truncate">{m.phone || ''}</p>
                             </div>
-                            <button className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-50">
-                                <MoreVertical className="w-4 h-4 text-gray-400" />
-                            </button>
+                            {!m.isApproved && (
+                                <div className="flex gap-2 flex-shrink-0">
+                                    <button
+                                        onClick={() => handleRemoveMember(m.id)}
+                                        disabled={processingMember === m.id}
+                                        className="w-9 h-9 rounded-full flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-50"
+                                    >
+                                        {processingMember === m.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                                    </button>
+                                    <button
+                                        onClick={() => handleApproveMember(m.id)}
+                                        disabled={processingMember === m.id}
+                                        className="w-9 h-9 rounded-full flex items-center justify-center bg-[#E8F6EE] text-[#0E7A3B] hover:bg-[#D2F4E1] transition-colors disabled:opacity-50"
+                                    >
+                                        {processingMember === m.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            )}
+                            {m.isApproved && (
+                                <button className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-50">
+                                    <MoreVertical className="w-4 h-4 text-gray-400" />
+                                </button>
+                            )}
                         </div>
                     ))
                 )}

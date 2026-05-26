@@ -1,24 +1,36 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useRequireAuth } from '@/lib/auth-context';
+import { getOrganizationByOwner } from '@/lib/firestore';
 import { LoadingScreen } from '@/components/ui/truck-logo';
-import { Home, Users, BarChart3, Wallet, Settings as SettingsIcon } from 'lucide-react';
+import { Home, Users, BarChart3, Wallet, User } from 'lucide-react';
 
 const ORG_NAV = [
     { icon: Home, label: 'Home', href: '/organization/dashboard' },
     { icon: Users, label: 'Team', href: '/organization/team' },
     { icon: BarChart3, label: 'Reports', href: '/organization/reports' },
     { icon: Wallet, label: 'Wallet', href: '/organization/wallet' },
-    { icon: SettingsIcon, label: 'Settings', href: '/organization/settings' },
+    { icon: User, label: 'Profile', href: '/organization/settings' },
 ];
 
 export default function OrganizationLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { user, isLoading, isAuthenticated } = useRequireAuth();
+    const [isAuthority, setIsAuthority] = useState(false);
+
+    useEffect(() => {
+        if (user?.id && user.role === 'collector') {
+            getOrganizationByOwner(user.id).then(org => {
+                if (org && org.isAuthority) {
+                    setIsAuthority(true);
+                }
+            }).catch(console.error);
+        }
+    }, [user?.id, user?.role]);
 
     if (isLoading) return <LoadingScreen duration={1500} onComplete={() => { }} />;
     if (!isAuthenticated) return null;
@@ -34,7 +46,7 @@ export default function OrganizationLayout({ children }: { children: React.React
             <nav className="fixed bottom-0 left-0 right-0 z-50">
                 <div className="bg-white/95 backdrop-blur-xl border-t border-gray-100 shadow-[0_-6px_24px_rgba(15,26,20,0.06)]">
                     <div className="flex items-center justify-around py-2 px-2 safe-area-pb">
-                        {ORG_NAV.map((item) => {
+                        {ORG_NAV.filter(item => item.label !== 'Reports' || isAuthority).map((item) => {
                             const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
                             const Icon = item.icon;
                             return (

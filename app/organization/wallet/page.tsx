@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Bell, Settings, FileText, Shield, Wallet as WalletIcon, Loader2, RefreshCw } from 'lucide-react';
 import { WalletBalanceCard } from '@/components/ui/wallet-balance-card';
 import { TransactionItem, TransactionKind } from '@/components/ui/transaction-item';
@@ -36,8 +37,10 @@ const timestamp = (d?: Date) =>
 
 export default function OrgWalletPage() {
     const { user } = useAuth();
+    const router = useRouter();
     const [visible, setVisible] = useState(true);
     const [balance, setBalance] = useState(0);
+    const [escrowBalance, setEscrowBalance] = useState(0);
     const [transactions, setTransactions] = useState<TxnDoc[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -46,7 +49,7 @@ export default function OrgWalletPage() {
         let cancelled = false;
         (async () => {
             try {
-                const org = (await getOrganizationByOwner(user.id)) as { id: string; orgCode?: string } | null;
+                const org = (await getOrganizationByOwner(user.id)) as { id: string; orgCode?: string; escrowBalance?: number } | null;
                 const walletId = org?.orgCode || user.id;
                 const [b, txns] = await Promise.all([
                     getWalletBalance(walletId),
@@ -54,6 +57,7 @@ export default function OrgWalletPage() {
                 ]);
                 if (cancelled) return;
                 setBalance(b);
+                setEscrowBalance(org?.escrowBalance || 0);
                 setTransactions(txns as TxnDoc[]);
             } catch (err) {
                 console.error('Org wallet load failed:', err);
@@ -87,11 +91,11 @@ export default function OrgWalletPage() {
                     balanceWords={`GMD ${balance.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
                     totalEarned={formatGmd(0)}
                     totalSpent={formatGmd(0)}
-                    pendingWithdrawal={formatGmd(0)}
+                    pendingWithdrawal={formatGmd(escrowBalance)}
                     pendingRequests={0}
                     visible={visible}
                     onToggleVisibility={() => setVisible((v) => !v)}
-                    onWithdraw={() => router.push('/dashboard/wallet/withdraw')}
+                    onWithdraw={() => router.push('/organization/wallet/withdraw')}
                 />
             </div>
 
@@ -102,6 +106,7 @@ export default function OrgWalletPage() {
                         return (
                             <button
                                 key={action.label}
+                                onClick={() => router.push(action.href)}
                                 className="flex flex-col items-center text-center gap-2 py-2 px-1 rounded-xl hover:bg-[#F1FAF4] transition-colors"
                             >
                                 <div className="w-10 h-10 rounded-xl bg-[#E8F6EE] flex items-center justify-center text-[#0E7A3B]">
@@ -118,7 +123,7 @@ export default function OrgWalletPage() {
                 <div className="bg-white border border-gray-100 rounded-2xl p-4">
                     <div className="flex items-center justify-between mb-1">
                         <h2 className="font-bold text-[#0F1A14] text-base">Recent Transactions</h2>
-                        <button className="text-sm font-semibold text-[#0E7A3B] hover:underline">View All</button>
+                        <button onClick={() => router.push('/organization/wallet/history')} className="text-sm font-semibold text-[#0E7A3B] hover:underline">View All</button>
                     </div>
 
                     {isLoading ? (
