@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Home, Calendar, BarChart3, Wallet, User, FileText, Settings } from 'lucide-react';
+import { Home, Calendar, BarChart3, Wallet, User, FileText, Settings, RefreshCw } from 'lucide-react';
 
 export interface MbNavItem {
     icon: React.ElementType;
@@ -31,9 +31,9 @@ export const RESIDENT_NAV: MbNavItem[] = [
 export const COLLECTOR_NAV: MbNavItem[] = [
     { icon: Home, label: 'Home', href: '/collector/dashboard' },
     { icon: Calendar, label: 'Pickups', href: '/collector/bookings' },
+    { icon: RefreshCw, label: 'Subs', href: '/collector/subscriptions' },
     { icon: BarChart3, label: 'Earnings', href: '/collector/earnings' },
     { icon: Wallet, label: 'Wallet', href: '/collector/wallet' },
-    { icon: User, label: 'Profile', href: '/collector/profile' },
 ];
 
 /**
@@ -44,9 +44,9 @@ export const COLLECTOR_NAV: MbNavItem[] = [
 export const COLLECTOR_DRIVER_NAV: MbNavItem[] = [
     { icon: Home, label: 'Home', href: '/collector/dashboard' },
     { icon: Calendar, label: 'Pickups', href: '/collector/bookings' },
+    { icon: RefreshCw, label: 'Subs', href: '/collector/subscriptions' },
     { icon: BarChart3, label: 'Earnings', href: '/collector/earnings' },
     { icon: Settings, label: 'Settings', href: '/collector/settings' },
-    { icon: User, label: 'Profile', href: '/collector/profile' },
 ];
 
 interface MbBottomNavProps {

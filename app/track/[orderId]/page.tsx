@@ -28,6 +28,7 @@ import Link from 'next/link';
 import { CustomerPaymentModal } from '@/components/ui/payment-offer-modal';
 import { PaymentModal } from '@/components/ui/payment-modal';
 import { initializePayment } from '@/lib/payment';
+import PaymentNotification from '@/components/payment-notification';
 
 type OrderStatus = 'pending' | 'assigned' | 'en_route' | 'arrived' | 'completed' | 'cancelled';
 
@@ -103,10 +104,8 @@ export default function TrackingPage() {
     const [error, setError] = useState<string | null>(null);
 
     // Payment states
-    const [showOfferModal, setShowOfferModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentUrl, setPaymentUrl] = useState('');
-    const [isInitializingPayment, setIsInitializingPayment] = useState(false);
 
     // Subscribe to job updates
     useEffect(() => {
@@ -143,30 +142,7 @@ export default function TrackingPage() {
         return () => unsubscribe();
     }, [job?.collectorId]);
 
-    const handleAcceptOffer = async (totalAmount: number) => {
-        setIsInitializingPayment(true);
-        try {
-            const paymentResult = await initializePayment(totalAmount, 'GMD', {
-                name: job?.customerName || 'Customer',
-                email: job?.customerEmail || 'customer@example.com',
-                phone: job?.customerPhone || '',
-                wasteTypes: job?.wasteTypes || [],
-            });
-
-            if (paymentResult.paymentUrl) {
-                setPaymentUrl(paymentResult.paymentUrl);
-                setShowOfferModal(false);
-                setShowPaymentModal(true);
-            } else {
-                throw new Error('No payment URL returned');
-            }
-        } catch (error) {
-            console.error('Failed to initialize Modem Pay:', error);
-            alert('Failed to initialize payment. Please try again.');
-        } finally {
-            setIsInitializingPayment(false);
-        }
-    };
+    // Subscriptions handled above
 
     const wasteType = job?.wasteType ? WASTE_TYPES.find(t => t.id === job.wasteType) : null;
     const currentStatus = normalizeStatus(job?.status);
@@ -312,7 +288,7 @@ export default function TrackingPage() {
                     </Card>
                 </motion.div>
 
-                {/* Review & Pay Button (When Arrived) */}
+                {/* Review & Pay Section (When Arrived) */}
                 <AnimatePresence>
                     {currentStatus === 'arrived' && job.paymentStatus !== 'paid' && (
                         <motion.div
@@ -323,16 +299,11 @@ export default function TrackingPage() {
                         >
                             <Card variant="elevated" padding="lg" className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-center">
                                 <h3 className="text-xl font-bold mb-2">Driver has arrived!</h3>
-                                <p className="text-emerald-50 mb-6">Review the pickup details and confirm payment with the driver.</p>
-                                <Button
-                                    variant="primary"
-                                    size="lg"
-                                    fullWidth
-                                    onClick={() => setShowOfferModal(true)}
-                                    className="bg-white text-emerald-600 hover:bg-emerald-50"
-                                >
-                                    Review & Pay {formatPrice(job.amount)}
-                                </Button>
+                                <p className="text-emerald-50 mb-2">The collector is reviewing your items.</p>
+                                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full animate-pulse">
+                                    <Clock className="w-4 h-4" />
+                                    <span className="text-sm font-medium">Waiting for payment request...</span>
+                                </div>
                             </Card>
                         </motion.div>
                     )}
@@ -510,18 +481,8 @@ export default function TrackingPage() {
                     )}
                 </AnimatePresence>
 
-                {/* Modals */}
-                {job && (
-                    <CustomerPaymentModal
-                        isOpen={showOfferModal}
-                        onClose={() => setShowOfferModal(false)}
-                        onAccept={handleAcceptOffer}
-                        requestId={job.id}
-                        collectorId={job.collectorId || ''}
-                        customerId={job.customerId}
-                        baseAmount={job.amount}
-                    />
-                )}
+                {/* Global Notification Listener */}
+                <PaymentNotification />
 
                 <PaymentModal
                     isOpen={showPaymentModal}

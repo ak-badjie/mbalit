@@ -47,6 +47,8 @@ import {
     clearCollectorActiveJob,
     createPaymentRequest,
     subscribeToPaymentRequest,
+    acceptCounterOffer,
+    cancelPaymentRequest,
     RealtimeJob,
 } from '@/lib/realtime';
 import {
@@ -147,6 +149,10 @@ function DashboardContent() {
     const [paymentRequestSent, setPaymentRequestSent] = useState(false);
     const [pendingPaymentRequestId, setPendingPaymentRequestId] = useState<string | null>(null);
     const [paymentRequestDeclined, setPaymentRequestDeclined] = useState(false);
+    const [counterOfferReceived, setCounterOfferReceived] = useState(false);
+    const [counterOfferAmount, setCounterOfferAmount] = useState<number | null>(null);
+    const [counterOfferReason, setCounterOfferReason] = useState<string>('');
+    const [isHandlingCounterOffer, setIsHandlingCounterOffer] = useState(false);
 
     // PROTECT DASHBOARD: Redirect if onboarding not complete
     useEffect(() => {
@@ -451,6 +457,11 @@ function DashboardContent() {
                     setPaymentRequestSent(false);
                     setPaymentRequestDeclined(true);
                     setPendingPaymentRequestId(null);
+                    setCounterOfferReceived(false);
+                } else if (req.status === 'counter_offer') {
+                    setCounterOfferReceived(true);
+                    setCounterOfferAmount(req.counterOfferAmount || null);
+                    setCounterOfferReason(req.counterOfferReason || '');
                 }
             }
         );
@@ -1355,6 +1366,72 @@ function DashboardContent() {
                     }}
                     requestId={activeJob.id}
                 />
+            )}
+
+            {/* Counter-offer notification banner */}
+            {counterOfferReceived && pendingPaymentRequestId && activeJob && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+                    <div className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+                                <span className="text-2xl">💬</span>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg text-[#0F1A14]">Counter Offer</h3>
+                                <p className="text-sm text-gray-500">{activeJob.customerName || 'Customer'} has made a counter offer</p>
+                            </div>
+                        </div>
+                        <div className="bg-amber-50 rounded-2xl p-4 mb-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm text-gray-500">Your Price</span>
+                                <span className="text-sm text-gray-400 line-through">D{Number(paymentAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-bold text-[#0F1A14]">Their Offer</span>
+                                <span className="text-xl font-extrabold text-amber-600">D{(counterOfferAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            {counterOfferReason && (
+                                <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-amber-200"><span className="font-semibold">Reason:</span> {counterOfferReason}</p>
+                            )}
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                disabled={isHandlingCounterOffer}
+                                onClick={async () => {
+                                    setIsHandlingCounterOffer(true);
+                                    try {
+                                        await cancelPaymentRequest(activeJob.customerId, pendingPaymentRequestId!);
+                                        setCounterOfferReceived(false);
+                                        setPaymentRequestSent(false);
+                                        setPaymentRequestDeclined(true);
+                                        setPendingPaymentRequestId(null);
+                                    } catch (e) { console.error(e); }
+                                    setIsHandlingCounterOffer(false);
+                                }}
+                                className="flex-1 py-3 rounded-xl border border-gray-200 font-semibold text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Decline
+                            </button>
+                            <button
+                                disabled={isHandlingCounterOffer}
+                                onClick={async () => {
+                                    setIsHandlingCounterOffer(true);
+                                    try {
+                                        await acceptCounterOffer(activeJob.customerId, pendingPaymentRequestId!);
+                                        setCounterOfferReceived(false);
+                                        setPaymentAmount((counterOfferAmount || 0).toString());
+                                        // Payment request goes back to 'pending' with the new amount
+                                    } catch (e) { console.error(e); }
+                                    setIsHandlingCounterOffer(false);
+                                }}
+                                className="flex-1 py-3 rounded-xl bg-[#0E7A3B] text-white font-semibold text-sm hover:bg-[#0a6230] disabled:opacity-50"
+                            >
+                                Accept D{(counterOfferAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

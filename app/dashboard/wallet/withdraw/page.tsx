@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Building2, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { MbButton } from '@/components/ui/mb-button';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app } from '@/lib/firebase';
+import { useAuth } from '@/lib/auth-context';
+import { getWalletBalance } from '@/lib/firestore';
 
 const ACCOUNTS = [
     { id: 'wave', name: 'Wave Mobile Money', sub: 'Instant Transfer', logo: 'https://www.wave.com/img/nav-logo.png' },
@@ -15,14 +17,46 @@ const ACCOUNTS = [
 
 export default function WithdrawPage() {
     const router = useRouter();
+    const { user } = useAuth();
     const [amount, setAmount] = useState('');
     const [accountId, setAccountId] = useState('wave');
     const [destination, setDestination] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [walletBalance, setWalletBalance] = useState<number | null>(null);
+    const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        const load = async () => {
+            try {
+                const balance = await getWalletBalance(user.id);
+                setWalletBalance(balance);
+            } catch (err) {
+                console.error('Failed to load balance:', err);
+                setWalletBalance(0);
+            } finally {
+                setIsLoadingBalance(false);
+            }
+        };
+        load();
+    }, [user?.id]);
+
+    const formattedBalance = walletBalance !== null
+        ? walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '---';
 
     const handleWithdraw = async () => {
-        if (!amount || isNaN(Number(amount.replace(/,/g, ''))) || Number(amount.replace(/,/g, '')) <= 0) {
+        const numAmount = Number(amount.replace(/,/g, ''));
+        if (!amount || isNaN(numAmount) || numAmount <= 0) {
             alert('Please enter a valid amount');
+            return;
+        }
+        if (numAmount < 50) {
+            alert('Minimum withdrawal is D50.00');
+            return;
+        }
+        if (walletBalance !== null && numAmount > walletBalance) {
+            alert('Insufficient balance');
             return;
         }
         if (!destination) {
@@ -36,10 +70,10 @@ export default function WithdrawPage() {
             const requestWithdrawal = httpsCallable(functions, 'requestWithdrawal');
             
             const response = await requestWithdrawal({
-                amount: Number(amount.replace(/,/g, '')),
+                amount: numAmount,
                 network: accountId,
                 account_number: destination,
-                beneficiary_name: 'Mbalit User'
+                beneficiary_name: user?.name || 'Mbalit User'
             });
 
             const data = response.data as any;
@@ -51,7 +85,15 @@ export default function WithdrawPage() {
             }
         } catch (error: any) {
             console.error(error);
-            alert(error.message || 'An error occurred during withdrawal');
+            const msg = error?.message || 'An error occurred during withdrawal';
+            // Parse Firebase callable error messages
+            if (msg.includes('Insufficient balance')) {
+                alert('Insufficient wallet balance.');
+            } else if (msg.includes('Wallet not found')) {
+                alert('Your wallet has not been set up yet. Please contact support.');
+            } else {
+                alert(msg);
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -73,14 +115,20 @@ export default function WithdrawPage() {
                 <div className="p-4 rounded-2xl bg-[#F1FAF4] border border-[#D2F4E1] flex items-center justify-between">
                     <div>
                         <p className="text-xs text-gray-500">Available Balance</p>
-                        <p className="font-extrabold text-xl text-[#0E7A3B]">D4,560.00</p>
+                        {isLoadingBalance ? (
+                            <Loader2 className="w-5 h-5 animate-spin text-[#0E7A3B] mt-1" />
+                        ) : (
+                            <p className="font-extrabold text-xl text-[#0E7A3B]">D{formattedBalance}</p>
+                        )}
                     </div>
-                    <button
-                        onClick={() => setAmount('4,560.00')}
-                        className="text-sm font-bold text-[#0E7A3B] hover:underline"
-                    >
-                        Withdraw All
-                    </button>
+                    {walletBalance !== null && walletBalance > 0 && (
+                        <button
+                            onClick={() => setAmount(walletBalance.toFixed(2))}
+                            className="text-sm font-bold text-[#0E7A3B] hover:underline"
+                        >
+                            Withdraw All
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -96,6 +144,7 @@ export default function WithdrawPage() {
                         className="flex-1 bg-transparent outline-none text-2xl font-extrabold text-[#0F1A14] placeholder-gray-300"
                     />
                 </div>
+                <p className="text-xs text-gray-400 mt-1">Minimum withdrawal: D50.00</p>
             </div>
 
             <div className="px-5 mt-5">
@@ -142,7 +191,7 @@ export default function WithdrawPage() {
             </div>
 
             <div className="px-5 mt-6 mb-6">
-                <MbButton size="lg" disabled={!amount || !destination || isSubmitting} onClick={handleWithdraw}>
+                <MbButton size="lg" disabled={!amount || !destination || isSubmitting || isLoadingBalance} onClick={handleWithdraw}>
                     {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Request Withdrawal'}
                 </MbButton>
             </div>

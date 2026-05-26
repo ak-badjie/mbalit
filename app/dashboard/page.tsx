@@ -24,7 +24,7 @@ import { ProfileLocationMap } from '@/components/maps/profile-location-map';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { geocodePlusCode } from '@/lib/maps';
 import { initializePayment, PaymentIntentResult } from '@/lib/payment';
-import { createJob } from '@/lib/realtime';
+import { createJob, subscribeToCustomerActiveJob, RealtimeJob } from '@/lib/realtime';
 import { PaymentModal } from '@/components/ui/payment-modal';
 import { WASTE_TYPES, calculatePrice, formatPrice } from '@/lib/waste-config';
 import { WasteType, GeoLocation } from '@/types';
@@ -75,6 +75,17 @@ function DashboardContent() {
     // Success state
     const [isOrderSuccess, setIsOrderSuccess] = useState(false);
     const [createdJobId, setCreatedJobId] = useState<string | null>(null);
+
+    // Active Job Tracking
+    const [activeJob, setActiveJob] = useState<RealtimeJob | null>(null);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        const unsub = subscribeToCustomerActiveJob(user.id, (job) => {
+            setActiveJob(job);
+        });
+        return () => unsub();
+    }, [user?.id]);
 
     useEffect(() => {
         if (shouldStartBooking && step === 0) setStep(1);
@@ -280,13 +291,43 @@ function DashboardContent() {
                             <p className="text-xs text-gray-500">Pickups</p>
                         </div>
                         <div className="bg-white rounded-2xl p-4 border border-gray-100">
-                            <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center mb-3">
-                                <Clock className="w-4 h-4 text-gray-600" />
+                            <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center mb-3">
+                                <Clock className="w-4 h-4 text-emerald-600" />
                             </div>
-                            <p className="text-2xl font-bold text-gray-900">0</p>
+                            <p className="text-2xl font-bold text-gray-900">{activeJob ? '1' : '0'}</p>
                             <p className="text-xs text-gray-500">Active</p>
                         </div>
                     </div>
+
+                    {/* Active Job Banner */}
+                    {activeJob && (
+                        <div className="mt-2">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-1 mb-2">In Progress</h3>
+                            <button
+                                onClick={() => router.push(`/track/${activeJob.id}`)}
+                                className="w-full flex items-center justify-between p-4 bg-emerald-50 rounded-2xl border border-emerald-100 transition-colors hover:bg-emerald-100"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                                        <Truck className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="text-sm font-bold text-gray-900">Active Pickup</p>
+                                        <p className="text-[11px] text-emerald-600 font-medium">
+                                            {activeJob.status === 'pending' ? 'Looking for collector...' :
+                                             activeJob.status === 'assigned' ? 'Collector assigned' :
+                                             activeJob.status === 'en_route' ? 'Collector is on the way' :
+                                             activeJob.status === 'arrived' ? 'Collector has arrived' :
+                                             'In progress'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                                    <ArrowRight className="w-4 h-4 text-emerald-600" />
+                                </div>
+                            </button>
+                        </div>
+                    )}
 
                     {/* Menu Items */}
                     <div className="mt-2">

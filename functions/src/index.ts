@@ -19,7 +19,7 @@ const modempay = new ModemPay(MODEM_PAY_SECRET_KEY);
 export const createPayment = onCall(async (request) => {
     const { data } = request;
     // Requires authentication? We'll leave it open for guest checkout if needed, or check context.auth
-    const { amount, currency = 'GMD', customer_name, customer_email, customer_phone, metadata } = data;
+    const { amount, currency = 'GMD', customer_name, customer_email, customer_phone, metadata, customerId, collectorId } = data;
 
     if (!amount || amount <= 0) {
         throw new HttpsError('invalid-argument', 'Invalid amount');
@@ -35,11 +35,29 @@ export const createPayment = onCall(async (request) => {
             metadata
         };
 
-        const response = await modempay.payments.create(paymentData);
+        const response = await modempay.paymentIntents.create(paymentData);
+        const reference = response.data?.id;
+
+        if (reference) {
+            // Save to Firestore
+            const db = admin.firestore();
+            await db.collection('payments').doc(reference).set({
+                reference,
+                customerId: customerId || 'guest',
+                collectorId: collectorId || null,
+                amount,
+                currency,
+                status: 'pending',
+                method: 'modem-pay',
+                metadata: metadata || {},
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+
         return {
             success: true,
-            paymentUrl: response.data?.payment_url,
-            reference: response.data?.reference
+            paymentUrl: response.data?.payment_link,
+            reference: reference
         };
     } catch (error: any) {
         console.error('Payment creation error:', error);
@@ -71,40 +89,66 @@ export const requestWithdrawal = onCall(async (request) => {
     const userId = auth.uid;
 
     try {
-        // Here you would typically check the user's wallet balance in Firestore
+        // Check the user's wallet balance in Firestore
         const db = admin.firestore();
         const walletRef = db.collection('wallets').doc(userId);
-        const walletDoc = await walletRef.get();
         
-        if (!walletDoc.exists) {
-            throw new HttpsError('failed-precondition', 'Wallet not found');
-        }
-        const currentBalance = walletDoc.data()?.available_balance || 0;
-        if (currentBalance < amount) {
-            throw new HttpsError('failed-precondition', 'Insufficient balance');
-        }
+        return await db.runTransaction(async (transaction) => {
+            const walletDoc = await transaction.get(walletRef);
+            
+            if (!walletDoc.exists) {
+                throw new HttpsError('failed-precondition', 'Wallet not found');
+            }
+            const currentBalance = walletDoc.data()?.balance || 0;
+            if (currentBalance < amount) {
+                throw new HttpsError('failed-precondition', 'Insufficient balance');
+            }
 
-        const transferData = {
-            amount,
-            currency: 'GMD',
-            network,
-            account_number,
-            beneficiary_name: beneficiary_name || 'Mbalit User'
-        };
+            const transferData = {
+                amount,
+                currency: 'GMD',
+                network,
+                account_number,
+                beneficiary_name: beneficiary_name || 'Mbalit User'
+            };
 
-        // Initiate payout to the user's mobile money account
-        const response = await modempay.transfers.initiate(transferData);
+            // Initiate payout to the user's mobile money account
+            const idempotencyKey = `withdraw_${userId}_${Date.now()}`;
+            const response = await modempay.transfers.initiate(transferData, idempotencyKey);
+            const reference = response.transfer_reference || response.id;
 
-        // Deduct the requested amount locally pending settlement
-        await walletRef.update({
-            available_balance: currentBalance - amount
+            if (!reference) {
+                throw new Error("Failed to get reference from Modem Pay");
+            }
+
+            // Deduct the requested amount locally
+            const newBalance = currentBalance - amount;
+            transaction.update(walletRef, {
+                balance: newBalance,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            // Create a pending transaction record
+            const transRef = db.collection('walletTransactions').doc(reference);
+            transaction.set(transRef, {
+                walletId: userId,
+                type: 'withdraw',
+                amount: -amount,
+                description: `Withdrawal to ${network} (${account_number})`,
+                paymentMethod: network,
+                phoneNumber: account_number,
+                status: 'pending',
+                balanceAfter: newBalance,
+                reference: reference,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+            return {
+                success: true,
+                reference: reference,
+                message: 'Withdrawal initiated successfully'
+            };
         });
-
-        return {
-            success: true,
-            reference: response.data?.reference,
-            message: 'Withdrawal initiated successfully'
-        };
     } catch (error: any) {
         console.error('Withdrawal error:', error);
         throw new HttpsError('internal', error.message || 'Withdrawal failed');
@@ -120,7 +164,6 @@ export const modemPayWebhook = onRequest(async (req, res) => {
         return;
     }
 
-    // Modem Pay uses an HMAC SHA512 signature in the x-modem-signature header
     const signature = req.headers['x-modem-signature'] as string;
     
     if (!signature) {
@@ -129,7 +172,6 @@ export const modemPayWebhook = onRequest(async (req, res) => {
         return;
     }
 
-    // Verify signature using the raw body
     const hash = crypto.createHmac('sha512', MODEM_PAY_WEBHOOK_SECRET)
                        .update(JSON.stringify(req.body))
                        .digest('hex');
@@ -142,32 +184,80 @@ export const modemPayWebhook = onRequest(async (req, res) => {
 
     try {
         const payload = req.body;
-        // In production, we should verify the signature. We use the raw request body string.
-        // const signature = req.headers['x-modem-signature'] as string;
-        // const secret = process.env.MODEM_WEBHOOK_SECRET || '';
-        // const event = modempay.webhooks.composeEventDetails(JSON.stringify(payload), signature, secret);
-
-        // For now, we will parse the JSON directly
         const event = payload;
 
-        console.log('Received Webhook:', event.event, event.payload?.id);
+        console.log('Received Webhook:', event.event, event.payload?.id || event.data?.reference);
+        const db = admin.firestore();
 
         if (event.event === 'charge.succeeded' || event.event === 'payment.success') {
             const data = event.payload || event.data;
             const paymentId = data.reference || data.id || data.transaction_id;
             console.log('Payment succeeded:', paymentId);
-            // Process the successful payment (e.g., mark job as paid in Firestore)
-            // ...
+            
+            // Mark payment as completed
+            if (paymentId) {
+                const paymentRef = db.collection('payments').doc(paymentId);
+                const doc = await paymentRef.get();
+                if (doc.exists) {
+                    await paymentRef.update({
+                        status: 'completed',
+                        completedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    });
+                    
+                    // Credit collector if needed, or complete job
+                    const paymentData = doc.data();
+                    if (paymentData?.metadata?.jobId) {
+                        await db.collection('jobs').doc(paymentData.metadata.jobId).update({
+                            paymentStatus: 'paid'
+                        });
+                    }
+                }
+            }
         } else if (event.event === 'transfer.succeeded') {
             const data = event.payload || event.data;
-            console.log('Transfer succeeded:', data.id);
-            // Update withdrawal status to successful
-            // ...
+            const reference = data.reference || data.id;
+            console.log('Transfer succeeded:', reference);
+            
+            if (reference) {
+                await db.collection('walletTransactions').doc(reference).update({
+                    status: 'completed',
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+            }
         } else if (event.event === 'transfer.failed') {
             const data = event.payload || event.data;
-            console.log('Transfer failed:', data.id);
-            // Refund the user's wallet
-            // ...
+            const reference = data.reference || data.id;
+            console.log('Transfer failed:', reference);
+            
+            if (reference) {
+                await db.runTransaction(async (transaction) => {
+                    const transRef = db.collection('walletTransactions').doc(reference);
+                    const transDoc = await transaction.get(transRef);
+                    
+                    if (transDoc.exists && transDoc.data()?.status !== 'failed') {
+                        const amount = Math.abs(transDoc.data()?.amount || 0);
+                        const walletId = transDoc.data()?.walletId;
+                        
+                        // Mark transaction as failed
+                        transaction.update(transRef, {
+                            status: 'failed',
+                            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                        });
+                        
+                        // Refund wallet
+                        if (walletId) {
+                            const walletRef = db.collection('wallets').doc(walletId);
+                            const walletDoc = await transaction.get(walletRef);
+                            if (walletDoc.exists) {
+                                transaction.update(walletRef, {
+                                    balance: (walletDoc.data()?.balance || 0) + amount,
+                                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                                });
+                            }
+                        }
+                    }
+                });
+            }
         }
 
         res.status(200).send('Webhook received successfully');

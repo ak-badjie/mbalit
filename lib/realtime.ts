@@ -1,5 +1,5 @@
 // Firebase Realtime Database utilities for live tracking
-import { ref, set, onValue, off, update, get, push, serverTimestamp, runTransaction } from 'firebase/database';
+import { ref, set, onValue, off, update, get, push, serverTimestamp, runTransaction, query, orderByChild, equalTo } from 'firebase/database';
 import { realtimeDb } from './firebase';
 import { GeoLocation } from '@/types';
 
@@ -198,6 +198,32 @@ export function subscribeToPendingJobs(
     return () => off(jobsRef);
 }
 
+// Subscribe to a customer's active job
+export function subscribeToCustomerActiveJob(
+    customerId: string,
+    callback: (job: RealtimeJob | null) => void
+): () => void {
+    const jobsRef = ref(realtimeDb, 'jobs');
+    const q = query(jobsRef, orderByChild('customerId'), equalTo(customerId));
+
+    const unsubscribe = onValue(q, (snapshot) => {
+        let activeJob: RealtimeJob | null = null;
+        snapshot.forEach((child) => {
+            const job = child.val() as RealtimeJob;
+            // Consider active if it's not completed or cancelled
+            if (job.status !== 'completed' && job.status !== 'cancelled') {
+                // If there are multiple (shouldn't happen), grab the newest or just the first
+                if (!activeJob || (job.createdAt > activeJob.createdAt)) {
+                    activeJob = job;
+                }
+            }
+        });
+        callback(activeJob);
+    });
+
+    return () => off(q);
+}
+
 // Subscribe to collector's assigned job — keeps a live subscription on the
 // nested job ref so changes (status updates, customer cancellation, etc.)
 // propagate to the collector's UI in real time.
@@ -316,7 +342,10 @@ export interface PaymentRequest {
     originalAmount: number;
     requestedAmount: number;
     adjustmentReason?: string;
-    status: 'pending' | 'confirmed' | 'cancelled';
+    counterOfferAmount?: number;
+    counterOfferBy?: 'customer' | 'collector';
+    counterOfferReason?: string;
+    status: 'pending' | 'confirmed' | 'cancelled' | 'counter_offer';
     createdAt: number;
     confirmedAt?: number;
 }
@@ -364,7 +393,7 @@ export function subscribeToPaymentRequests(
 
         snapshot.forEach((child) => {
             const data = child.val();
-            if (data.status === 'pending') {
+            if (data.status === 'pending' || data.status === 'counter_offer') {
                 requests.push(data as PaymentRequest);
             }
         });
@@ -412,6 +441,56 @@ export async function confirmPaymentRequest(
             ...snapshot.val(),
             status: 'confirmed',
             confirmedAt: Date.now(),
+        });
+    }
+}
+
+// Customer sends a counter-offer
+export async function counterOfferPaymentRequest(
+    customerId: string,
+    requestId: string,
+    counterAmount: number,
+    reason?: string
+): Promise<void> {
+    const requestRef = ref(realtimeDb, `paymentRequests/${customerId}/${requestId}`);
+    const snapshot = await new Promise<any>((resolve) => {
+        onValue(requestRef, (snap) => {
+            resolve(snap);
+        }, { onlyOnce: true });
+    });
+
+    if (snapshot.exists()) {
+        await set(requestRef, {
+            ...snapshot.val(),
+            status: 'counter_offer',
+            counterOfferAmount: counterAmount,
+            counterOfferBy: 'customer',
+            counterOfferReason: reason || null,
+        });
+    }
+}
+
+// Collector accepts the customer's counter-offer (updates amount and confirms)
+export async function acceptCounterOffer(
+    customerId: string,
+    requestId: string
+): Promise<void> {
+    const requestRef = ref(realtimeDb, `paymentRequests/${customerId}/${requestId}`);
+    const snapshot = await new Promise<any>((resolve) => {
+        onValue(requestRef, (snap) => {
+            resolve(snap);
+        }, { onlyOnce: true });
+    });
+
+    if (snapshot.exists()) {
+        const data = snapshot.val();
+        await set(requestRef, {
+            ...data,
+            requestedAmount: data.counterOfferAmount || data.requestedAmount,
+            status: 'pending', // back to pending so customer can now pay
+            counterOfferAmount: null,
+            counterOfferBy: null,
+            counterOfferReason: null,
         });
     }
 }
