@@ -12,7 +12,8 @@ import {
     serverTimestamp,
     GeoPoint,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from './firebase';
 import {
     WasteType,
     GeoLocation,
@@ -135,6 +136,7 @@ export async function creditWallet(
     } else {
         await setDoc(walletRef, {
             balance: newBalance,
+            escrowBalance: 0,
             currency: 'GMD',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -161,97 +163,174 @@ export async function withdrawFromWallet(
     paymentMethod: string,
     phoneNumber: string
 ): Promise<{ success: boolean; error?: string; transactionId?: string }> {
-    const walletRef = doc(db, 'wallets', collectorId);
-    const walletDoc = await getDoc(walletRef);
-
-    if (!walletDoc.exists()) {
-        return { success: false, error: 'Wallet not found' };
+    try {
+        const requestWithdrawal = httpsCallable(functions, 'requestWithdrawal');
+        const response = await requestWithdrawal({
+            amount,
+            network: paymentMethod,
+            account_number: phoneNumber,
+            walletType: 'individual',
+        });
+        const data = response.data as any;
+        return { success: true, transactionId: data.reference };
+    } catch (error: any) {
+        console.error('Withdrawal error:', error);
+        return { success: false, error: error.message || 'Withdrawal failed' };
     }
-
-    const currentBalance = walletDoc.data().balance || 0;
-
-    if (amount > currentBalance) {
-        return { success: false, error: 'Insufficient balance' };
-    }
-
-    if (amount < 50) {
-        return { success: false, error: 'Minimum withdrawal is 50 GMD' };
-    }
-
-    const newBalance = currentBalance - amount;
-
-    // Update wallet
-    await updateDoc(walletRef, {
-        balance: newBalance,
-        updatedAt: serverTimestamp(),
-    });
-
-    // Record transaction
-    const transRef = doc(collection(db, 'walletTransactions'));
-    const transactionId = transRef.id;
-
-    await setDoc(transRef, {
-        walletId: collectorId,
-        type: 'withdraw',
-        amount: -amount,
-        description: `Withdrawal to ${paymentMethod} (${phoneNumber})`,
-        paymentMethod,
-        phoneNumber,
-        status: 'pending',
-        balanceAfter: newBalance,
-        createdAt: serverTimestamp(),
-    });
-
-    return { success: true, transactionId };
 }
 
-// Withdraw from organization wallet (decrements org doc walletBalance)
+// Withdraw from organization wallet
 export async function withdrawFromOrgWallet(
     orgId: string,
     amount: number,
     paymentMethod: string,
     phoneNumber: string
 ): Promise<{ success: boolean; error?: string; transactionId?: string }> {
-    const orgRef = doc(db, 'organizations', orgId);
-    const orgDoc = await getDoc(orgRef);
+    try {
+        const requestWithdrawal = httpsCallable(functions, 'requestWithdrawal');
+        const response = await requestWithdrawal({
+            amount,
+            network: paymentMethod,
+            account_number: phoneNumber,
+            walletType: 'organization',
+            orgId: orgId
+        });
+        const data = response.data as any;
+        return { success: true, transactionId: data.reference };
+    } catch (error: any) {
+        console.error('Org Withdrawal error:', error);
+        return { success: false, error: error.message || 'Withdrawal failed' };
+    }
+}
 
-    if (!orgDoc.exists()) {
-        return { success: false, error: 'Organization not found' };
+// =====================================
+// ESCROW BALANCE (Firestore)
+// =====================================
+
+// Add to Escrow Balance
+export async function creditEscrow(
+    collectorId: string,
+    agencyId: string | undefined,
+    amount: number,
+    description: string,
+    transactionId?: string
+): Promise<void> {
+    const isOrg = !!agencyId;
+    const targetId = isOrg ? agencyId! : collectorId;
+    const collectionName = isOrg ? 'organizations' : 'wallets';
+    const balanceField = isOrg ? 'walletBalance' : 'balance'; // We use escrowBalance on both
+    
+    const ref = doc(db, collectionName, targetId);
+    const snap = await getDoc(ref);
+
+    const currentEscrow = snap.exists() ? (snap.data().escrowBalance || 0) : 0;
+    const newEscrow = currentEscrow + amount;
+
+    if (snap.exists()) {
+        await updateDoc(ref, {
+            escrowBalance: newEscrow,
+            updatedAt: serverTimestamp(),
+        });
+    } else if (!isOrg) {
+        await setDoc(ref, {
+            balance: 0,
+            escrowBalance: newEscrow,
+            currency: 'GMD',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
     }
 
-    const currentBalance = orgDoc.data().walletBalance || 0;
+    // Record transaction
+    const transRef = doc(collection(db, 'walletTransactions'));
+    await setDoc(transRef, {
+        walletId: targetId,
+        walletType: isOrg ? 'organization' : 'individual',
+        type: 'escrow_credit',
+        amount,
+        description,
+        transactionId,
+        escrowBalanceAfter: newEscrow,
+        createdAt: serverTimestamp(),
+    });
+}
 
-    if (amount < 50) {
-        return { success: false, error: 'Minimum withdrawal is 50 GMD' };
-    }
-    if (amount > currentBalance) {
-        return { success: false, error: 'Insufficient balance' };
-    }
+// Release Escrow (move from escrow to main wallet)
+export async function releaseEscrowForPickup(
+    collectorId: string,
+    agencyId: string | undefined,
+    amount: number,
+    description: string
+): Promise<void> {
+    const isOrg = !!agencyId;
+    const targetId = isOrg ? agencyId! : collectorId;
+    const collectionName = isOrg ? 'organizations' : 'wallets';
+    const balanceField = isOrg ? 'walletBalance' : 'balance';
+    
+    const ref = doc(db, collectionName, targetId);
+    const snap = await getDoc(ref);
 
-    const newBalance = currentBalance - amount;
+    if (!snap.exists()) return;
 
-    await updateDoc(orgRef, {
-        walletBalance: newBalance,
+    const currentEscrow = snap.data().escrowBalance || 0;
+    const currentWallet = snap.data()[balanceField] || 0;
+    
+    // Safety check - release up to available escrow
+    const amountToRelease = Math.min(amount, currentEscrow);
+    if (amountToRelease <= 0) return;
+
+    const newEscrow = currentEscrow - amountToRelease;
+    const newWallet = currentWallet + amountToRelease;
+
+    await updateDoc(ref, {
+        [balanceField]: newWallet,
+        escrowBalance: newEscrow,
         updatedAt: serverTimestamp(),
     });
 
+    // Record transaction
     const transRef = doc(collection(db, 'walletTransactions'));
-    const transactionId = transRef.id;
-
     await setDoc(transRef, {
-        walletId: orgId,
-        walletType: 'organization',
-        type: 'withdraw',
-        amount: -amount,
-        description: `Org withdrawal to ${paymentMethod} (${phoneNumber})`,
-        paymentMethod,
-        phoneNumber,
-        status: 'pending',
-        balanceAfter: newBalance,
+        walletId: targetId,
+        walletType: isOrg ? 'organization' : 'individual',
+        type: 'escrow_release',
+        amount: amountToRelease,
+        description,
+        escrowBalanceAfter: newEscrow,
+        balanceAfter: newWallet,
         createdAt: serverTimestamp(),
     });
+}
 
-    return { success: true, transactionId };
+// Refund Escrow to Customer Wallet
+export async function refundEscrowToCustomer(
+    customerId: string,
+    collectorId: string,
+    agencyId: string | undefined,
+    amountToRefund: number,
+    description: string
+): Promise<void> {
+    const isOrg = !!agencyId;
+    const targetId = isOrg ? agencyId! : collectorId;
+    const collectionName = isOrg ? 'organizations' : 'wallets';
+    
+    const providerRef = doc(db, collectionName, targetId);
+    const providerSnap = await getDoc(providerRef);
+
+    if (providerSnap.exists()) {
+        const currentEscrow = providerSnap.data().escrowBalance || 0;
+        const actualRefund = Math.min(amountToRefund, currentEscrow);
+        
+        if (actualRefund > 0) {
+            await updateDoc(providerRef, {
+                escrowBalance: currentEscrow - actualRefund,
+                updatedAt: serverTimestamp(),
+            });
+            
+            // Credit customer wallet
+            await creditWallet(customerId, actualRefund, description);
+        }
+    }
 }
 
 // Get wallet transactions
@@ -766,9 +845,6 @@ export async function searchCollectors(searchTerm: string): Promise<CollectorLis
 // SUBSCRIPTION PAYMENT PROCESSING (Firestore)
 // =====================================
 
-const PLATFORM_FEE_RATE = 0.30; // 30% platform fee
-const COLLECTOR_RATE = 0.70;     // 70% to collector
-
 export async function processSubscriptionPayment(
     collectorId: string,
     customerId: string,
@@ -776,6 +852,14 @@ export async function processSubscriptionPayment(
     subscriptionId?: string,
     jobId?: string,
 ): Promise<{ paymentId: string; collectorEarnings: number; platformFee: number }> {
+    // Check if collectorId belongs to an organization
+    const orgDoc = await getDoc(doc(db, 'organizations', collectorId));
+    const isOrganization = orgDoc.exists();
+    
+    // 10% platform fee for Orgs, 30% for individual drivers
+    const PLATFORM_FEE_RATE = isOrganization ? 0.10 : 0.30;
+    const COLLECTOR_RATE = 1.0 - PLATFORM_FEE_RATE;
+
     const collectorEarnings = Math.round(amount * COLLECTOR_RATE * 100) / 100;
     const platformFee = Math.round(amount * PLATFORM_FEE_RATE * 100) / 100;
 
@@ -796,11 +880,12 @@ export async function processSubscriptionPayment(
         completedAt: serverTimestamp(),
     });
 
-    // Credit collector wallet (70%)
-    await creditWallet(
+    // Credit collector escrow
+    await creditEscrow(
         collectorId,
+        isOrganization ? collectorId : undefined,
         collectorEarnings,
-        `Payment received${subscriptionId ? ' (subscription)' : ''}: ${amount} GMD total, ${collectorEarnings} GMD earned`,
+        `Subscription Payment Escrow: ${jobId || subscriptionId}`,
         paymentRef.id
     );
 
@@ -811,7 +896,7 @@ export async function processSubscriptionPayment(
     await createNotification(
         collectorId,
         'Payment Received',
-        `You earned ${collectorEarnings} GMD from a ${amount} GMD payment (70% share).`,
+        `You earned ${collectorEarnings} GMD from a ${amount} GMD payment (${Math.round(COLLECTOR_RATE * 100)}% share).`,
         'success',
         { paymentId: paymentRef.id, amount, collectorEarnings, platformFee }
     );

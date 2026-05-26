@@ -43,7 +43,9 @@ import {
     approveMember,
     removeMember,
     withdrawFromOrgWallet,
+    getWalletTransactions,
 } from '@/lib/firestore';
+import { getCollectorSubscriptions, getSubscriptionSummary } from '@/lib/subscriptions';
 import {
     updateCollectorLocation,
     setCollectorOnlineStatus,
@@ -90,6 +92,8 @@ export default function OrganizationDashboard() {
     const [org, setOrg] = useState<any>(null);
     const [approvedMembers, setApprovedMembers] = useState<any[]>([]);
     const [pendingMembers, setPendingMembers] = useState<any[]>([]);
+    const [orgTransactions, setOrgTransactions] = useState<any[]>([]);
+    const [orgSubscriptions, setOrgSubscriptions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [copiedCode, setCopiedCode] = useState(false);
     const [processingMember, setProcessingMember] = useState<string | null>(null);
@@ -177,6 +181,13 @@ export default function OrganizationDashboard() {
                 const members = await getOrganizationMembers(orgData.id);
                 setApprovedMembers(members.approved);
                 setPendingMembers(members.pending);
+
+                // Fetch transactions & subscriptions
+                const txs = await getWalletTransactions(orgData.id);
+                setOrgTransactions(txs);
+                
+                const subs = await getCollectorSubscriptions(undefined, orgData.id);
+                setOrgSubscriptions(subs);
             }
         } catch (err) {
             console.error('Failed to load org:', err);
@@ -702,8 +713,8 @@ export default function OrganizationDashboard() {
                                 </p>
                                 <div className="flex gap-4">
                                     <div>
-                                        <p className="text-white/60 text-xs">Total Earnings</p>
-                                        <p className="text-lg font-bold text-white">{formatPrice(org?.totalEarnings || 0)}</p>
+                                        <p className="text-white/60 text-xs">Escrow Balance</p>
+                                        <p className="text-lg font-bold text-white">{formatPrice(org?.escrowBalance || 0)}</p>
                                     </div>
                                     <div>
                                         <p className="text-white/60 text-xs">Total Pickups</p>
@@ -747,7 +758,7 @@ export default function OrganizationDashboard() {
                         </div>
 
                         {/* Community Reports (authority orgs only) */}
-                        {(user as { isAuthority?: boolean })?.isAuthority && (
+                        {org?.isAuthority && (
                             <button
                                 type="button"
                                 onClick={() => router.push('/organization/reports')}
@@ -850,6 +861,66 @@ export default function OrganizationDashboard() {
                                             </div>
                                         </Card>
                                     ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Recent Transactions */}
+                        <div className="mt-6">
+                            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <Wallet className="w-5 h-5 text-gray-400" />
+                                Recent Transactions
+                            </h3>
+                            {orgTransactions.length === 0 ? (
+                                <Card variant="default" padding="lg" className="text-center bg-gray-50/50">
+                                    <p className="text-gray-500 text-sm">No recent transactions</p>
+                                </Card>
+                            ) : (
+                                <div className="space-y-3">
+                                    {orgTransactions.slice(0, 5).map(tx => (
+                                        <Card key={tx.id} variant="default" padding="sm" className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-900">{tx.description || tx.type}</p>
+                                                <p className="text-xs text-gray-500">{tx.createdAt?.toLocaleDateString()}</p>
+                                            </div>
+                                            <p className={`font-bold ${tx.amount > 0 ? 'text-emerald-600' : 'text-gray-900'}`}>
+                                                {tx.amount > 0 ? '+' : ''}{formatPrice(tx.amount)}
+                                            </p>
+                                        </Card>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Active Subscriptions */}
+                        <div className="mt-6 mb-8">
+                            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <Star className="w-5 h-5 text-amber-500" />
+                                Managed Subscriptions
+                            </h3>
+                            {orgSubscriptions.length === 0 ? (
+                                <Card variant="default" padding="lg" className="text-center bg-gray-50/50">
+                                    <p className="text-gray-500 text-sm">No active subscriptions assigned to your organization</p>
+                                </Card>
+                            ) : (
+                                <div className="space-y-3">
+                                    {orgSubscriptions.map(sub => {
+                                        const summary = getSubscriptionSummary(sub);
+                                        return (
+                                            <Card key={sub.id} variant="default" padding="md" className="border border-emerald-100 bg-emerald-50/30">
+                                                <div className="flex justify-between mb-2">
+                                                    <Badge variant="success" className="capitalize">{summary.planName} Plan</Badge>
+                                                    <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full">
+                                                        {summary.monthlyPrice}/mo
+                                                    </span>
+                                                </div>
+                                                <div className="text-sm text-gray-700 mt-2 space-y-1">
+                                                    <p><strong>Containers:</strong> {summary.containerSummary}</p>
+                                                    <p><strong>Next Pickup:</strong> {summary.nextPickup}</p>
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -995,12 +1066,12 @@ export default function OrganizationDashboard() {
                                         <span className="font-bold text-gray-900">{formatPrice(parseFloat(paymentAmount) || 0)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm mb-1">
-                                        <span className="text-gray-500">You receive (70%)</span>
-                                        <span className="font-bold text-emerald-600">{formatPrice(Math.round((parseFloat(paymentAmount) || 0) * 0.7 * 100) / 100)}</span>
+                                        <span className="text-gray-500">You receive (90%)</span>
+                                        <span className="font-bold text-emerald-600">{formatPrice(Math.round((parseFloat(paymentAmount) || 0) * 0.9 * 100) / 100)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-500">Platform fee (30%)</span>
-                                        <span className="text-gray-400">{formatPrice(Math.round((parseFloat(paymentAmount) || 0) * 0.3 * 100) / 100)}</span>
+                                        <span className="text-gray-500">Platform fee (10%)</span>
+                                        <span className="text-gray-400">{formatPrice(Math.round((parseFloat(paymentAmount) || 0) * 0.1 * 100) / 100)}</span>
                                     </div>
                                 </div>
 

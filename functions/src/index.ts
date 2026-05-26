@@ -1,4 +1,5 @@
 import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 import ModemPay from 'modem-pay';
 
@@ -74,7 +75,7 @@ export const requestWithdrawal = onCall(async (request) => {
         throw new HttpsError('unauthenticated', 'You must be logged in to withdraw');
     }
 
-    const { amount, network, account_number, beneficiary_name } = data;
+    const { amount, network, account_number, beneficiary_name, walletType, orgId } = data;
 
     if (!amount || amount <= 0) {
         throw new HttpsError('invalid-argument', 'Invalid withdrawal amount');
@@ -89,17 +90,29 @@ export const requestWithdrawal = onCall(async (request) => {
     const userId = auth.uid;
 
     try {
-        // Check the user's wallet balance in Firestore
         const db = admin.firestore();
-        const walletRef = db.collection('wallets').doc(userId);
+        const isOrg = walletType === 'organization';
+        const targetId = isOrg ? orgId : userId;
+        
+        if (isOrg && !orgId) {
+             throw new HttpsError('invalid-argument', 'Organization ID is required for org withdrawals');
+        }
+
+        const walletRef = isOrg 
+            ? db.collection('organizations').doc(targetId) 
+            : db.collection('wallets').doc(targetId);
         
         return await db.runTransaction(async (transaction) => {
             const walletDoc = await transaction.get(walletRef);
             
             if (!walletDoc.exists) {
-                throw new HttpsError('failed-precondition', 'Wallet not found');
+                throw new HttpsError('failed-precondition', isOrg ? 'Organization not found' : 'Wallet not found');
             }
-            const currentBalance = walletDoc.data()?.balance || 0;
+            
+            const currentBalance = isOrg 
+                ? (walletDoc.data()?.walletBalance || 0) 
+                : (walletDoc.data()?.balance || 0);
+                
             if (currentBalance < amount) {
                 throw new HttpsError('failed-precondition', 'Insufficient balance');
             }
@@ -113,7 +126,7 @@ export const requestWithdrawal = onCall(async (request) => {
             };
 
             // Initiate payout to the user's mobile money account
-            const idempotencyKey = `withdraw_${userId}_${Date.now()}`;
+            const idempotencyKey = `withdraw_${targetId}_${Date.now()}`;
             const response = await modempay.transfers.initiate(transferData, idempotencyKey);
             const reference = response.transfer_reference || response.id;
 
@@ -123,15 +136,23 @@ export const requestWithdrawal = onCall(async (request) => {
 
             // Deduct the requested amount locally
             const newBalance = currentBalance - amount;
-            transaction.update(walletRef, {
-                balance: newBalance,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            });
+            if (isOrg) {
+                 transaction.update(walletRef, {
+                    walletBalance: newBalance,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+            } else {
+                transaction.update(walletRef, {
+                    balance: newBalance,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+            }
 
             // Create a pending transaction record
             const transRef = db.collection('walletTransactions').doc(reference);
             transaction.set(transRef, {
-                walletId: userId,
+                walletId: targetId,
+                walletType: isOrg ? 'organization' : 'individual',
                 type: 'withdraw',
                 amount: -amount,
                 description: `Withdrawal to ${network} (${account_number})`,
@@ -264,5 +285,69 @@ export const modemPayWebhook = onRequest(async (req, res) => {
     } catch (error) {
         console.error('Webhook processing error:', error);
         res.status(400).send('Webhook Error');
+    }
+});
+
+// ----------------------------------------------------------------------------
+// 4. Send FCM Push Notifications when Notification document is created
+// ----------------------------------------------------------------------------
+export const sendPushNotification = onDocumentCreated('notifications/{notificationId}', async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const data = snap.data();
+    const userId = data.userId;
+    
+    if (!userId) return;
+
+    try {
+        const db = admin.firestore();
+        const userDoc = await db.collection('users').doc(userId).get();
+        
+        if (!userDoc.exists) return;
+        
+        const fcmTokens = userDoc.data()?.fcmTokens;
+        
+        if (!fcmTokens || !Array.isArray(fcmTokens) || fcmTokens.length === 0) {
+            console.log(`No FCM tokens found for user ${userId}`);
+            return;
+        }
+
+        const payload = {
+            notification: {
+                title: data.title || 'Mbalit Notification',
+                body: data.message || '',
+            },
+            data: {
+                click_action: 'FLUTTER_NOTIFICATION_CLICK',
+                type: data.type || 'info',
+                ...((data.data || {}) as Record<string, string>)
+            }
+        };
+
+        const response = await admin.messaging().sendEachForMulticast({
+            tokens: fcmTokens,
+            ...payload
+        });
+
+        console.log(`Successfully sent ${response.successCount} messages; Failed ${response.failureCount}`);
+        
+        if (response.failureCount > 0) {
+            const invalidTokens: string[] = [];
+            response.responses.forEach((resp, idx) => {
+                if (!resp.success && resp.error?.code === 'messaging/invalid-registration-token' || resp.error?.code === 'messaging/registration-token-not-registered') {
+                    invalidTokens.push(fcmTokens[idx]);
+                }
+            });
+            
+            if (invalidTokens.length > 0) {
+                // Remove invalid tokens
+                await db.collection('users').doc(userId).update({
+                    fcmTokens: admin.firestore.FieldValue.arrayRemove(...invalidTokens)
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error sending push notification:', error);
     }
 });
