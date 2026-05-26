@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, UserPlus, Users, MoreVertical, Loader2, X, MessageCircle, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { getOrganizationByOwner, getOrganizationMembers, approveMember, removeMember } from '@/lib/firestore';
 
@@ -139,8 +140,16 @@ export default function TeamPage() {
                         </p>
                     </div>
                 ) : (
-                    members.map((m) => (
-                        <div key={m.id} className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-3">
+                    members.map((m) => {
+                        const CardWrapper = m.isApproved ? Link : 'div';
+                        const wrapperProps = m.isApproved ? { href: `/organization/team/${m.id}` } : {};
+                        
+                        return (
+                        <CardWrapper 
+                            key={m.id} 
+                            {...wrapperProps}
+                            className={`bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-3 ${m.isApproved ? 'hover:bg-gray-50 transition-colors cursor-pointer active:scale-[0.98]' : ''}`}
+                        >
                             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#1FA653] to-[#0E7A3B] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden border-2 border-white shadow-sm">
                                 {m.profileImage ? (
                                     <img src={m.profileImage as string} alt="" className="w-full h-full object-cover" />
@@ -160,14 +169,14 @@ export default function TeamPage() {
                             {!m.isApproved && (
                                 <div className="flex gap-2 flex-shrink-0">
                                     <button
-                                        onClick={() => handleRemoveMember(m.id)}
+                                        onClick={(e) => { e.preventDefault(); handleRemoveMember(m.id); }}
                                         disabled={processingMember === m.id}
                                         className="w-9 h-9 rounded-full flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-50"
                                     >
                                         {processingMember === m.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
                                     </button>
                                     <button
-                                        onClick={() => handleApproveMember(m.id)}
+                                        onClick={(e) => { e.preventDefault(); handleApproveMember(m.id); }}
                                         disabled={processingMember === m.id}
                                         className="w-9 h-9 rounded-full flex items-center justify-center bg-[#E8F6EE] text-[#0E7A3B] hover:bg-[#D2F4E1] transition-colors disabled:opacity-50"
                                     >
@@ -176,12 +185,12 @@ export default function TeamPage() {
                                 </div>
                             )}
                             {m.isApproved && (
-                                <button className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-50">
+                                <div className="w-9 h-9 rounded-full flex items-center justify-center group-hover:bg-gray-100 transition-colors">
                                     <MoreVertical className="w-4 h-4 text-gray-400" />
-                                </button>
+                                </div>
                             )}
-                        </div>
-                    ))
+                        </CardWrapper>
+                    )})
                 )}
             </div>
             <AnimatePresence>
