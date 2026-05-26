@@ -145,14 +145,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     {status !== 'processing' && status !== 'success' && (
                         <button
                             onClick={onClose}
-                            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100  transition-colors z-10"
+                            className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/20 transition-colors z-10"
                         >
-                            <X className="w-5 h-5 text-gray-500" />
+                            <X className="w-5 h-5 text-white" />
                         </button>
                     )}
 
                     {/* Wave Animation Header */}
-                    <div className="relative h-32 sm:h-48 shrink-0 bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 overflow-hidden">
+                    <div className="relative h-32 sm:h-48 shrink-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #0E7A3B 0%, #0a5c2c 50%, #074d24 100%)' }}>
                         {/* Wave SVG Animation */}
                         <svg
                             className="absolute bottom-0 left-0 w-full"
@@ -229,7 +229,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                 <div className="bg-gray-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-gray-500">Amount</span>
-                                        <span className="text-xl sm:text-2xl font-bold text-emerald-600">
+                                        <span className="text-xl sm:text-2xl font-bold" style={{ color: '#0E7A3B' }}>
                                             {currency} {amount.toLocaleString()}
                                         </span>
                                     </div>
@@ -298,7 +298,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                     size="lg"
                                     onClick={openPaymentPopup}
                                     rightIcon={<ExternalLink className="w-5 h-5" />}
-                                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+                                    className="w-full !bg-[#0E7A3B] hover:!bg-[#0a5c2c] text-white"
                                 >
                                     Proceed to Pay
                                 </Button>
@@ -317,15 +317,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                 <p className="text-gray-500  mb-4">
                                     Please complete payment in the popup window
                                 </p>
-                                <div className="flex items-center justify-center gap-2 text-sm text-emerald-600">
-                                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                                <div className="flex items-center justify-center gap-2 text-sm" style={{ color: '#0E7A3B' }}>
+                                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#0E7A3B' }} />
                                     Waiting for confirmation...
                                 </div>
 
                                 {paymentWindowOpened && (
                                     <button
                                         onClick={openPaymentPopup}
-                                        className="mt-4 text-sm text-emerald-600 hover:text-emerald-700 underline"
+                                        className="mt-4 text-sm underline" style={{ color: '#0E7A3B' }}
                                     >
                                         Popup not showing? Click here to reopen
                                     </button>
@@ -370,7 +370,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                             setStatus('pending');
                                             setPaymentWindowOpened(false);
                                         }}
-                                        className="flex-1"
+                                        className="flex-1 !bg-[#0E7A3B] hover:!bg-[#0a5c2c]"
                                     >
                                         Try Again
                                     </Button>

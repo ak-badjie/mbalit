@@ -22,6 +22,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth-context';
 import { formatPrice, WASTE_TYPES } from '@/lib/waste-config';
+import { getCustomerSubscription, getSubscriptionSummary } from '@/lib/subscriptions';
+import { Subscription } from '@/types';
 
 // Order types
 interface Order {
@@ -128,25 +130,31 @@ const OrderCard: React.FC<{ order: Order; index: number }> = ({ order, index }) 
 export default function OrdersPage() {
     const { user } = useAuth();
     const [orders, setOrders] = useState<Order[]>([]);
+    const [subscription, setSubscription] = useState<Subscription | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
 
-    // Load orders from database
+    // Load data
     useEffect(() => {
-        const loadOrders = async () => {
+        const loadData = async () => {
+            if (!user) return;
             setIsLoading(true);
             try {
+                // Load subscription
+                const sub = await getCustomerSubscription(user.id);
+                setSubscription(sub);
+
                 // TODO: Replace with actual Firestore query
-                // const orders = await getUserOrders(user?.id);
-                // setOrders(orders);
+                // const userOrders = await getUserOrders(user.id);
+                // setOrders(userOrders);
                 setOrders([]);
             } catch (err) {
-                console.error('Failed to load orders:', err);
+                console.error('Failed to load pickups data:', err);
             } finally {
                 setIsLoading(false);
             }
         };
-        loadOrders();
+        loadData();
     }, [user]);
 
     // Filter orders
@@ -217,6 +225,33 @@ export default function OrdersPage() {
                         </button>
                     ))}
                 </div>
+
+                {/* Subscription Card */}
+                {subscription && subscription.status !== 'cancelled' && filter !== 'completed' && (
+                    <div className="bg-white rounded-xl border border-emerald-100 p-4 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-[#0E7A3B]" />
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-[#0E7A3B]" />
+                                    Subscription Pickup
+                                </h3>
+                                <p className="text-sm text-gray-500 mb-2">
+                                    {getSubscriptionSummary(subscription).planName} Plan • {getSubscriptionSummary(subscription).containerSummary}
+                                </p>
+                                <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                                    <Clock className="w-3 h-3" />
+                                    Next: {getSubscriptionSummary(subscription).nextPickup}
+                                </div>
+                            </div>
+                            <Link href="/dashboard/subscribe">
+                                <Button variant="secondary" size="sm" className="text-[#0E7A3B] border-[#0E7A3B] bg-white">
+                                    Manage
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                )}
 
                 {/* Orders List */}
                 {isLoading ? (
