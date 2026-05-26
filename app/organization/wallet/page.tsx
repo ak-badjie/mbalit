@@ -10,7 +10,7 @@ import { getOrganizationByOwner, getWalletBalance, getWalletTransactions } from 
 
 const QUICK_ACTIONS = [
     { icon: FileText, label: 'Transactions', href: '/organization/wallet/history' },
-    { icon: Shield, label: 'Withdrawals', href: '/organization/wallet/withdrawals' },
+    { icon: Shield, label: 'Withdrawals', href: '/organization/wallet/history' },
     { icon: RefreshCw, label: 'Subscriptions', href: '/organization/subscriptions' },
     { icon: Settings, label: 'Settings', href: '/organization/settings' },
 ];

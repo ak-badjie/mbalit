@@ -19,7 +19,7 @@ import { getWalletBalance, getWalletTransactions } from '@/lib/firestore';
 
 const QUICK_ACTIONS = [
     { icon: FileText, label: 'Transaction History', href: '/dashboard/wallet/history' },
-    { icon: Shield, label: 'Withdrawal Requests', href: '/dashboard/wallet/withdrawals' },
+    { icon: Shield, label: 'Withdrawal Requests', href: '/dashboard/wallet/history' },
     { icon: RefreshCw, label: 'Subscriptions', href: '/dashboard/subscriptions' },
     { icon: Settings, label: 'Wallet Settings', href: '/dashboard/settings' },
 ];
