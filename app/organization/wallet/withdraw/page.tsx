@@ -8,6 +8,13 @@ import { useAuth } from '@/lib/auth-context';
 import { getOrganizationByOwner, withdrawFromOrgWallet } from '@/lib/firestore';
 import { formatPrice } from '@/lib/waste-config';
 
+const ACCOUNTS = [
+    { id: 'wave', name: 'Wave Mobile Money', sub: 'Instant Transfer', logo: 'https://www.wave.com/img/nav-logo.png' },
+    { id: 'afrimoney', name: 'Afrimoney', sub: 'Instant Transfer', logo: 'https://slcb.com/admin/gallery/751_20230511.jpg' },
+    { id: 'aps', name: 'APS Wallet', sub: 'Instant Transfer', logo: 'https://apsinternational.com/wp-content/uploads/2022/05/APS-logo.svg' },
+    { id: 'qmoney', name: 'QMoney', sub: 'Instant Transfer', logo: 'https://qmoney.gm/wp-content/uploads/2022/12/QMoney-logo-landscape-1.svg' },
+];
+
 export default function WithdrawPage() {
     const router = useRouter();
     const { user } = useAuth();
@@ -19,6 +26,7 @@ export default function WithdrawPage() {
     
     const [amount, setAmount] = useState('');
     const [phone, setPhone] = useState('');
+    const [accountId, setAccountId] = useState('wave');
     const [isWithdrawing, setIsWithdrawing] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -65,7 +73,7 @@ export default function WithdrawPage() {
 
         setIsWithdrawing(true);
         try {
-            const result = await withdrawFromOrgWallet(org.id, numAmount, 'wave', phone);
+            const result = await withdrawFromOrgWallet(org.id, numAmount, accountId, phone);
             if (result.success) {
                 setBalance(prev => prev - numAmount);
                 setSuccess(true);
@@ -169,15 +177,48 @@ export default function WithdrawPage() {
 
                     <div>
                         <label className="block text-sm font-bold text-[#0F1A14] mb-2">
-                            Wave Mobile Money Number
+                            Destination Account/Number
                         </label>
                         <input
                             type="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
                             placeholder="+220 XXXXXXXX"
-                            className="w-full px-4 py-3.5 border-2 border-gray-100 rounded-2xl focus:border-[#0E7A3B] outline-none text-[#0F1A14] font-bold text-lg transition-colors"
+                            className="w-full px-4 py-3.5 border-2 border-gray-100 rounded-2xl focus:border-[#0E7A3B] outline-none text-[#0F1A14] font-bold text-lg transition-colors mb-5"
                         />
+                        
+                        <label className="block text-sm font-bold text-[#0F1A14] mb-2">
+                            Withdrawal Method
+                        </label>
+                        <div className="space-y-2">
+                            {ACCOUNTS.map((acc) => {
+                                const active = accountId === acc.id;
+                                return (
+                                    <button
+                                        key={acc.id}
+                                        type="button"
+                                        onClick={() => setAccountId(acc.id)}
+                                        className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 text-left transition-all
+                                            ${active ? 'border-[#0E7A3B] bg-[#ECFDF3]' : 'border-gray-100 hover:border-[#A8E7C3]'}`}
+                                    >
+                                        <div className="w-11 h-11 rounded-xl bg-white border border-gray-100 flex items-center justify-center overflow-hidden">
+                                            <img src={acc.logo} alt={acc.name} className="w-full h-full object-contain p-1" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-[#0F1A14] text-sm">{acc.name}</p>
+                                            </div>
+                                            <p className="text-xs text-gray-500">{acc.sub}</p>
+                                        </div>
+                                        {active && (
+                                            <div className="w-6 h-6 rounded-full bg-[#0E7A3B] flex items-center justify-center">
+                                                <CheckCircle className="w-4 h-4 text-white" />
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     <div className="p-4 bg-gray-50 rounded-2xl space-y-2">

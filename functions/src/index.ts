@@ -77,7 +77,7 @@ export const requestWithdrawal = onCall(async (request) => {
     if (!amount || amount <= 0) {
         throw new HttpsError('invalid-argument', 'Invalid withdrawal amount');
     }
-    if (!network || !['wave', 'afrimoney', 'aps'].includes(network.toLowerCase())) {
+    if (!network || !['wave', 'afrimoney', 'aps', 'qmoney'].includes(network.toLowerCase())) {
         throw new HttpsError('invalid-argument', 'Invalid or unsupported network');
     }
     if (!account_number) {

@@ -13,6 +13,7 @@ const ACCOUNTS = [
     { id: 'wave', name: 'Wave Mobile Money', sub: 'Instant Transfer', logo: 'https://www.wave.com/img/nav-logo.png' },
     { id: 'afrimoney', name: 'Afrimoney', sub: 'Instant Transfer', logo: 'https://slcb.com/admin/gallery/751_20230511.jpg' },
     { id: 'aps', name: 'APS Wallet', sub: 'Instant Transfer', logo: 'https://apsinternational.com/wp-content/uploads/2022/05/APS-logo.svg' },
+    { id: 'qmoney', name: 'QMoney', sub: 'Instant Transfer', logo: 'https://qmoney.gm/wp-content/uploads/2022/12/QMoney-logo-landscape-1.svg' },
 ];
 
 export default function WithdrawPage() {
