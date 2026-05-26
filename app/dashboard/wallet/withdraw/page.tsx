@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, CheckCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MbButton } from '@/components/ui/mb-button';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app } from '@/lib/firebase';
@@ -23,6 +24,7 @@ export default function WithdrawPage() {
     const [accountId, setAccountId] = useState('wave');
     const [destination, setDestination] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [success, setSuccess] = useState(false);
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [isLoadingBalance, setIsLoadingBalance] = useState(true);
 
@@ -80,8 +82,10 @@ export default function WithdrawPage() {
 
             const data = response.data as any;
             if (data?.success) {
-                alert('Withdrawal request submitted successfully!');
-                router.back();
+                setSuccess(true);
+                setTimeout(() => {
+                    router.back();
+                }, 3000);
             } else {
                 alert(data?.message || 'Withdrawal failed');
             }
@@ -156,7 +160,7 @@ export default function WithdrawPage() {
                         type="text"
                         value={destination}
                         onChange={(e) => setDestination(e.target.value)}
-                        placeholder="Enter phone or account number"
+                        placeholder="3000000"
                         className="flex-1 bg-transparent outline-none text-base font-bold text-[#0F1A14] placeholder-gray-400"
                     />
                 </div>
@@ -197,6 +201,29 @@ export default function WithdrawPage() {
                     {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Request Withdrawal'}
                 </MbButton>
             </div>
+
+            <AnimatePresence>
+                {success && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="fixed inset-0 z-50 bg-[#0E7A3B] flex flex-col items-center justify-center p-6 text-center"
+                    >
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', damping: 15 }}
+                            className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6"
+                        >
+                            <CheckCircle className="w-12 h-12 text-[#0E7A3B]" />
+                        </motion.div>
+                        <h2 className="text-3xl font-extrabold text-white mb-2">Withdrawal Successful!</h2>
+                        <p className="text-white/80 font-medium">
+                            D{formattedBalance} is on its way to your account.
+                        </p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

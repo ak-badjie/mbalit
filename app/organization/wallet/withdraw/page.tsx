@@ -183,7 +183,7 @@ export default function WithdrawPage() {
                             type="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
-                            placeholder="+220 XXXXXXXX"
+                            placeholder="3000000"
                             className="w-full px-4 py-3.5 border-2 border-gray-100 rounded-2xl focus:border-[#0E7A3B] outline-none text-[#0F1A14] font-bold text-lg transition-colors mb-5"
                         />
                         
