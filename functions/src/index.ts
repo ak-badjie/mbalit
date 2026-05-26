@@ -70,12 +70,9 @@ export const createPayment = onCall(async (request) => {
 // 2. Request Withdrawal (Payout via Transfer)
 // ----------------------------------------------------------------------------
 export const requestWithdrawal = onCall(async (request) => {
-    const { data, auth } = request;
-    if (!auth) {
-        throw new HttpsError('unauthenticated', 'You must be logged in to withdraw');
-    }
+    const { data } = request;
 
-    const { amount, network, account_number, beneficiary_name, walletType, orgId } = data;
+    const { amount, network, account_number, beneficiary_name, walletType, orgId, userId } = data;
 
     if (!amount || amount <= 0) {
         throw new HttpsError('invalid-argument', 'Invalid withdrawal amount');
@@ -87,7 +84,9 @@ export const requestWithdrawal = onCall(async (request) => {
         throw new HttpsError('invalid-argument', 'Account/Phone number is required');
     }
 
-    const userId = auth.uid;
+    if (!userId && !orgId) {
+        throw new HttpsError('unauthenticated', 'User ID is required');
+    }
 
     try {
         const db = admin.firestore();

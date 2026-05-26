@@ -73,7 +73,8 @@ export default function WithdrawPage() {
                 amount: numAmount,
                 network: accountId,
                 account_number: destination,
-                beneficiary_name: user?.name || 'Mbalit User'
+                beneficiary_name: user?.name || 'Mbalit User',
+                userId: user.id
             });
 
             const data = response.data as any;

@@ -171,6 +171,7 @@ export async function withdrawFromWallet(
             network: paymentMethod,
             account_number: phoneNumber,
             walletType: 'individual',
+            userId: collectorId
         });
         const data = response.data as any;
         return { success: true, transactionId: data.reference };
