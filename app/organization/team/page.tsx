@@ -47,7 +47,7 @@ export default function TeamPage() {
     }, [user?.id]);
 
     return (
-        <div className="min-h-full bg-[#F7FAF8]">
+        <div className="min-h-full bg-white">
             <div className="px-5 pt-12 pb-2 flex items-start justify-between">
                 <div>
                     <h1 className="text-3xl font-extrabold text-[#0F1A14] leading-tight">Team</h1>
@@ -55,7 +55,7 @@ export default function TeamPage() {
                         {isLoading ? '…' : `${members.length} member${members.length === 1 ? '' : 's'}`}
                     </p>
                 </div>
-                <button className="w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors">
+                <button className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center">
                     <Bell className="w-5 h-5 text-gray-700" />
                 </button>
             </div>
@@ -91,7 +91,7 @@ export default function TeamPage() {
                     </div>
                 ) : members.length === 0 ? (
                     <div className="py-16 flex flex-col items-center text-center">
-                        <div className="w-16 h-16 rounded-full bg-[#D2F4E1] flex items-center justify-center text-[#0E7A3B] mb-4">
+                        <div className="w-16 h-16 rounded-full bg-[#E8F6EE] flex items-center justify-center text-[#0E7A3B] mb-4">
                             <Users className="w-7 h-7" />
                         </div>
                         <h3 className="font-bold text-[#0F1A14]">No team members yet</h3>
@@ -101,7 +101,7 @@ export default function TeamPage() {
                     </div>
                 ) : (
                     members.map((m) => (
-                        <div key={m.id} className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+                        <div key={m.id} className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-3">
                             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#1FA653] to-[#0E7A3B] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
                                 {(m.name || '?').charAt(0).toUpperCase()}
                             </div>

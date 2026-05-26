@@ -390,23 +390,23 @@ export default function OrganizationDashboard() {
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex gap-1 bg-gray-200/60 rounded-xl p-1">
+                    <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
                         <button
                             onClick={() => setActiveTab('driver')}
-                            className={`flex-1 py-2 px-4 rounded-lg text-sm transition-all ${
+                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                                 activeTab === 'driver'
-                                    ? 'bg-white text-emerald-700 font-bold shadow-md ring-1 ring-black/5'
-                                    : 'text-gray-500 font-medium hover:text-gray-700 hover:bg-gray-200/50'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
                             }`}
                         >
                             🚛 Driver
                         </button>
                         <button
                             onClick={() => setActiveTab('organization')}
-                            className={`flex-1 py-2 px-4 rounded-lg text-sm transition-all ${
+                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                                 activeTab === 'organization'
-                                    ? 'bg-white text-emerald-700 font-bold shadow-md ring-1 ring-black/5'
-                                    : 'text-gray-500 font-medium hover:text-gray-700 hover:bg-gray-200/50'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
                             }`}
                         >
                             <span className="flex items-center justify-center gap-1">
