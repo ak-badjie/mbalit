@@ -65,17 +65,17 @@ export default function OrgWalletPage() {
     }, [user?.id]);
 
     return (
-        <div className="min-h-full bg-white">
+        <div className="min-h-full bg-[#F7FAF8]">
             <div className="px-5 pt-12 pb-2 flex items-start justify-between">
                 <div>
                     <h1 className="text-3xl font-extrabold text-[#0F1A14] leading-tight">Wallet</h1>
                     <p className="text-sm text-gray-500 mt-1">Manage company balance and payouts</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center">
+                    <button className="w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors">
                         <Bell className="w-5 h-5 text-gray-700" />
                     </button>
-                    <button className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center">
+                    <button className="w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors">
                         <Settings className="w-5 h-5 text-gray-700" />
                     </button>
                 </div>
@@ -95,7 +95,7 @@ export default function OrgWalletPage() {
             </div>
 
             <div className="px-5 mt-4">
-                <div className="grid grid-cols-4 gap-2 bg-white border border-gray-100 rounded-2xl p-3">
+                <div className="grid grid-cols-4 gap-2 bg-white border border-gray-200 rounded-2xl p-3 shadow-sm">
                     {QUICK_ACTIONS.map((action) => {
                         const Icon = action.icon;
                         return (
@@ -103,7 +103,7 @@ export default function OrgWalletPage() {
                                 key={action.label}
                                 className="flex flex-col items-center text-center gap-2 py-2 px-1 rounded-xl hover:bg-[#F1FAF4] transition-colors"
                             >
-                                <div className="w-10 h-10 rounded-xl bg-[#E8F6EE] flex items-center justify-center text-[#0E7A3B]">
+                                <div className="w-10 h-10 rounded-xl bg-[#D2F4E1] flex items-center justify-center text-[#0E7A3B]">
                                     <Icon className="w-5 h-5" />
                                 </div>
                                 <span className="text-[11px] font-semibold text-[#0F1A14] leading-tight">{action.label}</span>
@@ -114,7 +114,7 @@ export default function OrgWalletPage() {
             </div>
 
             <div className="px-5 mt-4 mb-6">
-                <div className="bg-white border border-gray-100 rounded-2xl p-4">
+                <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
                     <div className="flex items-center justify-between mb-1">
                         <h2 className="font-bold text-[#0F1A14] text-base">Recent Transactions</h2>
                         <button className="text-sm font-semibold text-[#0E7A3B] hover:underline">View All</button>
@@ -126,7 +126,7 @@ export default function OrgWalletPage() {
                         </div>
                     ) : transactions.length === 0 ? (
                         <div className="py-10 flex flex-col items-center text-center">
-                            <div className="w-14 h-14 rounded-full bg-[#E8F6EE] flex items-center justify-center text-[#0E7A3B] mb-3">
+                            <div className="w-14 h-14 rounded-full bg-[#D2F4E1] flex items-center justify-center text-[#0E7A3B] mb-3">
                                 <WalletIcon className="w-6 h-6" />
                             </div>
                             <p className="font-bold text-[#0F1A14] text-sm">No transactions yet</p>

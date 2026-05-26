@@ -82,7 +82,7 @@ function ReportCard({ report }: { report: ReportDoc }) {
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`;
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
             {/* Photo carousel */}
             <div className="relative bg-gray-100 aspect-[4/3]">
                 {photo ? (
@@ -238,7 +238,7 @@ export default function AuthorityReportsPage() {
     return (
         <div className="min-h-[100dvh] bg-gray-50 pb-16">
             {/* Header */}
-            <div className="bg-white px-5 pt-14 pb-5 border-b border-gray-100 flex items-center gap-3">
+            <div className="bg-white px-5 pt-14 pb-5 border-b border-gray-200 flex items-center gap-3">
                 <button
                     onClick={() => router.push('/organization/dashboard')}
                     className="p-2 -ml-2 rounded-full hover:bg-gray-100"
@@ -271,7 +271,7 @@ export default function AuthorityReportsPage() {
                 )}
 
                 {!loading && reports.length === 0 && !error && (
-                    <div className="rounded-2xl bg-white border border-gray-100 p-8 text-center">
+                    <div className="rounded-2xl bg-white border border-gray-200 p-8 text-center shadow-sm">
                         <AlertTriangle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                         <p className="text-sm font-medium text-gray-700">No reports yet</p>
                         <p className="text-xs text-gray-500 mt-1">

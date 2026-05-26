@@ -18,7 +18,7 @@ interface TransactionItemProps {
 
 const KIND_STYLES: Record<TransactionKind, { bg: string; iconColor: string; icon: React.ReactNode; amountColor: string; sign: string }> = {
     credit: {
-        bg: 'bg-[#E8F6EE]',
+        bg: 'bg-[#D2F4E1]',
         iconColor: 'text-[#0E7A3B]',
         icon: <ArrowDown className="w-4 h-4" strokeWidth={2.5} />,
         amountColor: 'text-[#0E7A3B]',
@@ -32,7 +32,7 @@ const KIND_STYLES: Record<TransactionKind, { bg: string; iconColor: string; icon
         sign: '-',
     },
     refund: {
-        bg: 'bg-[#E8F6EE]',
+        bg: 'bg-[#D2F4E1]',
         iconColor: 'text-[#0E7A3B]',
         icon: <RotateCcw className="w-4 h-4" strokeWidth={2.5} />,
         amountColor: 'text-[#0E7A3B]',

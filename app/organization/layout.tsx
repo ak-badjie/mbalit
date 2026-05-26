@@ -28,11 +28,11 @@ export default function OrganizationLayout({ children }: { children: React.React
     }
 
     return (
-        <div className="min-h-[100dvh] bg-white">
+        <div className="min-h-[100dvh] bg-[#F7FAF8]">
             <main className="pb-28">{children}</main>
 
             <nav className="fixed bottom-0 left-0 right-0 z-50">
-                <div className="bg-white/95 backdrop-blur-xl border-t border-gray-100 shadow-[0_-6px_24px_rgba(15,26,20,0.06)]">
+                <div className="bg-white/95 backdrop-blur-xl border-t border-gray-200 shadow-[0_-6px_24px_rgba(15,26,20,0.06)]">
                     <div className="flex items-center justify-around py-2 px-2 safe-area-pb">
                         {ORG_NAV.map((item) => {
                             const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
@@ -43,7 +43,7 @@ export default function OrganizationLayout({ children }: { children: React.React
                                         whileTap={{ scale: 0.92 }}
                                         className={`flex flex-col items-center gap-1 ${isActive ? 'text-[#0E7A3B]' : 'text-gray-400'}`}
                                     >
-                                        <div className={`p-1.5 rounded-xl transition-colors ${isActive ? 'bg-[#E8F6EE]' : ''}`}>
+                                        <div className={`p-1.5 rounded-xl transition-colors ${isActive ? 'bg-[#D2F4E1]' : ''}`}>
                                             <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
                                         </div>
                                         <span className={`text-[10px] font-semibold ${isActive ? 'text-[#0E7A3B]' : 'text-gray-500'}`}>
