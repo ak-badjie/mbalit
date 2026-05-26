@@ -49,14 +49,11 @@ export default function OrgWalletPage() {
         let cancelled = false;
         (async () => {
             try {
-                const org = (await getOrganizationByOwner(user.id)) as { id: string; orgCode?: string; escrowBalance?: number } | null;
+                const org = (await getOrganizationByOwner(user.id)) as { id: string; orgCode?: string; escrowBalance?: number; walletBalance?: number } | null;
                 const walletId = org?.orgCode || user.id;
-                const [b, txns] = await Promise.all([
-                    getWalletBalance(walletId),
-                    getWalletTransactions(walletId, 5),
-                ]);
+                const txns = await getWalletTransactions(walletId, 5);
                 if (cancelled) return;
-                setBalance(b);
+                setBalance(org?.walletBalance || 0);
                 setEscrowBalance(org?.escrowBalance || 0);
                 setTransactions(txns as TxnDoc[]);
             } catch (err) {
