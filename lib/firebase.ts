@@ -9,6 +9,7 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getDatabase, Database } from 'firebase/database';
+import { getFunctions, Functions } from 'firebase/functions';
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAHd6RtJ-KN8aiJ3dHk1Sxg8PixZQeirdc",
@@ -24,6 +25,7 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let db: Firestore;
 let realtimeDb: Database;
+let functions: Functions;
 
 function initializeFirebase() {
     if (typeof window !== 'undefined') {
@@ -34,9 +36,10 @@ function initializeFirebase() {
         }
         db = getFirestore(app);
         realtimeDb = getDatabase(app);
+        functions = getFunctions(app);
     }
 }
 
 initializeFirebase();
 
-export { app, db, realtimeDb, firebaseConfig };
+export { app, db, realtimeDb, functions, firebaseConfig };
