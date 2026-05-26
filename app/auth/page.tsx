@@ -17,6 +17,7 @@ import {
     ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { checkOrgCode, requestNotificationPermission } from '@/lib/firestore';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import TruckLogo from '@/components/ui/truck-logo';
@@ -589,6 +590,7 @@ function AuthPage() {
                     const lookupSnap = await getDocs(query(usersRef, where('phone', '==', fullPhone)));
                     const docData = lookupSnap.empty ? null : lookupSnap.docs[0].data();
                     if (docData && docData.onboardingComplete === true) {
+                        requestNotificationPermission(uid).catch(console.error);
                         if (docData.role === 'collector' && docData.collectorType === 'organization') {
                             router.replace('/organization/dashboard');
                         } else if (docData.role === 'collector') {
@@ -742,6 +744,7 @@ function AuthPage() {
 
                 writePendingSignup(null);
                 setIsSignupSuccess(true);
+                requestNotificationPermission(userId).catch(console.error);
                 setTimeout(() => {
                     if (registrationType === 'organization') {
                         router.replace('/organization/dashboard');

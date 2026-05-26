@@ -13,7 +13,8 @@ import {
     GeoPoint,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from './firebase';
+import { db, functions, getMessagingInstance } from './firebase';
+import { getToken } from 'firebase/messaging';
 import {
     WasteType,
     GeoLocation,
@@ -998,4 +999,30 @@ export async function updateOrganizationDetails(orgCode: string, updates: Record
         ...updates,
         updatedAt: serverTimestamp(),
     });
+}
+
+// Request and save push notification permission
+export async function requestNotificationPermission(userId: string) {
+    if (typeof window === 'undefined') return;
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            const messaging = await getMessagingInstance();
+            if (messaging) {
+                // If a VAPID key is configured, it would go here. Otherwise it relies on Firebase defaults.
+                const token = await getToken(messaging, {
+                    vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
+                });
+                if (token) {
+                    await updateDoc(doc(db, 'users', userId), { 
+                        fcmToken: token,
+                        updatedAt: serverTimestamp() 
+                    });
+                    console.log('FCM token saved successfully.');
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Failed to request or save notification permission:', e);
+    }
 }

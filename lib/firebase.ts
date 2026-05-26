@@ -10,6 +10,7 @@ import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getDatabase, Database } from 'firebase/database';
 import { getFunctions, Functions } from 'firebase/functions';
+import { getMessaging, Messaging, isSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAHd6RtJ-KN8aiJ3dHk1Sxg8PixZQeirdc",
@@ -41,5 +42,19 @@ function initializeFirebase() {
 }
 
 initializeFirebase();
+
+export async function getMessagingInstance(): Promise<Messaging | null> {
+    if (typeof window !== 'undefined') {
+        try {
+            const supported = await isSupported();
+            if (supported && app) {
+                return getMessaging(app);
+            }
+        } catch (e) {
+            console.error('Messaging not supported', e);
+        }
+    }
+    return null;
+}
 
 export { app, db, realtimeDb, functions, firebaseConfig };
