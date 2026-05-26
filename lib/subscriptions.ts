@@ -41,25 +41,26 @@ export async function createSubscription(
     // Calculate next pickup date
     const nextPickupDate = calculateNextPickupDate(plan, preferredDay);
 
-    const subscriptionRef = doc(collection(db, 'subscriptions'));
-    const subscriptionData: Omit<Subscription, 'id'> = {
+    const subscriptionData: Partial<Subscription> = {
         customerId,
-        collectorId,
-        agencyId,
         plan,
         bucketCount,
         largeBinCount,
         pricePerPickup,
         pickupsPerMonth,
         totalMonthlyPrice,
-        preferredDay,
-        preferredTime,
         status: 'active',
         nextPickupDate,
         createdAt: new Date(),
         updatedAt: new Date(),
     };
 
+    if (collectorId) subscriptionData.collectorId = collectorId;
+    if (agencyId) subscriptionData.agencyId = agencyId;
+    if (preferredDay) subscriptionData.preferredDay = preferredDay;
+    if (preferredTime) subscriptionData.preferredTime = preferredTime;
+
+    const subscriptionRef = doc(collection(db, 'subscriptions'));
     await setDoc(subscriptionRef, {
         ...subscriptionData,
         nextPickupDate: nextPickupDate ? Timestamp.fromDate(nextPickupDate) : null,
@@ -84,7 +85,7 @@ export async function createSubscription(
         );
     }
 
-    return { id: subscriptionRef.id, ...subscriptionData };
+    return { id: subscriptionRef.id, ...subscriptionData } as Subscription;
 }
 
 // =====================================
