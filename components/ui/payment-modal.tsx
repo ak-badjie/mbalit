@@ -4,8 +4,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, CheckCircle, XCircle, CreditCard, X, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ref, onValue, off } from 'firebase/database';
-import { realtimeDb } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface PaymentModalProps {
@@ -64,16 +64,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         }, 500);
     };
 
-    // Subscribe to payment status in Realtime Database
+    // Subscribe to payment status in Firestore
     useEffect(() => {
         if (!isOpen || !orderId) return;
 
-        const jobRef = ref(realtimeDb, `jobs/${orderId}`);
-
-        const unsubscribe = onValue(jobRef, (snapshot) => {
-            const job = snapshot.val();
-            if (job) {
-                if (job.paymentStatus === 'paid' || job.paymentStatus === 'completed') {
+        const unsubscribe = onSnapshot(doc(db, 'payments', orderId), (snapshot) => {
+            if (snapshot.exists()) {
+                const payment = snapshot.data();
+                if (payment.status === 'completed' || payment.status === 'paid') {
                     setStatus('success');
                     // Close popup if still open
                     if (popupRef.current && !popupRef.current.closed) {
@@ -83,15 +81,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     setTimeout(() => {
                         onSuccess(orderId);
                     }, 2000);
-                } else if (job.paymentStatus === 'failed') {
+                } else if (payment.status === 'failed') {
                     setStatus('failed');
                 }
             }
         });
 
-        return () => {
-            off(jobRef);
-        };
+        return () => unsubscribe();
     }, [isOpen, orderId, onSuccess]);
 
     // Listen for postMessage from popup window
@@ -248,7 +244,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                         {/* Wave */}
                                         <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
                                             <img
-                                                src="/wave.png"
+                                                src="https://www.wave.com/img/nav-logo.png"
                                                 alt="Wave"
                                                 className="h-8 w-auto object-contain mb-1"
                                             />
@@ -258,7 +254,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                         {/* AfriMoney */}
                                         <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
                                             <img
-                                                src="/afrimoneylogo.png"
+                                                src="https://slcb.com/admin/gallery/751_20230511.jpg"
                                                 alt="AfriMoney"
                                                 className="h-8 w-auto object-contain mb-1"
                                             />
@@ -285,14 +281,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                                             <span className="text-[10px] text-gray-500">Yonna</span>
                                         </div>
 
-                                        {/* ASP */}
+                                        {/* APS Wallet */}
                                         <div className="bg-white  border border-gray-200  rounded-xl p-3 flex flex-col items-center justify-center">
                                             <img
-                                                src="/asplogo.svg"
-                                                alt="ASP"
+                                                src="https://apsinternational.com/wp-content/uploads/2022/05/APS-logo.svg"
+                                                alt="APS Wallet"
                                                 className="h-8 w-auto object-contain mb-1"
                                             />
-                                            <span className="text-[10px] text-gray-500">ASP</span>
+                                            <span className="text-[10px] text-gray-500">APS Wallet</span>
                                         </div>
                                     </div>
                                 </div>

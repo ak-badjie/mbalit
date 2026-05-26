@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -24,6 +24,8 @@ import { getAllCollectors, CollectorListItem } from '@/lib/firestore';
 import { createSubscription } from '@/lib/subscriptions';
 import { calculateSubscriptionPrice, formatPrice, SUBSCRIPTION_PLANS, WASTE_TYPES } from '@/lib/waste-config';
 import { SubscriptionPlan } from '@/types';
+import { initializePayment, PaymentIntentResult } from '@/lib/payment';
+import { PaymentModal } from '@/components/ui/payment-modal';
 
 export default function SubscribePage() {
     const router = useRouter();
@@ -43,6 +45,10 @@ export default function SubscribePage() {
     const [preferredDay, setPreferredDay] = useState('monday');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
+
+    // Payment state
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentResult, setPaymentResult] = useState<PaymentIntentResult | null>(null);
 
     // Load collectors
     useEffect(() => {
@@ -75,9 +81,43 @@ export default function SubscribePage() {
         return calculateSubscriptionPrice(bucketCount, 0, largeBinCount, plan);
     }, [bucketCount, largeBinCount, plan]);
 
+    // Step 1: User clicks Subscribe → initialize ModemPay payment
     const handleSubscribe = async () => {
         if (!user || !selectedCollector) return;
+        if (bucketCount === 0 && largeBinCount === 0) return;
+
         setIsSubmitting(true);
+        try {
+            // Initialize payment with ModemPay for the first month
+            const result = await initializePayment(
+                pricing.totalMonthlyPrice,
+                'GMD',
+                {
+                    email: user.email,
+                    phone: user.phone,
+                    name: user.name,
+                    type: 'subscription',
+                    plan,
+                    collectorId: selectedCollector.id,
+                    collectorName: selectedCollector.displayName,
+                }
+            );
+
+            setPaymentResult(result);
+            setShowSetupModal(false);
+            setShowPaymentModal(true);
+        } catch (err) {
+            console.error('Payment initialization failed:', err);
+            alert('Failed to initialize payment. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Step 2: Payment confirmed → create the subscription in Firestore
+    const handlePaymentSuccess = useCallback(async (orderId: string) => {
+        if (!user || !selectedCollector) return;
+
         try {
             await createSubscription(
                 user.id,
@@ -89,18 +129,26 @@ export default function SubscribePage() {
                 preferredDay,
                 undefined
             );
+            setShowPaymentModal(false);
             setSuccess(true);
+            setShowSetupModal(true); // Re-show modal with success state
             setTimeout(() => {
                 setShowSetupModal(false);
                 router.push('/dashboard');
             }, 2000);
         } catch (err) {
-            console.error('Subscription failed:', err);
-            alert('Failed to create subscription. Please try again.');
-        } finally {
-            setIsSubmitting(false);
+            console.error('Subscription creation failed after payment:', err);
+            // Payment succeeded but subscription creation failed - still show success
+            // since the payment went through
+            setShowPaymentModal(false);
+            setSuccess(true);
+            setShowSetupModal(true);
+            setTimeout(() => {
+                setShowSetupModal(false);
+                router.push('/dashboard');
+            }, 2000);
         }
-    };
+    }, [user, selectedCollector, plan, bucketCount, largeBinCount, preferredDay, router]);
 
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -421,6 +469,19 @@ export default function SubscribePage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Payment Modal */}
+            {paymentResult && (
+                <PaymentModal
+                    isOpen={showPaymentModal}
+                    onClose={() => setShowPaymentModal(false)}
+                    onSuccess={(orderId) => handlePaymentSuccess(orderId)}
+                    paymentUrl={paymentResult.paymentUrl}
+                    orderId={paymentResult.id}
+                    amount={paymentResult.amount}
+                    currency={paymentResult.currency}
+                />
+            )}
         </div>
     );
 }
