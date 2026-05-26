@@ -6,7 +6,6 @@ import { ArrowLeft, Building2, Check, Loader2 } from 'lucide-react';
 import { MbButton } from '@/components/ui/mb-button';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app } from '@/lib/firebase';
-import { toast } from 'sonner';
 
 const ACCOUNTS = [
     { id: 'wave', name: 'Wave Mobile Money', sub: 'Instant Transfer', logo: 'https://www.wave.com/img/nav-logo.png' },
@@ -23,11 +22,11 @@ export default function WithdrawPage() {
 
     const handleWithdraw = async () => {
         if (!amount || isNaN(Number(amount.replace(/,/g, ''))) || Number(amount.replace(/,/g, '')) <= 0) {
-            toast.error('Please enter a valid amount');
+            alert('Please enter a valid amount');
             return;
         }
         if (!destination) {
-            toast.error('Please enter a destination account number');
+            alert('Please enter a destination account number');
             return;
         }
 
@@ -45,14 +44,14 @@ export default function WithdrawPage() {
 
             const data = response.data as any;
             if (data?.success) {
-                toast.success('Withdrawal request submitted successfully!');
+                alert('Withdrawal request submitted successfully!');
                 router.back();
             } else {
-                toast.error(data?.message || 'Withdrawal failed');
+                alert(data?.message || 'Withdrawal failed');
             }
         } catch (error: any) {
             console.error(error);
-            toast.error(error.message || 'An error occurred during withdrawal');
+            alert(error.message || 'An error occurred during withdrawal');
         } finally {
             setIsSubmitting(false);
         }
