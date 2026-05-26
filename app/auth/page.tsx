@@ -66,6 +66,33 @@ type RegistrationType = 'waste_owner' | 'collector' | 'organization' | 'governme
 
 type SignupSubRole = 'resident' | 'business_waste' | 'collection_business' | 'driver' | 'government';
 
+// We stash the picker's choice in sessionStorage the instant the user taps
+// Continue on the role selector. This is the ONLY piece of signup state that
+// must survive a page reload — without it, the post-createAccount Firestore
+// snapshot has no role on the user doc yet, and the resume effect below
+// would otherwise default everyone to waste_owner / resident.
+const PENDING_SIGNUP_KEY = 'mbalit_pending_signup';
+interface PendingSignup {
+    registrationType: 'waste_owner' | 'collector' | 'organization' | 'government';
+    subRole: SignupSubRole;
+    isJoiningOrg: boolean;
+    isAuthority: boolean;
+}
+function readPendingSignup(): PendingSignup | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.sessionStorage.getItem(PENDING_SIGNUP_KEY);
+        return raw ? (JSON.parse(raw) as PendingSignup) : null;
+    } catch { return null; }
+}
+function writePendingSignup(p: PendingSignup | null) {
+    if (typeof window === 'undefined') return;
+    try {
+        if (p) window.sessionStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify(p));
+        else window.sessionStorage.removeItem(PENDING_SIGNUP_KEY);
+    } catch { /* noop */ }
+}
+
 /**
  * Opt-in checkbox shown beneath the PIN boxes on both the login and signup
  * PIN screens. When checked, the calling screen enrols a WebAuthn platform
@@ -389,24 +416,54 @@ function AuthPage() {
             // re-fires during an active signup are no-ops and cannot interrupt
             // the user's progress.
             if (registrationType === null) {
+                // The user is resuming a half-finished signup. Source of truth, in order:
+                //   1. The user's own Firestore doc — if `role` has been set,
+                //      we know exactly which type they were registering as.
+                //   2. The picker's sessionStorage stash — populated the moment
+                //      the user tapped Continue on the role selector. This is
+                //      what catches brand-new accounts where createAccount has
+                //      written the doc but no role yet.
+                // Only when BOTH are missing do we send them back to the picker.
+                const pending = readPendingSignup();
                 if (user.role === 'collector') {
                     if ('collectorType' in user && user.collectorType === 'organization') {
                         setRegistrationType('organization');
                         if ('organizationName' in user && typeof user.organizationName === 'string') {
                             setOrgName(user.organizationName);
                         }
+                        if ('isAuthority' in user && typeof user.isAuthority === 'boolean') {
+                            setIsAuthority(user.isAuthority);
+                        }
+                    } else if ('collectorType' in user && user.collectorType === 'organization_member') {
+                        setRegistrationType('collector');
+                        setIsJoiningOrg(true);
                     } else {
                         setRegistrationType('collector');
                     }
+                    setMode('signup');
+                    setStep(3);
+                    if (user.name) setFullName(user.name);
+                    if (user.profileImage) setProfileImage(user.profileImage);
+                } else if (pending) {
+                    // Brand-new account that finished createAccount but hasn't
+                    // had role data written yet — restore from the picker stash.
+                    setRegistrationType(pending.registrationType);
+                    setIsJoiningOrg(pending.isJoiningOrg);
+                    setIsAuthority(pending.isAuthority);
+                    setMode('signup');
+                    setStep(3);
+                    if (user.name) setFullName(user.name);
+                    if (user.profileImage) setProfileImage(user.profileImage);
                 } else {
-                    setRegistrationType('waste_owner');
+                    // No clue what they were signing up as. Don't assume
+                    // waste_owner — bounce them to the picker so they explicitly
+                    // re-choose. This is the case that was previously silently
+                    // turning every account into a Resident.
+                    setMode('signup');
+                    setStep(0);
+                    setSignupTrack(null);
+                    setPickedSubRole(null);
                 }
-                // Resume at the profile step. submitCreateAccount also schedules
-                // this via setTimeout so both paths converge correctly.
-                setMode('signup');
-                setStep(3);
-                if (user.name) setFullName(user.name);
-                if (user.profileImage) setProfileImage(user.profileImage);
             }
         } else if (user.onboardingComplete === true) {
             // Already onboarded — don't keep them stuck on /auth.
@@ -582,12 +639,21 @@ function AuthPage() {
                 return;
             }
 
+            // Resolve the fine-grained sub-role the user picked (resident vs
+            // business_waste vs collection_business etc.) so we can persist
+            // it onto the user doc. Without this, residents and businesses
+            // are indistinguishable downstream — both end up as role='user'.
+            const pending = readPendingSignup();
+            const accountSubtype: SignupSubRole | undefined = pending?.subRole;
+
             if (registrationType === 'waste_owner') {
                 await completeProfile(userId, fullPhone, pin, {
                     name: fullName,
                     profileImage: profileImage || '',
                     role: 'user',
+                    accountSubtype: accountSubtype || 'resident',
                 });
+                writePendingSignup(null);
                 setIsSignupSuccess(true);
                 // Navigate immediately via Next.js router so AuthProvider stays
                 // mounted with the freshly merged onboardingComplete=true user
@@ -605,6 +671,14 @@ function AuthPage() {
                     name: registrationType === 'organization' ? orgName : fullName,
                     profileImage: profileImage || '',
                     role: 'collector',
+                    // Sub-role from the picker — distinguishes a collection
+                    // business from a government / municipality account, and
+                    // a driver under an org from an independent collector.
+                    accountSubtype: accountSubtype || (
+                        registrationType === 'organization'
+                            ? (isAuthority ? 'government' : 'collection_business')
+                            : (isJoiningOrg ? 'driver' : 'collection_business')
+                    ),
                     vehicleType,
                     wasteTypesHandled: selectedWasteTypes,
                     isAvailable: false,
@@ -664,6 +738,7 @@ function AuthPage() {
                     updatedAt: serverTimestamp(),
                 }, { merge: true });
 
+                writePendingSignup(null);
                 setIsSignupSuccess(true);
                 setTimeout(() => {
                     if (registrationType === 'organization') {
@@ -1148,18 +1223,47 @@ function AuthPage() {
 
         const advance = () => {
             if (!pickedSubRole) return;
+            // Persist the picker choice BEFORE we kick off any further state
+            // changes / route changes. If the user reloads (or the PWA cold
+            // starts) mid-signup, the resume effect below uses this to know
+            // which kind of account they were creating — without it we'd
+            // default everyone to waste_owner once createAccount() lands a
+            // role-less user doc in Firestore.
             if (pickedSubRole === 'resident' || pickedSubRole === 'business_waste') {
+                writePendingSignup({
+                    registrationType: 'waste_owner',
+                    subRole: pickedSubRole,
+                    isJoiningOrg: false,
+                    isAuthority: false,
+                });
                 handleRoleSelect('waste_owner');
             } else if (pickedSubRole === 'collection_business') {
+                writePendingSignup({
+                    registrationType: 'organization',
+                    subRole: pickedSubRole,
+                    isJoiningOrg: false,
+                    isAuthority: false,
+                });
                 setIsJoiningOrg(false);
                 handleRoleSelect('organization');
             } else if (pickedSubRole === 'driver') {
-                // Driver under an existing org — show the org-code entry first.
+                writePendingSignup({
+                    registrationType: 'collector',
+                    subRole: pickedSubRole,
+                    isJoiningOrg: true,
+                    isAuthority: false,
+                });
                 setIsJoiningOrg(true);
                 setRegistrationType('collector');
                 setShowOrgDetails(true);
                 setStep(1);
             } else if (pickedSubRole === 'government') {
+                writePendingSignup({
+                    registrationType: 'organization',
+                    subRole: pickedSubRole,
+                    isJoiningOrg: false,
+                    isAuthority: true,
+                });
                 setIsAuthority(true);
                 handleRoleSelect('organization');
             }

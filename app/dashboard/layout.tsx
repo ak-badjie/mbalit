@@ -21,9 +21,17 @@ export default function DashboardLayout({
         return null;
     }
 
+    // Route collectors to the right dashboard based on their collectorType.
+    // Org-owners (collectorType === 'organization') get the business view at
+    // /organization/dashboard; everyone else (individual collectors and
+    // drivers under an org) goes to /collector/dashboard. Previously every
+    // collector — including org-owners — was bounced to /collector/dashboard.
     if (user?.role === 'collector') {
+        const collectorType = 'collectorType' in user ? (user as { collectorType?: string }).collectorType : undefined;
         if (typeof window !== 'undefined') {
-            window.location.href = '/collector/dashboard';
+            window.location.href = collectorType === 'organization'
+                ? '/organization/dashboard'
+                : '/collector/dashboard';
         }
         return null;
     }
