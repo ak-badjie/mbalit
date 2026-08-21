@@ -6,6 +6,18 @@ export type UserRole = 'user' | 'collector';
 // Collector types (simplified)
 export type CollectorType = 'individual' | 'organization' | 'organization_member';
 
+/**
+ * Fine-grained account flavour picked during signup (or assigned by an admin
+ * when they create a driver). `driver` accounts are never self-registered —
+ * an organization admin creates them.
+ */
+export type AccountSubtype =
+  | 'resident'
+  | 'business_waste'
+  | 'collection_business'
+  | 'government'
+  | 'driver';
+
 export interface User {
   id: string;
   email: string;
@@ -18,6 +30,13 @@ export interface User {
   profileImage?: string;
   onboardingComplete?: boolean;
   pinHash?: string; // bcrypt hash of the 6-digit PIN, stored in Firestore
+  accountSubtype?: AccountSubtype;
+  /**
+   * Set on admin-created driver accounts. While true the app blocks every
+   * screen behind a forced PIN-change gate, so the temporary PIN the admin
+   * handed over can't stay in use.
+   */
+  mustChangePin?: boolean;
 }
 
 // User profile
@@ -72,6 +91,12 @@ export interface Organization {
   // True for organizations that are public authorities (KMC, BCC, etc.)
   // and should receive environmental hazard reports.
   isAuthority?: boolean;
+  /**
+   * Waste types the organization handles. Set once by the admin during
+   * signup; drivers created by the admin inherit this list instead of being
+   * asked to pick it again.
+   */
+  wasteTypesHandled?: WasteType[];
   createdAt: Date;
   updatedAt: Date;
 }

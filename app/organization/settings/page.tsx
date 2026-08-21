@@ -193,7 +193,8 @@ export default function OrganizationSettings() {
                         </Button>
                     </div>
                     <p className="text-xs text-gray-400 mt-2">
-                        Drivers use this code to join your organization during registration.
+                        Your organization&apos;s reference code. Drivers don&apos;t need it — you
+                        create their accounts from the Team screen.
                     </p>
                 </Card>
 

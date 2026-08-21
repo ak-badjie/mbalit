@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// ============================================================================
+// MBalit Firestore security rules
+//
+// Captured verbatim from what is live on mbalit-8a52f so the deployed state is
+// version-controlled rather than console-only.
+//
+// !! THESE RULES ARE FULLY OPEN. !!
+//
+// MBalit does not use Firebase Auth — the app hashes 6-digit PINs with bcrypt
+// in the browser and stores them on the user document as `pinHash` (see the
+// header comment in lib/auth-context.tsx). Because there is no Firebase Auth
+// session, `request.auth` is always null, so no conventional rule can identify
+// the caller: any rule keyed on `request.auth.uid` would lock every user out of
+// the entire app.
+//
+// The practical consequences today:
+//   - anyone who knows the project id can read every collection, including the
+//     bcrypt `pinHash` on every users/{id} document, and brute-force a 6-digit
+//     PIN offline
+//   - anyone can write or delete any document
+//
+// Closing this needs an architecture change, not a rules change — either adopt
+// Firebase Auth (custom tokens minted by a Cloud Function after the PIN check),
+// or move every privileged read/write behind the callable functions in
+// functions/src/index.ts and then deny direct client access here. Until one of
+// those lands, tightening this file would simply break the app.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

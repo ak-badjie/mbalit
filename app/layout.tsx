@@ -5,6 +5,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { InstallGate } from "@/components/install/install-gate";
 import { PinLock } from "@/components/install/pin-lock";
+import { ForcePinChange } from "@/components/auth/force-pin-change";
 import { ServiceWorkerRegister } from "@/components/install/sw-register";
 
 const geistSans = Geist({
@@ -81,7 +82,9 @@ export default function RootLayout({
           <AuthProvider>
             <InstallGate>
               <PinLock>
-                {children}
+                <ForcePinChange>
+                  {children}
+                </ForcePinChange>
               </PinLock>
             </InstallGate>
           </AuthProvider>

@@ -13,33 +13,26 @@ import {
     Building2,
     User as UserIcon,
     Shield,
-    ChevronRight,
     ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { checkOrgCode, requestNotificationPermission } from '@/lib/firestore';
+import { requestNotificationPermission } from '@/lib/firestore';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import TruckLogo from '@/components/ui/truck-logo';
 import { DialPad } from '@/components/ui/dial-pad';
-import { CountrySelector, DEFAULT_COUNTRY } from '@/components/ui/country-selector';
+import { CountrySelector, COUNTRIES, DEFAULT_COUNTRY } from '@/components/ui/country-selector';
 import type { Country } from '@/components/ui/country-selector';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { WASTE_TYPES } from '@/lib/waste-config';
-import { WasteType, CollectorType } from '@/types';
+import { WasteType } from '@/types';
 import { compressImage } from '@/lib/image-utils';
 import { RoleCard } from '@/components/ui/role-card';
 import { MbButton } from '@/components/ui/mb-button';
 import { enrollBiometric, isBiometricSupported } from '@/lib/biometric';
+import { generateUniqueOrgCode } from '@/lib/org-code';
+import { buildFullPhone, digitsOnly, formatLocalNumber } from '@/lib/phone';
 import { Fingerprint, ScanFace } from 'lucide-react';
-
-// Vehicle sizes (Lucide icons, no emojis)
-const VEHICLE_TYPES = [
-    { id: 'motorcycle', name: 'Motorcycle', capacity: '50 kg', icon: <Truck className="w-6 h-6" /> },
-    { id: 'tricycle', name: 'Tricycle', capacity: '200 kg', icon: <Truck className="w-6 h-6" /> },
-    { id: 'pickup', name: 'Pickup Truck', capacity: '500 kg', icon: <Truck className="w-7 h-7" /> },
-    { id: 'truck', name: 'Large Truck', capacity: '2000 kg', icon: <Truck className="w-8 h-8" /> },
-];
 
 // Page transition animation
 const pageVariants = {
@@ -48,11 +41,10 @@ const pageVariants = {
     exit: { opacity: 0, x: -60 },
 };
 
-// Wrapper with Suspense
 export default function AuthPageWrapper() {
     return (
         <Suspense fallback={
-            <div className="min-h-[100dvh] flex items-center justify-center bg-white">
+            <div className="h-screen-safe flex items-center justify-center bg-white">
                 <div className="text-center">
                     <div className="w-10 h-10 border-3 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 </div>
@@ -63,9 +55,21 @@ export default function AuthPageWrapper() {
     );
 }
 
-type RegistrationType = 'waste_owner' | 'collector' | 'organization' | 'government' | null;
+/**
+ * Only two kinds of account can be created on MBalit:
+ *   - `waste_owner` — a resident or a business that needs its waste collected
+ *   - `organization` — a waste-collection business, or a government /
+ *     municipality
+ *
+ * Drivers are deliberately absent. They never sign themselves up; an
+ * organization admin creates their account (phone + temporary PIN) from the
+ * Team screen, and they sign in on the normal Log In screen. That removes an
+ * entire signup branch — org code entry, approval limbo, and re-picking waste
+ * types the company has already configured.
+ */
+type RegistrationType = 'waste_owner' | 'organization' | null;
 
-type SignupSubRole = 'resident' | 'business_waste' | 'collection_business' | 'driver' | 'government';
+type SignupSubRole = 'resident' | 'business_waste' | 'collection_business' | 'government';
 
 // We stash the picker's choice in sessionStorage the instant the user taps
 // Continue on the role selector. This is the ONLY piece of signup state that
@@ -74,9 +78,8 @@ type SignupSubRole = 'resident' | 'business_waste' | 'collection_business' | 'dr
 // would otherwise default everyone to waste_owner / resident.
 const PENDING_SIGNUP_KEY = 'mbalit_pending_signup';
 interface PendingSignup {
-    registrationType: 'waste_owner' | 'collector' | 'organization' | 'government';
+    registrationType: 'waste_owner' | 'organization';
     subRole: SignupSubRole;
-    isJoiningOrg: boolean;
     isAuthority: boolean;
 }
 function readPendingSignup(): PendingSignup | null {
@@ -92,6 +95,79 @@ function writePendingSignup(p: PendingSignup | null) {
         if (p) window.sessionStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify(p));
         else window.sessionStorage.removeItem(PENDING_SIGNUP_KEY);
     } catch { /* noop */ }
+}
+
+/**
+ * AuthShell — the layout every auth screen uses.
+ *
+ * The whole screen is exactly one viewport tall and never scrolls as a page.
+ * Only the middle band scrolls; the header (with its back arrow) and the
+ * footer (with the primary action) are pinned. That's what stops the
+ * Continue button drifting below the fold on a short handset, which used to
+ * force the user to scroll before they could advance a step.
+ */
+function AuthShell({
+    onBack,
+    showBack = true,
+    totalSteps,
+    currentStep,
+    children,
+    footer,
+    headerExtra,
+}: {
+    onBack?: () => void;
+    showBack?: boolean;
+    totalSteps?: number;
+    currentStep?: number;
+    children: React.ReactNode;
+    footer?: React.ReactNode;
+    headerExtra?: React.ReactNode;
+}) {
+    return (
+        <div className="h-screen-safe overflow-hidden bg-white flex flex-col">
+            <div className="flex-shrink-0 flex items-center justify-between gap-3 px-5 pt-10 pb-3 safe-area-pt">
+                {showBack && onBack ? (
+                    <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={onBack}
+                        className="w-10 h-10 -ml-1 flex-shrink-0 flex items-center justify-center rounded-full hover:bg-gray-50 text-[#0E7A3B]"
+                        aria-label="Go back"
+                    >
+                        <ArrowLeft className="w-6 h-6" />
+                    </motion.button>
+                ) : (
+                    <div className="w-10 h-10 flex-shrink-0" />
+                )}
+
+                {headerExtra ?? (
+                    totalSteps ? (
+                        <div className="flex items-center gap-2">
+                            {Array.from({ length: totalSteps }, (_, i) => (
+                                <div
+                                    key={i}
+                                    className={`h-1.5 rounded-full transition-all ${
+                                        i + 1 <= (currentStep ?? 0) ? 'w-6 bg-[#0E7A3B]' : 'w-1.5 bg-gray-200'
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                    ) : <div />
+                )}
+
+                <div className="w-10 h-10 flex-shrink-0" />
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-4">
+                {children}
+            </div>
+
+            {footer && (
+                <div className="flex-shrink-0 px-5 pt-3 pb-4 safe-area-pb bg-white border-t border-gray-50">
+                    {footer}
+                </div>
+            )}
+        </div>
+    );
 }
 
 /**
@@ -174,7 +250,7 @@ function TrackPicker({
                 <RoleCard
                     icon={<Truck className="w-6 h-6" strokeWidth={2} />}
                     title="I collect waste"
-                    description="Waste-collection businesses, drivers, or municipalities."
+                    description="Waste-collection businesses, governments, and municipalities."
                     onClick={onPickCollect}
                 />
             </div>
@@ -219,7 +295,13 @@ function HaveWasteSubPicker({
     );
 }
 
-// Step 0b2: sub-picker when the user collects waste
+/**
+ * Step 0b2: sub-picker when the user collects waste.
+ *
+ * Two options only. "Driver under an organization" used to live here; drivers
+ * are now created by their admin, so there is nothing for a driver to sign up
+ * for.
+ */
 function CollectWasteSubPicker({
     picked,
     onPick,
@@ -233,22 +315,15 @@ function CollectWasteSubPicker({
                 How do you collect?
             </h1>
             <p className="text-sm text-gray-500 mb-4 leading-snug">
-                Pick the option that matches your role.
+                Pick the option that matches your organization.
             </p>
             <div className="space-y-3">
                 <RoleCard
                     icon={<Building2 className="w-6 h-6" strokeWidth={2} />}
                     title="Waste-collection business"
-                    description="Run your own collection company with drivers under you."
+                    description="Run your own collection company and manage drivers under you."
                     selected={picked === 'collection_business'}
                     onClick={() => onPick('collection_business')}
-                />
-                <RoleCard
-                    icon={<Truck className="w-6 h-6" strokeWidth={2} />}
-                    title="Driver under an organization"
-                    description="You'll need the organization code from your employer."
-                    selected={picked === 'driver'}
-                    onClick={() => onPick('driver')}
                 />
                 <RoleCard
                     icon={<Shield className="w-6 h-6" strokeWidth={2} />}
@@ -257,6 +332,19 @@ function CollectWasteSubPicker({
                     selected={picked === 'government'}
                     onClick={() => onPick('government')}
                 />
+            </div>
+
+            <div className="mt-5 flex items-start gap-3 p-4 rounded-2xl bg-[#F1FAF4] border border-[#D2F4E1]">
+                <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                    <Truck className="w-5 h-5 text-[#0E7A3B]" />
+                </div>
+                <div>
+                    <h4 className="font-bold text-[#0F1A14] text-sm">Are you a driver?</h4>
+                    <p className="text-xs text-gray-600 leading-snug">
+                        Drivers don&apos;t sign up here. Ask your organization to create your
+                        account — then log in with your phone number and the PIN they give you.
+                    </p>
+                </div>
             </div>
         </>
     );
@@ -267,7 +355,7 @@ function AuthPage() {
     const searchParams = useSearchParams();
     const isSignupMode = searchParams.get('signup') === 'true';
     const isCollectorMode = searchParams.get('role') === 'collector';
-    const { login, completeProfile, createAccount, checkPhoneExists, checkOrgCode, requestPinReset, isLoading, user } = useAuth();
+    const { login, completeProfile, createAccount, checkPhoneExists, requestPinReset, isLoading, user } = useAuth();
 
     // Map any auth error (Firebase or otherwise) to a friendly, actionable message.
     const friendlyAuthError = (err: unknown): string => {
@@ -296,14 +384,11 @@ function AuthPage() {
         return msg || 'Something went wrong. Please try again.';
     };
 
-    const inviteCode = searchParams.get('invite');
-
-    // Flow state
-    const [mode, setMode] = useState<'login' | 'signup'>(isSignupMode || !!inviteCode ? 'signup' : 'login');
-    const [step, setStep] = useState(inviteCode ? 1 : 0); // 0 = role select, 1 = phone, 3 = profile, 4 = vehicle, 5 = waste types, 6 = pin
-    const [registrationType, setRegistrationType] = useState<RegistrationType>(
-        isCollectorMode || !!inviteCode ? 'collector' : null
-    );
+    // Flow state.
+    // Signup steps: 0 = role picker, 1 = phone, 2 = PIN, 3 = profile, 4 = waste types.
+    const [mode, setMode] = useState<'login' | 'signup'>(isSignupMode ? 'signup' : 'login');
+    const [step, setStep] = useState(0);
+    const [registrationType, setRegistrationType] = useState<RegistrationType>(null);
 
     // Login state
     const [loginPin, setLoginPin] = useState('');
@@ -324,35 +409,31 @@ function AuthPage() {
     const [profileImage, setProfileImage] = useState<string | null>(null);
     const [createdUid, setCreatedUid] = useState<string | null>(null);
 
-
     // Organization state
     const [orgName, setOrgName] = useState('');
-    const [joinOrgCode, setJoinOrgCode] = useState(inviteCode || '');
-    const [isJoiningOrg, setIsJoiningOrg] = useState(!!inviteCode);
     // Two-step picker on step 0: first the user picks the high-level track
     // ("having waste collected" vs "collecting waste"); then a sub-role
     // within that track. We translate the sub-role to the existing
     // RegistrationType when the user taps Continue.
     type SignupTrack = 'have' | 'collect' | null;
-    type SubRole = 'resident' | 'business_waste' | 'collection_business' | 'driver' | 'government' | null;
-    const [signupTrack, setSignupTrack] = useState<SignupTrack>(inviteCode ? 'collect' : null);
-    const [pickedSubRole, setPickedSubRole] = useState<SubRole>(inviteCode ? 'driver' : null);
-    const [showOrgDetails, setShowOrgDetails] = useState(false);
-    // Public-authority flag (KMC, BCC, etc.) — only meaningful when registering
-    // a new organization. Drives access to the community Reports inbox.
+    const [signupTrack, setSignupTrack] = useState<SignupTrack>(isCollectorMode ? 'collect' : null);
+    const [pickedSubRole, setPickedSubRole] = useState<SignupSubRole | null>(null);
+    // Public-authority flag (KMC, BCC, etc.). Set purely from the role picker
+    // now — asking again with a checkbox on the profile step was a duplicate
+    // question for something the user had already answered.
     const [isAuthority, setIsAuthority] = useState(false);
 
     // Success State
     const [isSignupSuccess, setIsSignupSuccess] = useState(false);
 
     // Collector state
-    const [vehicleType, setVehicleType] = useState<string | null>(null);
     const [selectedWasteTypes, setSelectedWasteTypes] = useState<WasteType[]>([]);
 
-        const fileInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isCreatingAccount, setIsCreatingAccount] = useState(false);
     const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+    const [isSavingPhone, setIsSavingPhone] = useState(false);
     const [noAccountFound, setNoAccountFound] = useState(false);
 
     // Opt-in flag set by the checkbox on the PIN screens. When true, we call
@@ -362,6 +443,10 @@ function AuthPage() {
     const [enableBiometric, setEnableBiometric] = useState(false);
     const [biometricSupported, setBiometricSupported] = useState(false);
     const isIos = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    // The account id once it exists — either freshly created in this page-load
+    // or recovered from the signed-in user when they resume onboarding.
+    const accountId = user?.id || createdUid;
 
     useEffect(() => {
         let cancelled = false;
@@ -414,10 +499,9 @@ function AuthPage() {
             // serverTimestamp fields resolve. If we called setMode/setStep
             // unconditionally here, both fires would reset the user back to step
             // 3 (profile/picture) even while they are advancing through the
-            // org/collector-specific steps (vehicle type → waste types). Moving
-            // setMode/setStep INSIDE this guard means subsequent snapshot
-            // re-fires during an active signup are no-ops and cannot interrupt
-            // the user's progress.
+            // remaining steps. Moving setMode/setStep INSIDE this guard means
+            // subsequent snapshot re-fires during an active signup are no-ops
+            // and cannot interrupt the user's progress.
             if (registrationType === null) {
                 // The user is resuming a half-finished signup. Source of truth, in order:
                 //   1. The user's own Firestore doc — if `role` has been set,
@@ -429,19 +513,13 @@ function AuthPage() {
                 // Only when BOTH are missing do we send them back to the picker.
                 const pending = readPendingSignup();
                 if (user.role === 'collector') {
-                    if ('collectorType' in user && user.collectorType === 'organization') {
-                        setRegistrationType('organization');
-                        if ('organizationName' in user && typeof user.organizationName === 'string') {
-                            setOrgName(user.organizationName);
-                        }
-                        if ('isAuthority' in user && typeof user.isAuthority === 'boolean') {
-                            setIsAuthority(user.isAuthority);
-                        }
-                    } else if ('collectorType' in user && user.collectorType === 'organization_member') {
-                        setRegistrationType('collector');
-                        setIsJoiningOrg(true);
-                    } else {
-                        setRegistrationType('collector');
+                    // The only self-registered collector is an organization.
+                    setRegistrationType('organization');
+                    if ('organizationName' in user && typeof user.organizationName === 'string') {
+                        setOrgName(user.organizationName);
+                    }
+                    if ('isAuthority' in user && typeof user.isAuthority === 'boolean') {
+                        setIsAuthority(user.isAuthority);
                     }
                     setMode('signup');
                     setStep(3);
@@ -451,7 +529,6 @@ function AuthPage() {
                     // Brand-new account that finished createAccount but hasn't
                     // had role data written yet — restore from the picker stash.
                     setRegistrationType(pending.registrationType);
-                    setIsJoiningOrg(pending.isJoiningOrg);
                     setIsAuthority(pending.isAuthority);
                     setMode('signup');
                     setStep(3);
@@ -463,9 +540,9 @@ function AuthPage() {
                     // re-choose. This is the case that was previously silently
                     // turning every account into a Resident.
                     setMode('signup');
-                    setStep(inviteCode ? 1 : 0);
-                    setSignupTrack(inviteCode ? 'collect' : null);
-                    setPickedSubRole(inviteCode ? 'driver' : null);
+                    setStep(0);
+                    setSignupTrack(null);
+                    setPickedSubRole(null);
                 }
             }
         } else if (user.onboardingComplete === true) {
@@ -488,23 +565,26 @@ function AuthPage() {
         }
     }, [user]);
 
-    // Format phone display
-    const formatPhone = (num: string) => {
-        if (num.length <= 3) return num;
-        if (num.length <= 5) return `${num.slice(0, 3)} ${num.slice(3)}`;
-        return `${num.slice(0, 3)} ${num.slice(3, 5)} ${num.slice(5)}`;
-    };
+    const formatPhone = formatLocalNumber;
+    const currentFullPhone = () => buildFullPhone(country.dialCode, phoneNumber);
 
-    // Handle role selection
-    const handleRoleSelect = (type: RegistrationType) => {
-        setRegistrationType(type);
-        // Only show Step 1A (Join details) if they are joining a team
-        if (type === 'collector' && isJoiningOrg) {
-            setShowOrgDetails(true);
-        } else {
-            setShowOrgDetails(false);
-        }
-        setStep(1);
+    /**
+     * Split a stored phone back into a country + local digits so the dial pad
+     * can re-edit it. Stored numbers are always "<dialCode> <grouped local>"
+     * (see lib/phone.ts), so the first space is the split point — we don't
+     * have to guess where the country code ends.
+     */
+    const restorePhoneForEditing = (storedPhone: string) => {
+        const [dial, ...rest] = (storedPhone || '').trim().split(' ');
+        const match = COUNTRIES.find((c) => c.dialCode === dial);
+        if (match) setCountry(match);
+        const local = digitsOnly(rest.join(''));
+        // Fall back to stripping the code off the raw digits for any legacy
+        // record that was saved without the space.
+        if (local) return local;
+        const codeDigits = digitsOnly(dial);
+        const all = digitsOnly(storedPhone);
+        return codeDigits && all.startsWith(codeDigits) ? all.slice(codeDigits.length) : all;
     };
 
     // Handle login
@@ -513,10 +593,10 @@ function AuthPage() {
         setError(null);
         try {
             // Phone + PIN login - use the selected country's dial code (must match signup)
-            const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+            const fullPhone = currentFullPhone();
             const pinToUse = pinOverride || loginPin;
             if (pinToUse.length !== 6) return;
-            
+
             const loggedInUid = await login(fullPhone, pinToUse);
             // Check user role and collector type for redirect
             const usersRef = collection(db, 'users');
@@ -528,6 +608,10 @@ function AuthPage() {
             // (WebAuthn requires that).
             await tryEnrollBiometric(loggedInUid, userData?.name || fullPhone);
 
+            // Drivers signing in with an admin-issued temporary PIN land on
+            // their dashboard route, but the ForcePinChange gate in the root
+            // layout covers the app until they choose their own PIN — so
+            // there's nothing extra to do here.
             if (userData) {
                 if (userData.role === 'collector' && userData.collectorType === 'organization') {
                     router.replace('/organization/dashboard');
@@ -563,7 +647,7 @@ function AuthPage() {
     // the user re-enter their 6-digit PIN.
     const submitCreateAccount = async () => {
         if (pin.length !== 6 || confirmPin.length !== 6 || pin !== confirmPin) return;
-        const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+        const fullPhone = currentFullPhone();
         setIsCreatingAccount(true);
         setError(null);
         try {
@@ -578,7 +662,7 @@ function AuthPage() {
             const code = (err as { code?: string; message?: string })?.code || '';
             const msg = (err as { message?: string })?.message || '';
             const haystack = `${code} ${msg}`;
-            const isDup = haystack.includes('email-already-in-use');
+            const isDup = haystack.includes('email-already-in-use') || haystack.includes('already exists');
 
             if (isDup) {
                 // Silent recovery: maybe an abandoned previous signup.
@@ -624,6 +708,65 @@ function AuthPage() {
         }
     };
 
+    /**
+     * Continue from the phone step.
+     *
+     * Two shapes: the normal forward path (no account yet → go create a PIN),
+     * and the "went back to fix my number" path. The second one exists
+     * because the account is created before the profile step, so a user who
+     * mistyped their number previously had no way to correct it without
+     * abandoning the signup.
+     */
+    const handlePhoneContinue = async () => {
+        setError(null);
+        const fullPhone = currentFullPhone();
+
+        if (accountId) {
+            // Editing the phone on an already-created account.
+            if (user?.phone === fullPhone) {
+                setStep(3);
+                return;
+            }
+            setIsSavingPhone(true);
+            try {
+                const exists = await checkPhoneExists(fullPhone);
+                if (exists) {
+                    setError('That number already belongs to another account.');
+                    return;
+                }
+                await setDoc(
+                    doc(db, 'users', accountId),
+                    { phone: fullPhone, updatedAt: serverTimestamp() },
+                    { merge: true },
+                );
+                setStep(3);
+            } catch (err: unknown) {
+                setError(friendlyAuthError(err));
+            } finally {
+                setIsSavingPhone(false);
+            }
+            return;
+        }
+
+        setIsCheckingPhone(true);
+        try {
+            const exists = await checkPhoneExists(fullPhone);
+            if (exists) {
+                // Auto-switch to login mode preserving phone — no dead end.
+                resetTransientAuthState();
+                setMode('login');
+                setLoginStep(1);
+                setError('This phone is already registered. Please enter your existing PIN.');
+                return;
+            }
+            setStep(2);
+        } catch (err: unknown) {
+            setError(friendlyAuthError(err));
+        } finally {
+            setIsCheckingPhone(false);
+        }
+    };
+
     // Handle signup completion
     const handleCompleteSignup = async () => {
         setError(null);
@@ -633,10 +776,10 @@ function AuthPage() {
         // because they never went through step 1 in this page-load. Fall back to
         // the phone already stored on their Firestore document so completeProfile
         // never overwrites the correct phone with a blank/malformed value.
-        const fullPhone = user?.phone || `${country.dialCode} ${formatPhone(phoneNumber)}`;
+        const fullPhone = user?.phone || currentFullPhone();
 
         try {
-            let userId = user?.id || createdUid;
+            const userId = accountId;
 
             if (!userId) {
                 setError('No user account found. Please try again.');
@@ -670,72 +813,53 @@ function AuthPage() {
                 setTimeout(() => {
                     router.replace('/dashboard');
                 }, 600);
-            } else if (registrationType === 'collector' || registrationType === 'organization') {
+            } else if (registrationType === 'organization') {
+                const orgCode = await generateUniqueOrgCode(orgName);
+
                 const collectorData: Record<string, unknown> = {
-                    name: registrationType === 'organization' ? orgName : fullName,
+                    name: orgName,
                     profileImage: profileImage || '',
                     role: 'collector',
-                    // Sub-role from the picker — distinguishes a collection
-                    // business from a government / municipality account, and
-                    // a driver under an org from an independent collector.
-                    accountSubtype: accountSubtype || (
-                        registrationType === 'organization'
-                            ? (isAuthority ? 'government' : 'collection_business')
-                            : (isJoiningOrg ? 'driver' : 'collection_business')
-                    ),
-                    vehicleType,
+                    accountSubtype: accountSubtype || (isAuthority ? 'government' : 'collection_business'),
                     wasteTypesHandled: selectedWasteTypes,
                     isAvailable: false,
                     rating: 0,
                     totalPickups: 0,
                     earnings: 0,
+                    collectorType: 'organization',
+                    organizationName: orgName,
+                    isAuthority,
+                    orgCode,
                 };
 
-                // The rest is essentially identical to the old setDoc logic
-                if (registrationType === 'organization') {
-                    collectorData.collectorType = 'organization';
-                    collectorData.organizationName = orgName;
-                    collectorData.isAuthority = isAuthority;
-                    const orgCode = orgName.toLowerCase().replace(/\s+/g, '-').slice(0, 12) + '-' + Math.random().toString(36).slice(2, 6);
-                    collectorData.orgCode = orgCode;
-
-                    await setDoc(doc(db, 'organizations', orgCode), {
-                        name: orgName,
-                        ownerId: userId,
-                        orgCode,
-                        members: [userId],
-                        pendingMembers: [],
-                        totalEarnings: 0,
-                        walletBalance: 0,
-                        isActive: true,
-                        isAuthority,
-                        createdAt: serverTimestamp(),
-                        updatedAt: serverTimestamp(),
-                    });
-                } else if (isJoiningOrg) {
-                    const orgExists = await checkOrgCode(joinOrgCode);
-                    if (!orgExists) {
-                        setError('Invalid organization code. Please check and try again.');
-                        return;
-                    }
-                    collectorData.collectorType = 'organization_member';
-                    collectorData.organizationId = joinOrgCode;
-                    collectorData.isApproved = false;
-                } else {
-                    collectorData.collectorType = 'individual';
-                }
+                await setDoc(doc(db, 'organizations', orgCode), {
+                    name: orgName,
+                    ownerId: userId,
+                    orgCode,
+                    members: [userId],
+                    pendingMembers: [],
+                    // Stored on the org so every driver the admin creates
+                    // inherits it instead of being asked to pick again.
+                    wasteTypesHandled: selectedWasteTypes,
+                    totalEarnings: 0,
+                    walletBalance: 0,
+                    isActive: true,
+                    isAuthority,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                });
 
                 await completeProfile(userId, fullPhone, pin, collectorData);
 
                 await setDoc(doc(db, 'collectorProfiles', userId), {
-                    displayName: registrationType === 'organization' ? orgName : fullName,
+                    displayName: orgName,
                     bio: '',
                     profileImage: profileImage || '',
                     phone: fullPhone,
-                    email: `${phoneNumber}@mbalit.app`,
-                    vehicleType,
                     wasteTypesHandled: selectedWasteTypes,
-                    collectorType: registrationType === 'organization' ? 'organization' : isJoiningOrg ? 'organization_member' : 'individual',
+                    collectorType: 'organization',
+                    organizationId: orgCode,
+                    organizationName: orgName,
                     isVerified: false,
                     documentsSubmitted: false,
                     joinedAt: serverTimestamp(),
@@ -746,11 +870,7 @@ function AuthPage() {
                 setIsSignupSuccess(true);
                 requestNotificationPermission(userId).catch(console.error);
                 setTimeout(() => {
-                    if (registrationType === 'organization') {
-                        router.replace('/organization/dashboard');
-                    } else {
-                        router.replace('/collector/dashboard');
-                    }
+                    router.replace('/organization/dashboard');
                 }, 600);
             }
         } catch (err: unknown) {
@@ -771,64 +891,50 @@ function AuthPage() {
         }
     };
 
+    /**
+     * Back navigation for the signup flow — available on EVERY step.
+     *
+     * Step 3 (profile) intentionally walks back to the phone step even though
+     * the account already exists: handlePhoneContinue knows how to rewrite
+     * the phone on an existing account, so "I typed my number wrong" is
+     * recoverable instead of a dead end.
+     */
     const handleBack = () => {
         setError(null);
-        if (step > 0) {
-            if (step === 6) {
+        switch (step) {
+            case 4:
+                setStep(3);
+                return;
+            case 3:
+                if (!phoneNumber && user?.phone) setPhoneNumber(restorePhoneForEditing(user.phone));
+                setStep(1);
+                return;
+            case 2:
                 if (pinStep === 'confirm') {
                     setPinStep('create');
                     setConfirmPin('');
                 } else {
-                    setStep(1); // Go back to phone
+                    setStep(1);
                 }
                 return;
-            }
-            if (step === 3) {
-                // Profile step - cannot go back since the account is already created
+            case 1:
+                setStep(0);
+                setRegistrationType(null);
                 return;
-            }
-            if (step === 1) {
-                 if (!showOrgDetails && isJoiningOrg) {
-                      setShowOrgDetails(true);
-                      return;
-                 } else {
-                      setStep(0);
-                      setRegistrationType(null);
-                      setIsJoiningOrg(false);
-                      setShowOrgDetails(false);
-                      return;
-                 }
-            }
-            setStep(step - 1);
-        } else if (mode === 'signup') {
-            setRegistrationType(null);
-            setIsJoiningOrg(false);
-            setShowOrgDetails(false);
+            default:
+                router.push('/');
         }
     };
 
-    const getTotalDisplaySteps = () => {
-        if (registrationType === 'waste_owner') return 3; // phone, pin, profile
-        return 6; // org, phone, pin, profile, vehicle, waste types
-    };
+    const getTotalDisplaySteps = () => (registrationType === 'waste_owner' ? 3 : 4);
 
     const getCurrentDisplayStep = () => {
-        // Map internal step numbers (0,1,3,4,5,6) to sequential display positions
-        if (registrationType === 'waste_owner') {
-            // 1=phone, 6=pin, 3=profile
-            if (step === 1) return 1;
-            if (step === 6) return 2;
-            if (step === 3) return 3;
-            return step;
-        }
-        // collector/organization: 1A=org, 1B=phone, 6=pin, 3=profile, 4=vehicle, 5=waste
-        if (step === 1 && showOrgDetails) return 1;
-        if (step === 1 && !showOrgDetails) return 2;
-        if (step === 6) return 3;
-        if (step === 3) return 4;
-        if (step === 4) return 5;
-        if (step === 5) return 6;
-        return step;
+        // 1 = phone, 2 = PIN, 3 = profile, 4 = waste types
+        if (step === 1) return 1;
+        if (step === 2) return 2;
+        if (step === 3) return 3;
+        if (step === 4) return 4;
+        return 0;
     };
 
     // ==========================================
@@ -836,8 +942,8 @@ function AuthPage() {
     // ==========================================
     if (isSignupSuccess) {
         return (
-            <div className="min-h-[100dvh] bg-white flex items-center justify-center flex-col pb-16">
-                <div className="w-80 h-80">
+            <div className="h-screen-safe bg-white flex items-center justify-center flex-col pb-16">
+                <div className="w-80 h-80 max-w-[80vw] max-h-[40vh]">
                     <DotLottieReact
                         src="/account_created.lottie"
                         autoplay
@@ -856,116 +962,105 @@ function AuthPage() {
         if (loginStep === 1) {
             const cursor = loginPin.length;
             return (
-                <div className="min-h-[100dvh] bg-white flex flex-col">
-                    <div className="flex items-center px-5 pt-12 pb-2">
-                        <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => { setLoginStep(0); setLoginPin(''); setError(null); }}
-                            className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-gray-50 text-[#0E7A3B]"
-                            aria-label="Go back"
-                        >
-                            <ArrowLeft className="w-6 h-6" />
-                        </motion.button>
+                <AuthShell onBack={() => { setLoginStep(0); setLoginPin(''); setError(null); }}>
+                    {/* Heading row + verify illustration */}
+                    <div className="relative flex items-start justify-between gap-3 mb-4">
+                        <div className="flex-1 pt-1 z-10">
+                            <h1 className="text-[28px] font-extrabold text-[#0F1A14] leading-tight">Log In</h1>
+                            <p className="text-sm text-gray-500 mt-2 max-w-[14rem] leading-snug">
+                                Enter your 6-digit PIN to access your MBalit account.
+                            </p>
+                            <div className="mt-4 flex items-center gap-2 flex-wrap">
+                                <span className="w-6 h-6 inline-flex">{country.flag}</span>
+                                <span className="text-sm font-semibold text-[#0F1A14]">
+                                    {country.dialCode} {formatPhone(phoneNumber)}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => { setLoginStep(0); setLoginPin(''); setError(null); }}
+                                    className="text-sm font-bold text-[#0E7A3B] ml-2 hover:underline"
+                                >
+                                    Change
+                                </button>
+                            </div>
+                        </div>
+                        <img
+                            src="/illustrations/verify-phone.svg"
+                            alt=""
+                            className="w-24 h-24 sm:w-36 sm:h-36 flex-shrink-0 -mt-2"
+                        />
                     </div>
 
-                    <div className="flex-1 px-5 pb-6">
-                        {/* Heading row + verify illustration */}
-                        <div className="relative flex items-start justify-between gap-3 mb-5">
-                            <div className="flex-1 pt-1 z-10">
-                                <h1 className="text-[28px] font-extrabold text-[#0F1A14] leading-tight">Log In</h1>
-                                <p className="text-sm text-gray-500 mt-2 max-w-[14rem] leading-snug">
-                                    Enter your 6-digit PIN to access your MBalit account.
-                                </p>
-                                <div className="mt-4 flex items-center gap-2">
-                                    <span className="w-6 h-6 inline-flex">{country.flag}</span>
-                                    <span className="text-sm font-semibold text-[#0F1A14]">
-                                        {country.dialCode} {formatPhone(phoneNumber)}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() => { setLoginStep(0); setLoginPin(''); setError(null); }}
-                                        className="text-sm font-bold text-[#0E7A3B] ml-2 hover:underline"
-                                    >
-                                        Change
-                                    </button>
+                    <label className="block text-sm font-bold text-[#0F1A14] mb-2">
+                        Enter 6-digit PIN
+                    </label>
+                    <div className="flex gap-2.5 justify-start mb-3">
+                        {[0, 1, 2, 3, 4, 5].map((i) => {
+                            const filled = !!loginPin[i];
+                            const isActive = i === cursor;
+                            return (
+                                <div
+                                    key={i}
+                                    className={`w-11 h-13 sm:w-12 sm:h-14 rounded-xl border-2 flex items-center justify-center transition-all text-xl font-bold
+                                        ${error
+                                            ? 'border-red-400 bg-red-50 text-red-600'
+                                            : isActive && !filled
+                                                ? 'border-[#0E7A3B] bg-white text-[#0E7A3B]'
+                                                : filled
+                                                    ? 'border-[#0E7A3B] bg-white text-[#0F1A14]'
+                                                    : 'border-gray-200 bg-white text-gray-300'}
+                                    `}
+                                >
+                                    {filled ? '•' : isActive ? (
+                                        <span className="w-px h-6 bg-[#0E7A3B] animate-pulse" />
+                                    ) : ''}
                                 </div>
-                            </div>
-                            <img
-                                src="/illustrations/verify-phone.svg"
-                                alt=""
-                                className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 -mt-2"
-                            />
+                            );
+                        })}
+                    </div>
+
+                    {error && (
+                        <div className="mt-3 mb-2 p-3 bg-red-50 border border-red-100 rounded-xl">
+                            <p className="text-sm text-red-600 text-center">{error}</p>
                         </div>
+                    )}
 
-                        <label className="block text-sm font-bold text-[#0F1A14] mb-2">
-                            Enter 6-digit PIN
-                        </label>
-                        <div className="flex gap-2.5 justify-start mb-3">
-                            {[0, 1, 2, 3, 4, 5].map((i) => {
-                                const filled = !!loginPin[i];
-                                const isActive = i === cursor;
-                                return (
-                                    <div
-                                        key={i}
-                                        className={`w-12 h-14 rounded-xl border-2 flex items-center justify-center transition-all text-xl font-bold
-                                            ${error
-                                                ? 'border-red-400 bg-red-50 text-red-600'
-                                                : isActive && !filled
-                                                    ? 'border-[#0E7A3B] bg-white text-[#0E7A3B]'
-                                                    : filled
-                                                        ? 'border-[#0E7A3B] bg-white text-[#0F1A14]'
-                                                        : 'border-gray-200 bg-white text-gray-300'}
-                                        `}
-                                    >
-                                        {filled ? '•' : isActive ? (
-                                            <span className="w-px h-6 bg-[#0E7A3B] animate-pulse" />
-                                        ) : ''}
-                                    </div>
-                                );
-                            })}
-                        </div>
+                    <div className="mt-3 flex items-start gap-2">
+                        <Shield className="w-4 h-4 text-[#0E7A3B] mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-gray-500">
+                            Never share your PIN with anyone — not even MBalit support.
+                        </p>
+                    </div>
 
-                        {error && (
-                            <div className="mt-3 mb-2 p-3 bg-red-50 border border-red-100 rounded-xl">
-                                <p className="text-sm text-red-600 text-center">{error}</p>
-                            </div>
-                        )}
+                    {biometricSupported && (
+                        <BiometricOptIn
+                            checked={enableBiometric}
+                            onChange={setEnableBiometric}
+                            isIos={isIos}
+                            hint="Sign in faster next time without re-entering your PIN."
+                        />
+                    )}
 
-                        <div className="mt-4 flex items-start gap-2">
-                            <Shield className="w-4 h-4 text-[#0E7A3B] mt-0.5 flex-shrink-0" />
-                            <p className="text-xs text-gray-500">
-                                Never share your PIN with anyone — not even MBalit support.
-                            </p>
-                        </div>
+                    <div className="mt-5">
+                        <DialPad
+                            value={loginPin}
+                            onChange={(val) => {
+                                setLoginPin(val);
+                                setError(null);
+                                if (val.length === 6) {
+                                    handleLogin(undefined, val);
+                                }
+                            }}
+                            maxLength={6}
+                            showLetters={true}
+                        />
+                    </div>
 
-                        {biometricSupported && (
-                            <BiometricOptIn
-                                checked={enableBiometric}
-                                onChange={setEnableBiometric}
-                                isIos={isIos}
-                                hint="Sign in faster next time without re-entering your PIN."
-                            />
-                        )}
+                    <div className="mt-3 text-center">
+                        {isLoading && <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#0E7A3B]" />}
+                    </div>
 
-                        <div className="mt-6">
-                            <DialPad
-                                value={loginPin}
-                                onChange={(val) => {
-                                    setLoginPin(val);
-                                    setError(null);
-                                    if (val.length === 6) {
-                                        handleLogin(undefined, val);
-                                    }
-                                }}
-                                maxLength={6}
-                                showLetters={true}
-                            />
-                        </div>
-
-                        <div className="mt-4 text-center">
-                            {isLoading && <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#0E7A3B]" />}
-                        </div>
-
+                    <div className="text-center">
                         <button
                             type="button"
                             onClick={() => {
@@ -974,92 +1069,44 @@ function AuthPage() {
                                 setResetReference(null);
                                 setLoginStep(2);
                             }}
-                            className="mt-4 text-sm font-medium text-gray-700 underline underline-offset-4"
+                            className="mt-3 text-sm font-medium text-gray-700 underline underline-offset-4"
                         >
                             Forgot PIN?
                         </button>
                     </div>
-                </div>
+                </AuthShell>
             );
         }
 
         // Step 2: Forgot-PIN recovery flow (support-assisted only)
         if (loginStep === 2) {
-            const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
+            const fullPhone = currentFullPhone();
             return (
-                <div className="min-h-[100dvh] bg-white flex flex-col">
-                    <div className="flex items-center pt-16 px-6 mb-8">
-                        <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => {
-                                setLoginStep(1);
-                                setError(null);
-                                setResetReference(null);
-                            }}
-                            className="p-2 -ml-2 rounded-full hover:bg-gray-100"
-                        >
-                            <ArrowLeft className="w-6 h-6 text-gray-900" />
-                        </motion.button>
-                        <div className="flex-1 text-center font-semibold text-gray-900 pr-8">
-                            Reset PIN
-                        </div>
-                    </div>
-
-                    <div className="flex-1 px-6 flex flex-col items-center pb-safe overflow-y-auto">
-                        {resetReference ? (
-                            <div className="w-full max-w-sm mt-6">
-                                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
-                                    <Check className="w-8 h-8 text-emerald-600" />
-                                </div>
-                                <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-                                    Request received
-                                </h1>
-                                <p className="text-gray-500 text-center mb-6">
-                                    Our support team will contact you on{' '}
-                                    <span className="font-medium text-gray-900">{fullPhone}</span>{' '}
-                                    within 24 hours to verify your identity. Once verified you&apos;ll be issued a temporary PIN that you can change after signing in.
-                                </p>
-                                <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl mb-6">
-                                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Reference</p>
-                                    <p className="font-mono font-semibold text-gray-900 text-lg">{resetReference}</p>
-                                    <p className="text-xs text-gray-500 mt-2">Quote this code when our team calls you.</p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setResetReference(null);
-                                        setError(null);
-                                        setLoginStep(0);
-                                        setPhoneNumber('');
-                                    }}
-                                    className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl"
-                                >
-                                    Back to sign in
-                                </button>
-                            </div>
+                <AuthShell
+                    onBack={() => {
+                        setLoginStep(1);
+                        setError(null);
+                        setResetReference(null);
+                    }}
+                    headerExtra={<div className="font-semibold text-gray-900">Reset PIN</div>}
+                    footer={
+                        resetReference ? (
+                            <MbButton
+                                size="lg"
+                                onClick={() => {
+                                    setResetReference(null);
+                                    setError(null);
+                                    setLoginStep(0);
+                                    setPhoneNumber('');
+                                }}
+                            >
+                                Back to sign in
+                            </MbButton>
                         ) : (
-                            <div className="w-full max-w-sm mt-6">
-                                <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-                                    Forgot your PIN?
-                                </h1>
-                                <p className="text-gray-500 text-center mb-6">
-                                    For your security we don&apos;t reset PINs based on a phone number alone. Submit a reset request and our support team will verify your identity before issuing a temporary PIN.
-                                </p>
-
-                                <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl mb-6">
-                                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Account phone</p>
-                                    <p className="font-semibold text-gray-900">{fullPhone}</p>
-                                </div>
-
-                                {error && (
-                                    <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl">
-                                        <p className="text-sm text-red-600 text-center">{error}</p>
-                                    </div>
-                                )}
-
-                                <button
-                                    type="button"
-                                    disabled={isSubmittingReset}
+                            <>
+                                <MbButton
+                                    size="lg"
+                                    isLoading={isSubmittingReset}
                                     onClick={async () => {
                                         setError(null);
                                         setIsSubmittingReset(true);
@@ -1073,13 +1120,9 @@ function AuthPage() {
                                             setIsSubmittingReset(false);
                                         }
                                     }}
-                                    className="w-full py-4 font-bold rounded-2xl disabled:opacity-50 flex items-center justify-center bg-[#0E7A3B] hover:bg-[#0a6230] text-white"
                                 >
-                                    {isSubmittingReset
-                                        ? <Loader2 className="w-5 h-5 animate-spin" />
-                                        : 'Submit reset request'}
-                                </button>
-
+                                    Submit reset request
+                                </MbButton>
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -1087,126 +1130,155 @@ function AuthPage() {
                                         setResetReference(null);
                                         setLoginStep(1);
                                     }}
-                                    className="w-full py-3 mt-3 text-sm text-gray-500"
+                                    className="w-full py-3 mt-2 text-sm text-gray-500"
                                 >
                                     Cancel
                                 </button>
+                            </>
+                        )
+                    }
+                >
+                    {resetReference ? (
+                        <div className="w-full max-w-sm mx-auto mt-4">
+                            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
+                                <Check className="w-8 h-8 text-emerald-600" />
                             </div>
-                        )}
-                    </div>
-                </div>
+                            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                                Request received
+                            </h1>
+                            <p className="text-gray-500 text-center mb-6">
+                                Our support team will contact you on{' '}
+                                <span className="font-medium text-gray-900">{fullPhone}</span>{' '}
+                                within 24 hours to verify your identity. Once verified you&apos;ll be issued a temporary PIN that you can change after signing in.
+                            </p>
+                            <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl">
+                                <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Reference</p>
+                                <p className="font-mono font-semibold text-gray-900 text-lg">{resetReference}</p>
+                                <p className="text-xs text-gray-500 mt-2">Quote this code when our team calls you.</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="w-full max-w-sm mx-auto mt-4">
+                            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                                Forgot your PIN?
+                            </h1>
+                            <p className="text-gray-500 text-center mb-6">
+                                For your security we don&apos;t reset PINs based on a phone number alone. Submit a reset request and our support team will verify your identity before issuing a temporary PIN.
+                            </p>
+
+                            <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl mb-6">
+                                <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Account phone</p>
+                                <p className="font-semibold text-gray-900">{fullPhone}</p>
+                            </div>
+
+                            {error && (
+                                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl">
+                                    <p className="text-sm text-red-600 text-center">{error}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </AuthShell>
             );
         }
 
         // Step 0: Phone Number Entry (Full Screen Dial Pad)
         return (
-            <div className="min-h-[100dvh] bg-white flex flex-col">
-                {/* Header */}
-                <div className="relative flex items-center justify-center pt-12 pb-6 px-6">
-                    <button
-                        onClick={() => router.push('/')}
-                        className="absolute left-5 top-12 w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 text-[#0E7A3B]"
-                        aria-label="Go back"
-                    >
-                        <ArrowLeft className="w-6 h-6" />
-                    </button>
-                    <TruckLogo size="lg" showText={true} />
-                </div>
-
-                <div className="flex-1 px-6 pb-6 flex flex-col">
-                    <h1 className="text-[28px] font-extrabold text-[#0F1A14] leading-tight mb-1">Log In</h1>
-                    <p className="text-gray-500 mb-6">Enter your phone number to continue.</p>
-
-                    {error && (
-                        <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl">
-                            <p className="text-sm text-red-600 text-center">{error}</p>
-                        </div>
-                    )}
-
-                    {/* Country + Number display */}
-                    <div className="flex items-center gap-3 mb-6">
-                        <CountrySelector selectedCountry={country} onSelect={setCountry} />
-                        <div className="flex-1 text-center">
-                            <span className="text-3xl font-bold text-gray-900 tracking-wider">
-                                {phoneNumber ? formatPhone(phoneNumber) : (
-                                    <span className="text-gray-300">000 00 00</span>
-                                )}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Dial pad */}
-                    <div className="flex-1 flex items-center">
-                        <DialPad
-                            value={phoneNumber}
-                            onChange={(val) => {
-                                setPhoneNumber(val);
-                                if (error) setError(null);
-                            }}
-                            maxLength={7}
-                        />
-                    </div>
-
-                    {/* Continue button — checks if account exists before asking for PIN */}
-                    <button
-                        type="button"
-                        onClick={async () => {
-                            setError(null);
-                            setNoAccountFound(false);
-                            const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
-                            setIsCheckingPhone(true);
-                            try {
-                                const exists = await checkPhoneExists(fullPhone);
-                                if (!exists) {
-                                    setNoAccountFound(true);
-                                    setError('No account found for this number.');
-                                    return;
+            <AuthShell
+                onBack={() => router.push('/')}
+                headerExtra={<TruckLogo size="md" showText={true} />}
+                footer={
+                    <>
+                        <MbButton
+                            size="lg"
+                            onClick={async () => {
+                                setError(null);
+                                setNoAccountFound(false);
+                                const fullPhone = currentFullPhone();
+                                setIsCheckingPhone(true);
+                                try {
+                                    const exists = await checkPhoneExists(fullPhone);
+                                    if (!exists) {
+                                        setNoAccountFound(true);
+                                        setError('No account found for this number.');
+                                        return;
+                                    }
+                                    setLoginStep(1);
+                                } catch (err: unknown) {
+                                    setError(friendlyAuthError(err));
+                                } finally {
+                                    setIsCheckingPhone(false);
                                 }
-                                setLoginStep(1);
-                            } catch (err: unknown) {
-                                setError(friendlyAuthError(err));
-                            } finally {
-                                setIsCheckingPhone(false);
-                            }
-                        }}
-                        disabled={phoneNumber.length < 7 || isCheckingPhone}
-                        className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-8 flex items-center justify-center"
-                    >
-                        {isCheckingPhone ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Continue'}
-                    </button>
-
-                    {/* "No account found" recovery: one-tap switch to signup with phone preserved */}
-                    {noAccountFound && (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                resetTransientAuthState();
-                                setMode('signup');
-                                setStep(0);
-                                // phoneNumber + country are preserved across mode switch
                             }}
-                            className="w-full py-3 mt-3 border-2 border-gray-900 text-gray-900 font-semibold rounded-2xl"
+                            disabled={phoneNumber.length < 7}
+                            isLoading={isCheckingPhone}
                         >
-                            Sign up with this number
-                        </button>
-                    )}
+                            Continue
+                        </MbButton>
 
-                    {/* Switch to signup */}
-                    <div className="mt-8 text-center pb-6">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                resetTransientAuthState();
-                                setMode('signup');
-                                setStep(0);
-                            }}
-                            className="text-sm text-gray-500"
-                        >
-                            Don&apos;t have an account? <span className="font-semibold text-gray-900">Sign Up</span>
-                        </button>
+                        {/* "No account found" recovery: one-tap switch to signup with phone preserved */}
+                        {noAccountFound && (
+                            <MbButton
+                                size="lg"
+                                variant="outline"
+                                className="mt-2"
+                                onClick={() => {
+                                    resetTransientAuthState();
+                                    setMode('signup');
+                                    setStep(0);
+                                    // phoneNumber + country are preserved across mode switch
+                                }}
+                            >
+                                Sign up with this number
+                            </MbButton>
+                        )}
+
+                        <div className="mt-3 text-center">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    resetTransientAuthState();
+                                    setMode('signup');
+                                    setStep(0);
+                                }}
+                                className="text-sm text-gray-500"
+                            >
+                                Don&apos;t have an account? <span className="font-semibold text-gray-900">Sign Up</span>
+                            </button>
+                        </div>
+                    </>
+                }
+            >
+                <h1 className="text-[28px] font-extrabold text-[#0F1A14] leading-tight mb-1">Log In</h1>
+                <p className="text-gray-500 mb-5">Enter your phone number to continue.</p>
+
+                {error && (
+                    <div className="mb-5 p-3 bg-red-50 border border-red-100 rounded-xl">
+                        <p className="text-sm text-red-600 text-center">{error}</p>
+                    </div>
+                )}
+
+                {/* Country + Number display */}
+                <div className="flex items-center gap-3 mb-5">
+                    <CountrySelector selectedCountry={country} onSelect={setCountry} />
+                    <div className="flex-1 text-center">
+                        <span className="text-3xl font-bold text-gray-900 tracking-wider">
+                            {phoneNumber ? formatPhone(phoneNumber) : (
+                                <span className="text-gray-300">000 00 00</span>
+                            )}
+                        </span>
                     </div>
                 </div>
-            </div>
+
+                <DialPad
+                    value={phoneNumber}
+                    onChange={(val) => {
+                        setPhoneNumber(val);
+                        if (error) setError(null);
+                    }}
+                    maxLength={7}
+                />
+            </AuthShell>
         );
     }
 
@@ -1230,114 +1302,37 @@ function AuthPage() {
             if (!pickedSubRole) return;
             // Persist the picker choice BEFORE we kick off any further state
             // changes / route changes. If the user reloads (or the PWA cold
-            // starts) mid-signup, the resume effect below uses this to know
+            // starts) mid-signup, the resume effect above uses this to know
             // which kind of account they were creating — without it we'd
             // default everyone to waste_owner once createAccount() lands a
             // role-less user doc in Firestore.
-            if (pickedSubRole === 'resident' || pickedSubRole === 'business_waste') {
-                writePendingSignup({
-                    registrationType: 'waste_owner',
-                    subRole: pickedSubRole,
-                    isJoiningOrg: false,
-                    isAuthority: false,
-                });
-                handleRoleSelect('waste_owner');
-            } else if (pickedSubRole === 'collection_business') {
-                writePendingSignup({
-                    registrationType: 'organization',
-                    subRole: pickedSubRole,
-                    isJoiningOrg: false,
-                    isAuthority: false,
-                });
-                setIsJoiningOrg(false);
-                handleRoleSelect('organization');
-            } else if (pickedSubRole === 'driver') {
-                writePendingSignup({
-                    registrationType: 'collector',
-                    subRole: pickedSubRole,
-                    isJoiningOrg: true,
-                    isAuthority: false,
-                });
-                setIsJoiningOrg(true);
-                setRegistrationType('collector');
-                setShowOrgDetails(true);
-                setStep(1);
-            } else if (pickedSubRole === 'government') {
-                writePendingSignup({
-                    registrationType: 'organization',
-                    subRole: pickedSubRole,
-                    isJoiningOrg: false,
-                    isAuthority: true,
-                });
-                setIsAuthority(true);
-                handleRoleSelect('organization');
-            }
+            const isOwnerTrack = pickedSubRole === 'resident' || pickedSubRole === 'business_waste';
+            const type: 'waste_owner' | 'organization' = isOwnerTrack ? 'waste_owner' : 'organization';
+            const authority = pickedSubRole === 'government';
+
+            writePendingSignup({ registrationType: type, subRole: pickedSubRole, isAuthority: authority });
+            setIsAuthority(authority);
+            setRegistrationType(type);
+            setStep(1);
         };
 
         return (
-            <div className="min-h-[100dvh] bg-white flex flex-col">
-                <div className="flex items-center px-5 pt-12 pb-2">
-                    <button
-                        onClick={onBack}
-                        className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-gray-50 text-[#0E7A3B]"
-                        aria-label="Go back"
-                    >
-                        <ArrowLeft className="w-6 h-6" />
-                    </button>
-                </div>
-
-                <div className="flex-1 pb-6">
-                    <img
-                        src="/illustrations/role-hero.jpg"
-                        alt="MBalit — Sign Up"
-                        className="block w-full h-auto mb-5"
-                    />
-
-                    <div className="px-5">
-                        {!signupTrack ? (
-                            <TrackPicker
-                                onPickHave={() => setSignupTrack('have')}
-                                onPickCollect={() => setSignupTrack('collect')}
-                            />
-                        ) : signupTrack === 'have' ? (
-                            <HaveWasteSubPicker
-                                picked={pickedSubRole}
-                                onPick={(r) => setPickedSubRole(r)}
-                            />
-                        ) : (
-                            <CollectWasteSubPicker
-                                picked={pickedSubRole}
-                                onPick={(r) => setPickedSubRole(r)}
-                            />
-                        )}
-
-                        {/* Reassurance pill */}
-                        <div className="mt-5 flex items-start gap-3 p-4 rounded-2xl bg-[#E8F6EE] border border-[#D2F4E1]">
-                            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-                                <Shield className="w-5 h-5 text-[#0E7A3B]" />
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-[#0F1A14] text-sm">Don&apos;t worry!</h4>
-                                <p className="text-xs text-gray-600 leading-snug">
-                                    You can switch roles later from settings.
-                                </p>
-                            </div>
-                        </div>
-
+            <AuthShell
+                onBack={onBack}
+                footer={
+                    <>
                         {signupTrack && (
-                            <div className="mt-6">
-                                <MbButton
-                                    size="lg"
-                                    disabled={!pickedSubRole}
-                                    rightIcon={<ArrowRight className="w-5 h-5" />}
-                                    onClick={advance}
-                                >
-                                    Continue
-                                </MbButton>
-                            </div>
+                            <MbButton
+                                size="lg"
+                                disabled={!pickedSubRole}
+                                rightIcon={<ArrowRight className="w-5 h-5" />}
+                                onClick={advance}
+                            >
+                                Continue
+                            </MbButton>
                         )}
 
-                        <div className="mt-5 text-center">
+                        <div className="mt-3 text-center">
                             <button
                                 type="button"
                                 onClick={() => {
@@ -1352,100 +1347,114 @@ function AuthPage() {
                                 Already have an account? <span className="font-semibold text-[#0E7A3B]">Log In</span>
                             </button>
                         </div>
+                    </>
+                }
+            >
+                <img
+                    src="/illustrations/role-hero.jpg"
+                    alt="MBalit — Sign Up"
+                    className="block w-[calc(100%+2.5rem)] -mx-5 h-auto max-h-[26vh] object-cover mb-5"
+                />
+
+                {!signupTrack ? (
+                    <TrackPicker
+                        onPickHave={() => setSignupTrack('have')}
+                        onPickCollect={() => setSignupTrack('collect')}
+                    />
+                ) : signupTrack === 'have' ? (
+                    <HaveWasteSubPicker
+                        picked={pickedSubRole}
+                        onPick={(r) => setPickedSubRole(r)}
+                    />
+                ) : (
+                    <CollectWasteSubPicker
+                        picked={pickedSubRole}
+                        onPick={(r) => setPickedSubRole(r)}
+                    />
+                )}
+
+                {/* Reassurance pill */}
+                <div className="mt-5 flex items-start gap-3 p-4 rounded-2xl bg-[#E8F6EE] border border-[#D2F4E1]">
+                    <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                        <Shield className="w-5 h-5 text-[#0E7A3B]" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-[#0F1A14] text-sm">Don&apos;t worry!</h4>
+                        <p className="text-xs text-gray-600 leading-snug">
+                            You can switch roles later from settings.
+                        </p>
                     </div>
                 </div>
-            </div>
+            </AuthShell>
         );
     }
 
     // ==========================================
-    // SIGNUP STEPS (Full-screen)
+    // SIGNUP STEPS 1–4
     // ==========================================
-    return (
-        <div className="min-h-[100dvh] bg-white flex flex-col">
-            {/* Top bar with back button and step dots */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-4">
-                {step === 3 || step === 4 || step === 5 ? (
-                    <div className="w-9" />
-                ) : (
-                    <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={handleBack}
-                        className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+    const stepFooter = (() => {
+        switch (step) {
+            case 1:
+                return (
+                    <MbButton
+                        size="lg"
+                        onClick={handlePhoneContinue}
+                        disabled={phoneNumber.length < 7}
+                        isLoading={isCheckingPhone || isSavingPhone}
                     >
-                        <ArrowLeft className="w-5 h-5 text-gray-600" />
-                    </motion.button>
-                )}
+                        Continue
+                    </MbButton>
+                );
+            case 3:
+                return (
+                    <MbButton
+                        size="lg"
+                        onClick={() => {
+                            if (registrationType === 'waste_owner') {
+                                handleCompleteSignup();
+                            } else {
+                                setStep(4);
+                            }
+                        }}
+                        disabled={registrationType === 'organization' ? !orgName.trim() : !fullName.trim()}
+                    >
+                        {registrationType === 'waste_owner' ? 'Complete Setup' : 'Continue'}
+                    </MbButton>
+                );
+            case 4:
+                return (
+                    <MbButton
+                        size="lg"
+                        onClick={handleCompleteSignup}
+                        disabled={selectedWasteTypes.length === 0}
+                        isLoading={isLoading}
+                    >
+                        Complete Setup
+                    </MbButton>
+                );
+            default:
+                return null;
+        }
+    })();
 
-                {/* Step dots */}
-                <div className="flex items-center gap-2">
-                    {Array.from({ length: getTotalDisplaySteps() }, (_, i) => (
-                        <div
-                            key={i}
-                            className={`h-1.5 rounded-full transition-all ${
-                                i + 1 <= getCurrentDisplayStep() ? 'w-6 bg-[#0E7A3B]' : 'w-1.5 bg-gray-200'
-                            }`}
-                        />
-                    ))}
-                </div>
-
-                <div className="w-9" /> {/* Spacer */}
-            </div>
-
+    return (
+        <AuthShell
+            onBack={handleBack}
+            totalSteps={getTotalDisplaySteps()}
+            currentStep={getCurrentDisplayStep()}
+            footer={stepFooter}
+        >
             {error && (
-                <div className="mx-6 mb-4 p-3 bg-red-50 border border-red-100 rounded-xl">
+                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl">
                     <p className="text-sm text-red-600">{error}</p>
                 </div>
             )}
 
             <AnimatePresence mode="wait">
                 {/* ==========================================
-                    STEP 1A: Org Details
+                    STEP 1: Phone Number (Dial Pad)
                 ========================================== */}
-                {step === 1 && showOrgDetails && (
-                    <motion.div
-                        key="org"
-                        variants={pageVariants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        transition={{ type: 'tween', duration: 0.25 }}
-                        className="flex-1 flex flex-col px-6 pb-6"
-                    >
-                        {/* Removed Org Registration from Step 1A - moved to Step 3 */}
-
-                        {isJoiningOrg && (
-                            <div className="mb-6 flex-1">
-                                <h2 className="text-xl font-bold text-gray-900 mb-1">Organization code</h2>
-                                <p className="text-gray-500 text-sm mb-4">Enter the code from your organization</p>
-                                <input
-                                    type="text"
-                                    value={joinOrgCode}
-                                    onChange={(e) => setJoinOrgCode(e.target.value)}
-                                    placeholder="e.g. clean-gambia-a3f2"
-                                    className="w-full px-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-900 focus:border-transparent font-medium"
-                                />
-                            </div>
-                        )}
-
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setError(null);
-                                setShowOrgDetails(false);
-                            }}
-                            disabled={isJoiningOrg && joinOrgCode.length < 3}
-                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
-                        >
-                            Continue
-                        </button>
-                    </motion.div>
-                )}
-
-                {/* ==========================================
-                    STEP 1B: Phone Number (Dial Pad)
-                ========================================== */}
-                {step === 1 && !showOrgDetails && (
+                {step === 1 && (
                     <motion.div
                         key="phone"
                         variants={pageVariants}
@@ -1453,13 +1462,16 @@ function AuthPage() {
                         animate="center"
                         exit="exit"
                         transition={{ type: 'tween', duration: 0.25 }}
-                        className="flex-1 flex flex-col px-6 pb-6"
                     >
                         <h2 className="text-xl font-bold text-gray-900 mb-1">Your phone number</h2>
-                        <p className="text-gray-500 text-sm mb-6">We&apos;ll use this as your account ID</p>
+                        <p className="text-gray-500 text-sm mb-5">
+                            {accountId
+                                ? 'Change the number on your account, or continue.'
+                                : 'We’ll use this as your account ID'}
+                        </p>
 
                         {/* Country + Number display */}
-                        <div className="flex items-center gap-3 mb-6">
+                        <div className="flex items-center gap-3 mb-5">
                             <CountrySelector selectedCountry={country} onSelect={setCountry} />
                             <div className="flex-1 text-center">
                                 <span className="text-3xl font-bold text-gray-900 tracking-wider">
@@ -1470,53 +1482,18 @@ function AuthPage() {
                             </div>
                         </div>
 
-                        {/* Dial pad */}
-                        <div className="flex-1 flex items-center">
-                            <DialPad
-                                value={phoneNumber}
-                                onChange={setPhoneNumber}
-                                maxLength={7}
-                            />
-                        </div>
-
-                        {/* Continue button */}
-                        <button
-                            type="button"
-                            onClick={async () => {
-                                setError(null);
-                                setIsCheckingPhone(true);
-                                try {
-                                    const fullPhone = `${country.dialCode} ${formatPhone(phoneNumber)}`;
-                                    if (mode === 'signup') {
-                                        const exists = await checkPhoneExists(fullPhone);
-                                        if (exists) {
-                                            // Auto-switch to login mode preserving phone — no dead end.
-                                            resetTransientAuthState();
-                                            setMode('login');
-                                            setLoginStep(1);
-                                            setError('This phone is already registered. Please enter your existing PIN.');
-                                            return;
-                                        }
-                                    }
-                                    setStep(6);
-                                } catch (err: unknown) {
-                                    setError(friendlyAuthError(err));
-                                } finally {
-                                    setIsCheckingPhone(false);
-                                }
-                            }}
-                            disabled={phoneNumber.length < 7 || isCheckingPhone}
-                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
-                        >
-                            Continue
-                        </button>
+                        <DialPad
+                            value={phoneNumber}
+                            onChange={setPhoneNumber}
+                            maxLength={7}
+                        />
                     </motion.div>
                 )}
 
                 {/* ==========================================
-                    STEP 6: PIN Creation (Mockup 1 style)
+                    STEP 2: PIN Creation
                 ========================================== */}
-                {step === 6 && (
+                {step === 2 && (
                     <motion.div
                         key="pin"
                         variants={pageVariants}
@@ -1524,9 +1501,8 @@ function AuthPage() {
                         animate="center"
                         exit="exit"
                         transition={{ type: 'tween', duration: 0.25 }}
-                        className="flex-1 flex flex-col px-5 pb-6"
                     >
-                        <div className="relative flex items-start justify-between gap-3 mb-5">
+                        <div className="relative flex items-start justify-between gap-3 mb-4">
                             <div className="flex-1 pt-1 z-10">
                                 <h2 className="text-[26px] font-extrabold text-[#0F1A14] leading-tight">
                                     {pinStep === 'create' ? 'Create Your PIN' : 'Confirm Your PIN'}
@@ -1540,7 +1516,7 @@ function AuthPage() {
                             <img
                                 src="/illustrations/verify-phone.svg"
                                 alt=""
-                                className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 -mt-2"
+                                className="w-24 h-24 sm:w-36 sm:h-36 flex-shrink-0 -mt-2"
                             />
                         </div>
 
@@ -1555,7 +1531,7 @@ function AuthPage() {
                                 return (
                                     <div
                                         key={i}
-                                        className={`w-12 h-14 rounded-xl border-2 flex items-center justify-center transition-all text-xl font-bold
+                                        className={`w-11 h-13 sm:w-12 sm:h-14 rounded-xl border-2 flex items-center justify-center transition-all text-xl font-bold
                                             ${error
                                                 ? 'border-red-400 bg-red-50 text-red-600'
                                                 : isActive && !filled
@@ -1583,7 +1559,7 @@ function AuthPage() {
                         {/* Dial pad — replaced with loader during account creation,
                             or with a "Try again" button after a transient failure
                             so the user never has to re-enter their PIN. */}
-                        <div className="mt-5">
+                        <div className="mt-4">
                             {isCreatingAccount ? (
                                 <div className="w-full flex flex-col items-center justify-center gap-4 py-12">
                                     <Loader2 className="w-10 h-10 animate-spin text-[#0E7A3B]" />
@@ -1591,13 +1567,9 @@ function AuthPage() {
                                 </div>
                             ) : pinStep === 'confirm' && pin.length === 6 && confirmPin.length === 6 && error ? (
                                 <div className="w-full flex flex-col items-center justify-center gap-4 py-4">
-                                    <button
-                                        type="button"
-                                        onClick={submitCreateAccount}
-                                        className="w-full max-w-sm py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl"
-                                    >
+                                    <MbButton size="lg" onClick={submitCreateAccount}>
                                         Try again
-                                    </button>
+                                    </MbButton>
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -1634,28 +1606,24 @@ function AuthPage() {
                                                 }
                                             } else {
                                                 setConfirmPin(val);
-                                                if (val.length === 6 && val !== pin) {
-                                                    setError('PINs do not match. Please try again.');
-                                                    setConfirmPin('');
-                                                    setPinStep('create');
-                                                    setPin('');
+                                                if (val.length === 6) {
+                                                    if (val !== pin) {
+                                                        setError('PINs do not match. Please try again.');
+                                                        setConfirmPin('');
+                                                        setPinStep('create');
+                                                        setPin('');
+                                                    } else {
+                                                        // Both halves match — create the account
+                                                        // straight away rather than making the user
+                                                        // hunt for a Continue button.
+                                                        setTimeout(submitCreateAccount, 200);
+                                                    }
                                                 }
                                             }
                                         }}
                                         maxLength={6}
                                         showLetters={false}
                                     />
-
-                                    {pinStep === 'confirm' && (
-                                        <button
-                                            type="button"
-                                            onClick={submitCreateAccount}
-                                            disabled={confirmPin.length !== 6 || confirmPin !== pin}
-                                            className="w-full py-4 mt-6 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            Continue
-                                        </button>
-                                    )}
                                 </div>
                             )}
                         </div>
@@ -1673,21 +1641,20 @@ function AuthPage() {
                         animate="center"
                         exit="exit"
                         transition={{ type: 'tween', duration: 0.25 }}
-                        className="flex-1 flex flex-col px-6 pb-6"
                     >
                         <h2 className="text-xl font-bold text-gray-900 mb-1">
                             {registrationType === 'organization' ? 'Organization details' : 'Your profile'}
                         </h2>
-                        <p className="text-gray-500 text-sm mb-8">
+                        <p className="text-gray-500 text-sm mb-6">
                             {registrationType === 'organization' ? 'Add your organization name and logo' : 'Add your name and photo'}
                         </p>
 
                         {/* Profile image / Org Logo */}
-                        <div className="flex flex-col items-center mb-8">
+                        <div className="flex flex-col items-center mb-6">
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
-                                className={`${registrationType === 'organization' ? 'w-28 h-28 rounded-2xl' : 'w-24 h-24 rounded-full'} bg-gray-100 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors overflow-hidden border-2 border-dashed border-gray-300`}
+                                className={`${registrationType === 'organization' ? 'w-24 h-24 rounded-2xl' : 'w-20 h-20 rounded-full'} bg-gray-100 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors overflow-hidden border-2 border-dashed border-gray-300`}
                             >
                                 {profileImage ? (
                                     <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
@@ -1708,7 +1675,7 @@ function AuthPage() {
                         </div>
 
                         {/* Name input */}
-                        <div className="mb-6">
+                        <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 {registrationType === 'organization' ? 'Organization Name' : 'Full Name'}
                             </label>
@@ -1729,117 +1696,34 @@ function AuthPage() {
                                             setFullName(e.target.value);
                                         }
                                     }}
-                                    placeholder={registrationType === 'organization' ? "e.g. Clean Gambia Services" : "Your full name"}
+                                    placeholder={registrationType === 'organization' ? 'e.g. Clean Gambia Services' : 'Your full name'}
                                     className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-900 focus:border-transparent font-medium"
                                 />
                             </div>
+                            {registrationType === 'organization' && (
+                                <p className="text-xs text-gray-500 mt-2 leading-snug">
+                                    We&apos;ll turn this into a short code your drivers can be registered
+                                    under — e.g. &ldquo;Clean Gambia Services&rdquo; becomes <span className="font-mono font-semibold">CGS482</span>.
+                                </p>
+                            )}
                         </div>
 
-                        {/* Authority toggle (organizations only) */}
-                        {registrationType === 'organization' && (
-                            <button
-                                type="button"
-                                onClick={() => setIsAuthority((v) => !v)}
-                                className={`mb-6 w-full text-left p-4 rounded-2xl border-2 transition-all flex items-start gap-3 ${
-                                    isAuthority ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-300 bg-white'
-                                }`}
-                            >
-                                <div className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-colors ${
-                                    isAuthority ? 'bg-[#0E7A3B]' : 'bg-white border-2 border-gray-300'
-                                }`}>
-                                    {isAuthority && <Check className="w-3 h-3 text-white" />}
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-semibold text-gray-900 text-sm">We are a public authority</p>
-                                    <p className="text-xs text-gray-500 mt-1 leading-snug">
-                                        Authorities (KMC, BCC, etc.) receive environmental hazard reports from the community and can act on them.
-                                    </p>
-                                </div>
-                            </button>
+                        {isAuthority && registrationType === 'organization' && (
+                            <div className="mt-5 flex items-start gap-3 p-4 rounded-2xl bg-[#F1FAF4] border border-[#D2F4E1]">
+                                <Shield className="w-5 h-5 text-[#0E7A3B] flex-shrink-0 mt-0.5" />
+                                <p className="text-xs text-gray-600 leading-snug">
+                                    Registered as a public authority — you&apos;ll receive environmental
+                                    hazard reports from the community and can act on them.
+                                </p>
+                            </div>
                         )}
-
-                        <div className="flex-1" />
-
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (registrationType === 'waste_owner') {
-                                    handleCompleteSignup();
-                                } else {
-                                    setStep(4);
-                                }
-                            }}
-                            disabled={registrationType === 'organization' ? !orgName.trim() : !fullName.trim()}
-                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                            {registrationType === 'waste_owner' ? 'Complete Setup' : 'Continue'}
-                        </button>
                     </motion.div>
                 )}
 
                 {/* ==========================================
-                    STEP 4: Vehicle Type (Collectors only)
+                    STEP 4: Waste Types (Organizations only)
                 ========================================== */}
                 {step === 4 && (
-                    <motion.div
-                        key="vehicle"
-                        variants={pageVariants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        transition={{ type: 'tween', duration: 0.25 }}
-                        className="flex-1 flex flex-col px-6 pb-6"
-                    >
-                        <h2 className="text-xl font-bold text-gray-900 mb-1">Your vehicle</h2>
-                        <p className="text-gray-500 text-sm mb-6">What do you use to collect waste?</p>
-
-                        <div className="space-y-3">
-                            {VEHICLE_TYPES.map((vehicle) => (
-                                <motion.button
-                                    key={vehicle.id}
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={() => setVehicleType(vehicle.id)}
-                                    className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex items-center gap-4 ${
-                                        vehicleType === vehicle.id
-                                            ? 'border-gray-900 bg-gray-50'
-                                            : 'border-gray-100 hover:border-gray-300'
-                                    }`}
-                                >
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                                        vehicleType === vehicle.id ? 'bg-[#0E7A3B] text-white' : 'bg-[#E8F6EE] text-[#0E7A3B]'
-                                    }`}>
-                                        {vehicle.icon}
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-gray-900">{vehicle.name}</h3>
-                                        <p className="text-sm text-gray-500">Up to {vehicle.capacity}</p>
-                                    </div>
-                                    {vehicleType === vehicle.id && (
-                                        <div className="w-6 h-6 rounded-full bg-[#0E7A3B] flex items-center justify-center">
-                                            <Check className="w-4 h-4 text-white" />
-                                        </div>
-                                    )}
-                                </motion.button>
-                            ))}
-                        </div>
-
-                        <div className="flex-1" />
-
-                        <button
-                            type="button"
-                            onClick={() => setStep(5)}
-                            disabled={!vehicleType}
-                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
-                        >
-                            Continue
-                        </button>
-                    </motion.div>
-                )}
-
-                {/* ==========================================
-                    STEP 5: Waste Types (Collectors only)
-                ========================================== */}
-                {step === 5 && (
                     <motion.div
                         key="waste-types"
                         variants={pageVariants}
@@ -1847,12 +1731,14 @@ function AuthPage() {
                         animate="center"
                         exit="exit"
                         transition={{ type: 'tween', duration: 0.25 }}
-                        className="flex-1 flex flex-col px-6 pb-6"
                     >
                         <h2 className="text-xl font-bold text-gray-900 mb-1">Waste types</h2>
-                        <p className="text-gray-500 text-sm mb-6">Select the types of waste you handle</p>
+                        <p className="text-gray-500 text-sm mb-5">
+                            Select the types of waste your organization handles. Every driver you
+                            add later inherits this — they won&apos;t be asked again.
+                        </p>
 
-                        <div className="grid grid-cols-2 gap-3 flex-1">
+                        <div className="grid grid-cols-2 gap-3">
                             {WASTE_TYPES.map((type) => {
                                 const isSelected = selectedWasteTypes.includes(type.id);
                                 return (
@@ -1883,18 +1769,9 @@ function AuthPage() {
                                 );
                             })}
                         </div>
-
-                        <button
-                            type="button"
-                            onClick={handleCompleteSignup}
-                            disabled={selectedWasteTypes.length === 0 || isLoading}
-                            className="w-full py-4 bg-[#0E7A3B] hover:bg-[#0a6230] text-white font-bold rounded-2xl shadow-[0_10px_25px_rgba(14,122,59,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-4"
-                        >
-                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Complete Setup'}
-                        </button>
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </AuthShell>
     );
 }

@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions, getMessagingInstance } from './firebase';
+import { normalizeOrgCode } from './org-code';
 import { getToken } from 'firebase/messaging';
 import {
     WasteType,
@@ -910,9 +911,16 @@ export async function processSubscriptionPayment(
 // ORGANIZATION MANAGEMENT (Firestore)
 // =====================================
 
-// Get organization by org code
+// Get organization by org code.
+// Codes are matched case-insensitively and ignore any separators the user
+// typed, so "cfs 482", "CFS-482" and "cfs482" all find the same org.
 export async function getOrganization(orgCode: string) {
-    const orgDoc = await getDoc(doc(db, 'organizations', orgCode));
+    const normalized = normalizeOrgCode(orgCode);
+    let orgDoc = await getDoc(doc(db, 'organizations', normalized));
+    if (!orgDoc.exists() && orgCode !== normalized) {
+        // Fall back to the raw id for any legacy lower-case-hyphen code.
+        orgDoc = await getDoc(doc(db, 'organizations', orgCode));
+    }
     if (!orgDoc.exists()) return null;
     return { id: orgDoc.id, ...orgDoc.data() };
 }

@@ -42,7 +42,7 @@ const GuineaBissauFlag = () => (
     </svg>
 );
 
-const COUNTRIES: Country[] = [
+export const COUNTRIES: Country[] = [
     { code: 'GM', name: 'Gambia', dialCode: '+220', flag: <GambiaFlag /> },
     { code: 'SN', name: 'Senegal', dialCode: '+221', flag: <SenegalFlag /> },
     { code: 'GW', name: 'Guinea-Bissau', dialCode: '+245', flag: <GuineaBissauFlag /> },

@@ -40,8 +40,14 @@ export const DialPad: React.FC<DialPadProps> = ({
         }
     };
 
+    // Key height tracks the viewport height rather than sitting at a fixed
+    // 64px. On a short handset that fixed height pushed the primary button
+    // below the fold and forced the user to scroll to finish a step.
+    const keyClass =
+        'h-[clamp(3rem,7.4vh,4rem)] rounded-2xl flex items-center justify-center transition-colors';
+
     return (
-        <div className="grid grid-cols-3 gap-3 w-full max-w-[320px] mx-auto">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-[320px] mx-auto">
             {KEYS.map((key, index) => {
                 if (key.num === '') {
                     return <div key="empty" />;
@@ -54,7 +60,7 @@ export const DialPad: React.FC<DialPadProps> = ({
                             type="button"
                             whileTap={{ scale: 0.9 }}
                             onClick={() => handlePress('delete')}
-                            className="h-16 rounded-2xl flex items-center justify-center transition-colors active:bg-gray-100"
+                            className={`${keyClass} active:bg-gray-100`}
                         >
                             <Delete className="w-6 h-6 text-gray-600" />
                         </motion.button>
@@ -67,11 +73,13 @@ export const DialPad: React.FC<DialPadProps> = ({
                         type="button"
                         whileTap={{ scale: 0.92, backgroundColor: 'rgba(0,0,0,0.06)' }}
                         onClick={() => handlePress(key.num)}
-                        className="h-16 rounded-2xl bg-gray-50 hover:bg-gray-100 flex flex-col items-center justify-center transition-colors border border-gray-100"
+                        className={`${keyClass} flex-col bg-gray-50 hover:bg-gray-100 border border-gray-100`}
                     >
-                        <span className="text-2xl font-semibold text-gray-900">{key.num}</span>
+                        <span className="text-[clamp(1.25rem,3.2vh,1.5rem)] leading-none font-semibold text-gray-900">
+                            {key.num}
+                        </span>
                         {showLetters && key.letters && (
-                            <span className="text-[10px] font-medium text-gray-400 tracking-[0.2em] mt-[-2px]">
+                            <span className="text-[10px] font-medium text-gray-400 tracking-[0.2em] mt-0.5">
                                 {key.letters}
                             </span>
                         )}

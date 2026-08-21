@@ -42,6 +42,7 @@ import {
 import bcrypt from 'bcryptjs';
 import { db } from './firebase';
 import { removeBiometric } from './biometric';
+import { normalizeOrgCode } from './org-code';
 import { User, WasteType, Collector } from '@/types';
 
 interface AuthContextType {
@@ -60,6 +61,13 @@ interface AuthContextType {
     checkPhoneExists: (phone: string) => Promise<boolean>;
     checkOrgCode: (orgCode: string) => Promise<boolean>;
     changePin: (oldPin: string, newPin: string) => Promise<void>;
+    /**
+     * Replace the PIN WITHOUT asking for the old one. Only permitted while
+     * the account is flagged `mustChangePin` — i.e. the user just signed in
+     * with the temporary PIN their admin issued, so re-typing it would be
+     * pure friction. Clears the flag on success.
+     */
+    completeForcedPinChange: (newPin: string) => Promise<void>;
     requestPinReset: (phone: string) => Promise<{ referenceCode: string }>;
     /**
      * Destructive — wipes the user's Firestore footprint and signs them out.
@@ -177,9 +185,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const checkOrgCode = async (orgCode: string): Promise<boolean> => {
+        const normalized = normalizeOrgCode(orgCode);
+        if (!normalized) return false;
         try {
-            const orgDoc = await getDoc(doc(db, 'organizations', orgCode));
-            return orgDoc.exists();
+            // Codes are stored normalised (upper-case, no separators), so a
+            // user typing "cfs 482" still resolves. The raw fallback keeps
+            // any legacy lower-case-hyphen code working.
+            const orgDoc = await getDoc(doc(db, 'organizations', normalized));
+            if (orgDoc.exists()) return true;
+            if (orgCode !== normalized) {
+                const legacy = await getDoc(doc(db, 'organizations', orgCode));
+                return legacy.exists();
+            }
+            return false;
         } catch (error) {
             console.error('Error checking org code:', error);
             return false;
@@ -285,7 +303,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             throw new Error('old-pin-incorrect');
         }
         const pinHash = await bcrypt.hash(newPin, BCRYPT_COST);
-        await setDoc(userRef, { pinHash, updatedAt: serverTimestamp() }, { merge: true });
+        await setDoc(
+            userRef,
+            { pinHash, mustChangePin: false, updatedAt: serverTimestamp() },
+            { merge: true },
+        );
+    };
+
+    const completeForcedPinChange = async (newPin: string) => {
+        if (!user) throw new Error('No user signed in.');
+        if (!/^\d{6}$/.test(newPin)) {
+            throw new Error('PIN must be exactly 6 digits.');
+        }
+        const userRef = doc(db, 'users', user.id);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) throw new Error('Account not found.');
+        const data = snap.data() as { mustChangePin?: boolean; pinHash?: string };
+        // Guard against this being reachable outside the forced flow — it is
+        // the one path that sets a PIN without proving knowledge of the old one.
+        if (data.mustChangePin !== true) {
+            throw new Error('This account does not need to change its PIN.');
+        }
+        if (data.pinHash && (await bcrypt.compare(newPin, data.pinHash))) {
+            throw new Error('Please choose a PIN different from the temporary one.');
+        }
+        const pinHash = await bcrypt.hash(newPin, BCRYPT_COST);
+        await setDoc(
+            userRef,
+            { pinHash, mustChangePin: false, updatedAt: serverTimestamp() },
+            { merge: true },
+        );
+        markUnlocked();
     };
 
     const requestPinReset = async (phone: string): Promise<{ referenceCode: string }> => {
@@ -523,6 +571,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 checkPhoneExists,
                 checkOrgCode,
                 changePin,
+                completeForcedPinChange,
                 requestPinReset,
                 deleteAccount,
                 logout,
